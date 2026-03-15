@@ -6,6 +6,11 @@ export default function Home() {
           <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
             PICOPI.CC
           </h1>
+          <div>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              A tiny app running on a Raspberry Pi in the laundry room.
+            </p>
+          </div>
         </div>
       </main>
     </div>
