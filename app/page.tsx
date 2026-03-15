@@ -8,7 +8,7 @@ export default function Home() {
           </h1>
           <div>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              A tiny app running on a Raspberry Pi in the laundry room.
+              A tiny next.js app running on a Raspberry Pi in the laundry room.
             </p>
           </div>
         </div>
