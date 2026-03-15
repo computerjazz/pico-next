@@ -7,7 +7,7 @@ export default function Home() {
             PICOPI.CC
           </h1>
           <div>
-            <p className="text-md text-zinc-500 dark:text-zinc-400">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               A tiny app running on a Raspberry Pi in the laundry room.
             </p>
           </div>
