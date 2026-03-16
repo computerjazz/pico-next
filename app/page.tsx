@@ -1,3 +1,5 @@
+export const revalidate = 0; // always fetch fresh data
+
 import { getRedis } from "@/lib/redis";
 
 export default async function Home() {
