@@ -48,7 +48,7 @@ $(function () {
 
   var look = function (action, room) {
     if (action.length > 1) {
-      look_item(action[1], room);
+      look_item(action[1] === "at" ? action[2] : action[1], room);
     } else {
       look_room(room);
     }
@@ -882,11 +882,31 @@ var rooms = {"chambers":chambers,
 
     jqconsole.Prompt(true, function (action) {
       console.log($(document.activeElement));
-      action = action.toLowerCase().split(" ");
+      action = action
+        .toLowerCase()
+        .split(" ")
+        .map((w) => w.trim())
+        .filter((w) => !!w);
       //see if it's time to fight the assassin
       action = test_action(action, room);
       if (action[0] === "go") {
-        room = go_to(action[1], room);
+        function getDirection(input) {
+          switch (input) {
+            case "n":
+            case "north":
+              return "north";
+            case "s":
+            case "south":
+              return "south";
+            case "e":
+            case "east":
+              return "east";
+            case "w":
+            case "west":
+              return "west";
+          }
+        }
+        room = go_to(getDirection(action[1]), room);
         console.log(typeof room);
         if (typeof room === "object") {
           loop(room);
@@ -911,7 +931,7 @@ var rooms = {"chambers":chambers,
         } else {
           to_print("You curse yourself under your breath.");
         }
-      } else if (action[0] == "inv") {
+      } else if (action[0] == "inv" || action[0] === "i") {
         get_inv();
       } else if (action[0] == "map") {
         $.colorbox({
@@ -931,7 +951,7 @@ var rooms = {"chambers":chambers,
     });
   };
   to_print(
-    '.__.  .__ .__..  ..___  .__..___  .___..___\\  /.___.\n[__]  [ __[__]|\\/|[__   |  |[__     |  [__  ><   |  \n|  |  [_./|  ||  |[___  |__||       |  [___/  \\  | \n\n\nINSTRUCTIONS:\nlook = look around the area (ex: "look")\nlook [object] = look at an object in the room or your inventory (ex: "look potato")\ntake [object] = pick up item (ex:"take potato")\nuse [item] = use an item from your inventory on yourself (ex: "use potato")\nuse [item] [object] = use an item from your inventory on something in the room (ex: "use potato window")\ngo [north/south/east/west] = go to adjacent area\ntalk [person] = talk to a person in the room (ex: "talk catelyn")\ninv = view inventory\nhelp = print these instructions to the screen\n\n\nA letter arrives from King\'s Landing:\n\n\t***************************************************\n\tNed,\n\tJon Arryn is dead.\n\tI will be arriving in Winterfell in two week\'s time.\n\t-Robert\n\t***************************************************\n\nTwo weeks later, King Robert arrives with his men.\nHe asks that you replace Jon as Hand of the King.\nAgainst your better judgement, you accept his offer.\nRobert is pleased.\nYour wife, Catelyn, will not be.\nYou walk to your bedchambers...\n',
+    ".__.  .__ .__..  ..___  .__..___  .___..___\\  /.___.\n[__]  [ __[__]|\\/|[__   |  |[__     |  [__  ><   |  \n|  |  [_./|  ||  |[___  |__||       |  [___/  \\  | \n\n\nCOMMANDS:\nlook = look around the area\nlook [object] = look at an object in the room or your inventory\ntake [object] = pick up item\nuse [item] = use an item from your inventory on yourself\nuse [item] [object] = use an item from your inventory on something in the room\ngo [north/south/east/west] = go to adjacent area\ntalk [person] = talk to a person in the room\ninv = view inventory\nhelp = print these instructions to the screen\n\n\nA letter arrives from King's Landing:\n\n\t***************************************************\n\tNed,\n\tJon Arryn is dead.\n\tI will be arriving in Winterfell in two week's time.\n\t-Robert\n\t***************************************************\n\nTwo weeks later, King Robert arrives with his men.\nHe asks that you replace Jon as Hand of the King.\nAgainst your better judgement, you accept his offer.\nRobert is pleased.\nYour wife, Catelyn, will not be.\nYou walk to your bedchambers...\n",
   );
   loop(chambers());
 });

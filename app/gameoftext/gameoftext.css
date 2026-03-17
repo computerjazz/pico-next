@@ -40,6 +40,9 @@ body {
 /* The inner console element. */
 .jqconsole {
   padding: 40px;
+  display: flex;
+  flex-direction: column;
+  text-wrap: wrap;
 }
 
 /* The cursor. */
