@@ -1,11 +1,9 @@
 import { getRedis } from "@/lib/redis";
 
-export const revalidate = 0; // always fetch fresh data
-
-async function ViewCounter() {
+async function ViewCounter({ id }: { id: string }) {
   const redis = await getRedis();
 
-  const views = await redis.incr("homepage_views");
+  const views = await redis.incr(id);
 
   return (
     <div className="mx-auto max-w-3xl text-center text-xs text-green-400/70">

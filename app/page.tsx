@@ -1,4 +1,5 @@
 import ViewCounter from "./components/ViewCounter";
+export const revalidate = 0; // always fetch fresh data
 
 export default function Home() {
   return (
@@ -99,7 +100,7 @@ export default function Home() {
         </section>
 
         <footer className="pointer-events-none fixed bottom-0 left-0 w-full px-4 py-3">
-          <ViewCounter />
+          <ViewCounter id="homepage_views" />
         </footer>
       </main>
 
