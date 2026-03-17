@@ -886,7 +886,7 @@ var rooms = {"chambers":chambers,
         .toLowerCase()
         .split(" ")
         .map((w) => w.trim())
-        .filter((w) => !!w);
+        .filter((w) => !!w && !["to", "at", "the", "with", "a"].includes(w));
       //see if it's time to fight the assassin
       action = test_action(action, room);
       if (action[0] === "go") {
@@ -927,7 +927,7 @@ var rooms = {"chambers":chambers,
         use(action, room);
       } else if (action[0] == "talk") {
         if (action.length > 1) {
-          talk(action[1] === "to" ? action[2] : action[1], room);
+          talk(action[1], room);
         } else {
           to_print("You curse yourself under your breath.");
         }
