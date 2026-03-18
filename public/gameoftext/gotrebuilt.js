@@ -27,10 +27,26 @@ $(function () {
     jqconsole.Write(printthis + "\n", "jqconsole-output");
   };
 
+  const MAP_PATH = "/gameoftext/gotmap.jpg";
+
+  const TITLE_STRING = `.__.  .__ .__..  ..___  .__..___  .___..___\\  /.___.
+[__]  [ __[__]|\\/|[__   |  |[__     |  [__  ><   |  
+|  |  [_./|  ||  |[___  |__||       |  [___/  \\  | 
+`;
+
+  const HELP_STRING = `
+inv = view inventory
+look = look around the area
+look [object] = look at an object in the room or your inventory
+take [object] = pick up item
+use [item] = use an item from your inventory on yourself
+use [item] [object] = use an item from your inventory on an object
+go [north/south/east/west] = go to adjacent area
+talk [person] = talk to a person in the room
+help = view commands`;
+
   var help = function () {
-    to_print(
-      "\ninv = view inventory \nlook = look around the area \nlook [object] = look at an object in the room or your inventory \ntake [object] = pick up item \nuse [item] = use an item from your inventory on yourself \nuse [item] [object] = use an item from your inventory on an object \ngo [north/south/east/west] = go to adjacent area \ntalk [person] = talk to a person in the room",
-    );
+    to_print(HELP_STRING);
   };
 
   var setup_room = function (room) {
@@ -46,13 +62,13 @@ $(function () {
     return room;
   };
 
-  var look = function (action, room) {
+  function look(action, room) {
     if (action.length > 1) {
-      look_item(action[1] === "at" ? action[2] : action[1], room);
+      look_item(action[1], room);
     } else {
       look_room(room);
     }
-  };
+  }
 
   var go_to = function (direction, room) {
     if (direction in room[6]) {
@@ -212,7 +228,7 @@ $(function () {
     );
   };
 
-  var flagon = function (flagon) {
+  var flagon = function () {
     if (global_vars["onion"] && global_vars["pepper"]) {
       to_print("You fill the flagon with your much improved soup.");
       global_vars["flagon"] = true;
@@ -222,7 +238,7 @@ $(function () {
     }
   };
 
-  var flagon_robert = function (flagon) {
+  var flagon_robert = function () {
     if (global_vars["flagon"]) {
       to_print(
         'You give the flagon of much improved soup to Robert.\n"Maybe I was wrong about you Northerners, Ned, this does warm the belly! \nThough I\'d rather the flagon be filled with ale! Hah!" \n\n He remembers something and his face becomes serious. \n"Why don\'t you meet me in the crypts? I\'d like to say farewell to Lyanna befoe we go."',
@@ -234,7 +250,7 @@ $(function () {
     }
   };
 
-  var note_guard = function (note) {
+  var note_guard = function () {
     global_vars["note_guard"] = true;
     to_print(
       'You show Robert\'s note to the guard.\n"Hmmm King Robert has granted you his command, eh? And this IS his seal. Very well, enter."\nThe guard gives you a sideways glance and steps aside.',
@@ -253,7 +269,7 @@ $(function () {
     }
   };
 
-  var knife_robert = function (knife) {
+  var knife_robert = function () {
     to_print(
       'You show Robert the assassin\'s knife that bears his family crest.\nRecognition flashes across his eyes. "Where\'d you get this?" He demands.\n"A man tried to kill me with it," you reply, "somebody close to you must object to my ascension to Hand."\nRobert scowls. He seems to sober a bit.\n"I must alert King\'s Landing. We\'ll send a message at once. "\n\nRobert walks to the table and scribbles a note on a small scroll.\nHe rolls it tight, stamps his seal in wax, and hands it to you.\n"Move quickly, and be alert."',
     );
@@ -263,7 +279,7 @@ $(function () {
     inv_global["scroll"] = true;
   };
 
-  var scroll_raven = function (scroll) {
+  var scroll_raven = function () {
     to_print(
       "You carefully tie the scroll around the raven's leg.\n\nThe bird flies from the window, then over the wall and above the woods beyond.\nIts wings beat a slow rhythm into the midday sky. \n\nAnd then, with a jolt, it begins to fall.\nThe raven tumbles through the air in a lopsided spiral, orbiting the end of an arrow.\n\nYou whisper a prayer.\n\n.___..__.  .__ .___   __ .__..  ..___.._..  ..  ..___.__          \n  |  |  |  [__)[__   /  `|  ||\\ |  |   | |\\ ||  |[__ |  \\         \n  |  |__|  [__)[___  \\__.|__|| \\|  |  _|_| \\||__|[___|__/ *  *  *",
     );
@@ -872,7 +888,7 @@ var rooms = {"chambers":chambers,
 
   var jqconsole = $("#console").jqconsole("", "> ");
 
-  var loop = function (thisroom) {
+  function loop(thisroom) {
     var room = thisroom;
 
     //update the room with any changes
@@ -886,10 +902,15 @@ var rooms = {"chambers":chambers,
         .toLowerCase()
         .split(" ")
         .map((w) => w.trim())
-        .filter((w) => !!w && !["to", "at", "the", "with", "a"].includes(w));
+        .filter(
+          (w) =>
+            !!w && !["to", "at", "the", "with", "a", "on", "in"].includes(w),
+        );
       //see if it's time to fight the assassin
       action = test_action(action, room);
-      if (action[0] === "go") {
+      if (!action) return;
+      const [command, ...rest] = action;
+      if (["go", "walk"].includes(command)) {
         function getDirection(input) {
           switch (input) {
             case "n":
@@ -906,36 +927,37 @@ var rooms = {"chambers":chambers,
               return "west";
           }
         }
-        room = go_to(getDirection(action[1]), room);
+        const [direction] = rest;
+        room = go_to(getDirection(direction), room);
         console.log(typeof room);
         if (typeof room === "object") {
           loop(room);
         } else {
           loop(room());
         }
-      } else if (action[0] == "help") {
+      } else if (command === "help") {
         help();
-      } else if (action[0] == "look") {
+      } else if (command === "look") {
         look(action, room);
-      } else if (action[0] == "take") {
+      } else if (["take", "get"].includes(command)) {
         if (action.length > 1) {
           room = take(action[1], room);
         } else {
           to_print("Take what?");
         }
-      } else if (action[0] == "use") {
+      } else if (["use", "give"].includes(command)) {
         use(action, room);
-      } else if (action[0] == "talk") {
+      } else if (command == "talk") {
         if (action.length > 1) {
           talk(action[1], room);
         } else {
           to_print("You curse yourself under your breath.");
         }
-      } else if (action[0] == "inv" || action[0] === "i") {
+      } else if (["inv", "inventory", "i"].includes(command)) {
         get_inv();
-      } else if (action[0] == "map") {
+      } else if (command == "map") {
         $.colorbox({
-          href: "/gameoftext/gotmap.jpg",
+          href: MAP_PATH,
           returnFocus: "true",
           onClosed: function () {
             document.getElementById("console").focus();
@@ -949,9 +971,30 @@ var rooms = {"chambers":chambers,
       }
       loop(room);
     });
-  };
+  }
   to_print(
-    ".__.  .__ .__..  ..___  .__..___  .___..___\\  /.___.\n[__]  [ __[__]|\\/|[__   |  |[__     |  [__  ><   |  \n|  |  [_./|  ||  |[___  |__||       |  [___/  \\  | \n\n\nCOMMANDS:\nlook = look around the area\nlook [object] = look at an object in the room or your inventory\ntake [object] = pick up item\nuse [item] = use an item from your inventory on yourself\nuse [item] [object] = use an item from your inventory on something in the room\ngo [north/south/east/west] = go to adjacent area\ntalk [person] = talk to a person in the room\ninv = view inventory\nhelp = print these instructions to the screen\n\n\nA letter arrives from King's Landing:\n\n\t***************************************************\n\tNed,\n\tJon Arryn is dead.\n\tI will be arriving in Winterfell in two week's time.\n\t-Robert\n\t***************************************************\n\nTwo weeks later, King Robert arrives with his men.\nHe asks that you replace Jon as Hand of the King.\nAgainst your better judgement, you accept his offer.\nRobert is pleased.\nYour wife, Catelyn, will not be.\nYou walk to your bedchambers...\n",
+    `${TITLE_STRING}
+
+
+COMMANDS:${HELP_STRING}
+
+
+A letter arrives from King's Landing:
+
+    ***************************************************
+    Ned,
+    Jon Arryn is dead.
+    I will be arriving in Winterfell in two week's time.
+    -Robert
+    ***************************************************
+
+Two weeks later, King Robert arrives with his men.
+He asks that you replace Jon as Hand of the King.
+Against your better judgement, you accept his offer.
+Robert is pleased.
+Your wife, Catelyn, will not be.
+You walk to your bedchambers...
+`,
   );
   loop(chambers());
 });
