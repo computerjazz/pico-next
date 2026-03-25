@@ -6,6 +6,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   try {
     const redis = await getRedis();
+    redis.incr(REDIS_KEYS.EMAIL_WEBHOOK_COUNT);
     const decoded = JSON.parse(
       Buffer.from(body.message.data, "base64").toString(),
     );
@@ -38,6 +39,7 @@ export async function GET(req: Request) {
   const redis = await getRedis();
   const latestUsps = redis.get(REDIS_KEYS.LATEST_USPS_EMAILS);
   const latestRaw = redis.get(REDIS_KEYS.LATEST_EMAIL_RAW);
+  const count = redis.get(REDIS_KEYS.EMAIL_WEBHOOK_COUNT);
 
-  return Response.json({ latestUsps, latestRaw });
+  return Response.json({ latestUsps, latestRaw, count });
 }
