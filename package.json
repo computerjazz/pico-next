@@ -7,13 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "gmail:watch": "tsx scripts/start-watch.ts"
+    "gmail:watch": "tsx scripts/start-watch.ts",
+    "generate-token": "tsx scripts/generate-token.ts"
   },
   "dependencies": {
     "cheerio": "^1.2.0",
     "dotenv": "^17.3.1",
     "drizzle-orm": "^0.45.1",
     "googleapis": "^171.4.0",
+    "jsonwebtoken": "^9.0.3",
     "next": "16.1.6",
     "pg": "^8.20.0",
     "react": "19.2.3",
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/pg": "^8.18.0",
     "@types/react": "^19",

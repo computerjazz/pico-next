@@ -15,3 +15,8 @@ export async function getRedis() {
   }
   return client;
 }
+
+export const REDIS_KEYS = {
+  LATEST_USPS_EMAILS: "latestUspsEmails",
+  LATEST_EMAIL_RAW: "latestEmailRaw",
+};
