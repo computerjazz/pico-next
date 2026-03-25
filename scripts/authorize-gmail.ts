@@ -1,6 +1,7 @@
 import fs from "fs";
 import readline from "readline";
 import { google } from "googleapis";
+import "./env";
 
 const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON!);
 
