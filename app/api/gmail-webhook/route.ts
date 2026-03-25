@@ -6,14 +6,17 @@ export async function POST(req: Request) {
   const body = await req.json();
   try {
     const redis = await getRedis();
-    redis.incr(REDIS_KEYS.EMAIL_WEBHOOK_COUNT);
+    await redis.incr(REDIS_KEYS.EMAIL_WEBHOOK_COUNT);
     const decoded = JSON.parse(
       Buffer.from(body.message.data, "base64").toString(),
     );
-    redis.set(REDIS_KEYS.LATEST_EMAIL_RAW, JSON.stringify(decoded));
+    await redis.set(REDIS_KEYS.LATEST_EMAIL_RAW, JSON.stringify(decoded));
     const historyId = decoded.historyId;
     const newUspsEmails = await fetchNewUspsEmails(historyId);
-    redis.set(REDIS_KEYS.LATEST_USPS_EMAILS, JSON.stringify(newUspsEmails));
+    await redis.set(
+      REDIS_KEYS.LATEST_USPS_EMAILS,
+      JSON.stringify(newUspsEmails),
+    );
 
     // Here you could save images, trigger your frontend, etc.
     return new Response(null, { status: 204 });
@@ -37,9 +40,9 @@ export async function GET(req: Request) {
     return new Response("Invalid token", { status: 403 });
   }
   const redis = await getRedis();
-  const latestUsps = redis.get(REDIS_KEYS.LATEST_USPS_EMAILS);
-  const latestRaw = redis.get(REDIS_KEYS.LATEST_EMAIL_RAW);
-  const count = redis.get(REDIS_KEYS.EMAIL_WEBHOOK_COUNT);
+  const latestUsps = await redis.get(REDIS_KEYS.LATEST_USPS_EMAILS);
+  const latestRaw = await redis.get(REDIS_KEYS.LATEST_EMAIL_RAW);
+  const count = await redis.get(REDIS_KEYS.EMAIL_WEBHOOK_COUNT);
 
   return Response.json({ latestUsps, latestRaw, count });
 }
