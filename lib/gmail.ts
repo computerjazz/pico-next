@@ -1,5 +1,12 @@
 import { google } from "googleapis";
-import * as cheerio from "cheerio";
+import type { gmail_v1 } from "googleapis";
+import {
+  extractAllImgSrcs,
+  parseUspsInformedDeliveryHtml,
+} from "./usps-digest";
+import type { UspsDigestParse } from "./usps-digest";
+
+export * from "./usps-digest";
 
 const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON!);
 const token = JSON.parse(process.env.GOOGLE_TOKEN_JSON!);
@@ -15,6 +22,29 @@ export const auth = new google.auth.OAuth2(
 auth.setCredentials(token);
 
 export const gmail = google.gmail({ version: "v1", auth });
+
+function findHtmlPart(
+  part: gmail_v1.Schema$MessagePart | undefined,
+): gmail_v1.Schema$MessagePart | null {
+  if (!part) return null;
+  if (part.mimeType === "text/html" && part.body?.data) return part;
+  for (const p of part.parts ?? []) {
+    const found = findHtmlPart(p);
+    if (found) return found;
+  }
+  return null;
+}
+
+export function htmlFromMessagePayload(
+  payload: gmail_v1.Schema$MessagePart | undefined,
+): string {
+  if (!payload) return "";
+  const direct =
+    payload.mimeType === "text/html" && payload.body?.data ? payload : null;
+  const htmlPart = direct ?? findHtmlPart(payload);
+  if (!htmlPart?.body?.data) return "";
+  return Buffer.from(htmlPart.body.data, "base64").toString("utf-8");
+}
 
 // Register a watch
 export async function startWatch() {
@@ -39,7 +69,11 @@ export async function fetchNewUspsEmails(historyId: string) {
       (h) => h.messagesAdded?.map((m) => m.message?.id) || [],
     ) || [];
 
-  const uspsEmails: { id: string; images: string[] }[] = [];
+  const uspsEmails: {
+    id: string;
+    images: string[];
+    digest: UspsDigestParse | null;
+  }[] = [];
 
   for (const msgId of messages) {
     const message = await gmail.users.messages.get({
@@ -52,26 +86,16 @@ export async function fetchNewUspsEmails(historyId: string) {
     const from = headers.find((h) => h.name === "From")?.value || "";
     const subject = headers.find((h) => h.name === "Subject")?.value || "";
 
-    // Only handle USPS Informed Delivery
-    if (!from.includes("informed.delivery@usps.com")) continue;
-    if (!subject.includes("Informed Delivery")) continue;
+    // Only handle USPS Informed Delivery (sender may be @email.informeddelivery.usps.com)
+    if (!/informeddelivery\.usps\.com/i.test(from)) continue;
+    if (!subject.includes("Daily Digest")) continue;
 
-    // Extract images
-    const htmlPart = message.data.payload?.parts?.find(
-      (p) => p.mimeType === "text/html",
-    );
-    const html = htmlPart?.body?.data
-      ? Buffer.from(htmlPart.body.data, "base64").toString("utf-8")
-      : "";
+    const html = htmlFromMessagePayload(message.data.payload ?? undefined);
+    const digest = html ? parseUspsInformedDeliveryHtml(html) : null;
+    const images = html ? extractAllImgSrcs(html) : [];
 
-    const $ = cheerio.load(html);
-    const images: string[] = [];
-    $("img").each((_, el) => {
-      const src = $(el).attr("src");
-      if (src) images.push(src);
-    });
     if (msgId) {
-      uspsEmails.push({ id: msgId, images });
+      uspsEmails.push({ id: msgId, images, digest });
     }
   }
 
