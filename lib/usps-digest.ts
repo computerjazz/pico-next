@@ -2,6 +2,7 @@ import * as cheerio from "cheerio";
 import type { Cheerio, CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import z from "zod";
+import { Message, parseUspsMessage } from "./gmail";
 
 /** USPS repeats ids like `pra-shipper-name-id`; always scope under a section container. */
 const uspsPackacheSectionSchema = z.enum([
@@ -42,7 +43,6 @@ export type UspsDigestParse = z.infer<typeof UspsDigestParseSchema>;
 
 export const ParsedUspsMessageSchema = z.object({
   id: z.string(),
-  images: z.array(z.string()),
   digest: UspsDigestParseSchema.nullable(),
   message: z.unknown(), // Replace `z.unknown()` with a proper schema for `Message` if available
 });
@@ -60,15 +60,15 @@ function extractPackagesInSection(
 ): UspsDigestPackage[] {
   const out: UspsDigestPackage[] = [];
   // Desktop row has both shipper + tracking; mobile duplicates tracking in a second row — skip `#tracking-number-href-id-secondary`.
-  root.find('a[id="tracking-number-href-id"]').each((_, a) => {
+  root.find('a[id*="tracking-number-href-id"]').each((_, a) => {
     const row = $(a).closest("tr");
     const shipper = row
-      .find('[id="pra-shipper-name-id"]')
+      .find('[id*="pra-shipper-name-id"]')
       .first()
       .text()
       .trim();
     const trackingNumber = $(a)
-      .find('[id="pra-tracking-number-id"]')
+      .find('[id*="pra-tracking-number-id"]')
       .first()
       .text()
       .trim();
@@ -88,23 +88,23 @@ export function parseUspsInformedDeliveryHtml(html: string): UspsDigestParse {
 
   const summary: UspsDigestSummary = {
     inboundMailpieces: parseIntText(
-      $('[id="total-mailpieces"]').first().text(),
+      $('[id*="total-mailpieces"]').first().text(),
     ),
-    inboundPackages: parseIntText($('[id="total-packages"]').first().text()),
+    inboundPackages: parseIntText($('[id*="total-packages"]').first().text()),
     expectedTodayMailItems: parseIntText(
-      $('[id="today-mailitem-number"]').first().text(),
+      $('[id*="today-mailitem-number"]').first().text(),
     ),
     expectedTodayPackageItems: parseIntText(
-      $('[id="today-package-item-number"]').first().text(),
+      $('[id*="today-package-item-number"]').first().text(),
     ),
     expectedOneTwoDayPackageItems: parseIntText(
-      $('[id="onetwodays-package-item-number"]').first().text(),
+      $('[id*="onetwodays-package-item-number"]').first().text(),
     ),
     awaitingSenderPackageItems: parseIntText(
-      $('[id="awaiting-package-item-number"]').first().text(),
+      $('[id*="awaiting-package-item-number"]').first().text(),
     ),
     outboundPackageItems: parseIntText(
-      $('[id="outbound-package-item-number"]').first().text(),
+      $('[id*="outbound-package-item-number"]').first().text(),
     ),
   };
 
@@ -115,30 +115,26 @@ export function parseUspsInformedDeliveryHtml(html: string): UspsDigestParse {
     { id: "outbound-package-div", section: "outbound" },
   ];
 
-  const packages: UspsDigestPackage[] = [];
-  for (const { id, section } of sectionRoots) {
-    const root = $(`[id="${id}"]`);
-    if (!root.length) continue;
-    packages.push(...extractPackagesInSection($, root, section));
-  }
+  const packagesMap = sectionRoots.reduce((acc, { id, section }) => {
+    const root = $(`[id*="${id}"]`);
+    if (!root.length) return acc;
+    const pkgs = extractPackagesInSection($, root, section);
+    pkgs.forEach((pkg) => {
+      const existingPkg = acc.get(pkg.trackingNumber);
+      acc.set(pkg.trackingNumber, existingPkg?.shipper ? existingPkg : pkg);
+    });
+    return acc;
+  }, new Map<string, UspsDigestPackage>());
 
   const mailpieceImageRefs: string[] = [];
-  $('[id="mailpiece-image-src-id"]').each((_, el) => {
+  $('[id*="mailpiece-image-src-id"]').each((_, el) => {
     const src = $(el).attr("src");
     if (src?.startsWith("cid:")) mailpieceImageRefs.push(src);
   });
 
-  return { summary, packages, mailpieceImageRefs };
-}
+  const packages = [...packagesMap.values()];
 
-export function extractAllImgSrcs(html: string): string[] {
-  const $ = cheerio.load(html);
-  const out: string[] = [];
-  $("img").each((_, el) => {
-    const src = $(el).attr("src");
-    if (src) out.push(src);
-  });
-  return out;
+  return { summary, packages, mailpieceImageRefs };
 }
 
 export function parseStringifiedMessages(messagesString: string | null) {
@@ -147,6 +143,8 @@ export function parseStringifiedMessages(messagesString: string | null) {
   if (!Array.isArray(messages)) return [];
   return messages.map((message) => {
     const m = ParsedUspsMessageSchema.safeParse(message);
-    if (m.success) return m;
+    if (m.success) {
+      return parseUspsMessage({ message: m.data.message as Message });
+    }
   });
 }

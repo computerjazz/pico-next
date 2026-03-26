@@ -1,6 +1,5 @@
 import { google } from "googleapis";
 import {
-  extractAllImgSrcs,
   ParsedUspsMessage,
   parseUspsInformedDeliveryHtml,
 } from "./usps-digest";
@@ -11,7 +10,7 @@ const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON!);
 const token = JSON.parse(process.env.GOOGLE_TOKEN_JSON!);
 
 const { client_id, client_secret, redirect_uris } = credentials.installed;
-type Message = Awaited<ReturnType<typeof fetchMessages>>["messages"][0];
+export type Message = Awaited<ReturnType<typeof fetchMessages>>["messages"][0];
 
 export const auth = new google.auth.OAuth2(
   client_id,
@@ -23,7 +22,7 @@ auth.setCredentials(token);
 
 export const gmail = google.gmail({ version: "v1", auth });
 
-function findHtmlPart(
+export function findHtmlPart(
   part: Message["data"]["payload"],
 ): Message["data"]["payload"] | null {
   if (!part) return null;
@@ -35,15 +34,15 @@ function findHtmlPart(
   return null;
 }
 
-export function htmlFromMessagePayload(
-  payload: Message["data"]["payload"],
-): string {
-  if (!payload) return "";
+export function htmlFromMessage({ message }: { message: Message }) {
+  const { payload } = message.data;
+  if (!payload) return { html: "" };
   const direct =
     payload.mimeType === "text/html" && payload.body?.data ? payload : null;
   const htmlPart = direct ?? findHtmlPart(payload);
-  if (!htmlPart?.body?.data) return "";
-  return Buffer.from(htmlPart.body.data, "base64").toString("utf-8");
+  if (!htmlPart?.body?.data) return { html: "" };
+  const decoded = Buffer.from(htmlPart.body.data, "base64").toString("utf-8");
+  return { html: decoded };
 }
 
 // Register a watch
@@ -78,14 +77,11 @@ export function filterUspsMessages({ messages }: { messages: Message[] }) {
 }
 
 export function parseUspsMessage({ message }: { message: Message }) {
-  const html = htmlFromMessagePayload(message.data.payload);
+  const { html } = htmlFromMessage({ message });
   const digest = parseUspsInformedDeliveryHtml(html);
-  const images = extractAllImgSrcs(html);
-
   const parsedMessage: ParsedUspsMessage = {
     id: message.id,
     message,
-    images,
     digest,
   };
   return parsedMessage;
