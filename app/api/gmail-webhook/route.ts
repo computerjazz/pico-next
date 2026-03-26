@@ -20,9 +20,15 @@ export async function POST(req: Request) {
     );
 
     const redis = await getRedis();
+    if (uspsMessages.length) {
+      await redis.set(
+        REDIS_KEYS.LATEST_USPS_EMAILS,
+        JSON.stringify(uspsMessages),
+      );
+    }
+
     await Promise.all([
       redis.incr(REDIS_KEYS.EMAIL_WEBHOOK_COUNT),
-      redis.set(REDIS_KEYS.LATEST_USPS_EMAILS, JSON.stringify(uspsMessages)),
       redis.set(REDIS_KEYS.LATEST_EMAIL_RAW, JSON.stringify(messages)),
     ]);
 
@@ -48,7 +54,11 @@ export async function GET(req: Request) {
     return new Response("Invalid token", { status: 403 });
   }
   const redis = await getRedis();
-  const latestUsps = await redis.get(REDIS_KEYS.LATEST_USPS_EMAILS);
+  const [latestUsps] = await Promise.all([
+    redis.get(REDIS_KEYS.LATEST_USPS_EMAILS),
+    redis.get(REDIS_KEYS.LATEST_EMAIL_RAW),
+    redis.get(REDIS_KEYS.EMAIL_WEBHOOK_COUNT),
+  ]);
 
   return Response.json({
     informedDelivery: parseStringifiedUspsMessages(latestUsps),
