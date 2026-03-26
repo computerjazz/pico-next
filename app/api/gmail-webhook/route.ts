@@ -1,10 +1,10 @@
-import {
-  fetchMessages,
-  filterUspsMessages,
-  parseStringifiedMessages,
-  parseUspsMessage,
-} from "@/lib/gmail";
+import { fetchMessages } from "@/lib/gmail";
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
+import {
+  filterUspsMessages,
+  parseStringifiedUspsMessages,
+  parseUspsMessage,
+} from "@/lib/usps-digest";
 import jwt from "jsonwebtoken";
 
 export async function POST(req: Request) {
@@ -48,15 +48,9 @@ export async function GET(req: Request) {
     return new Response("Invalid token", { status: 403 });
   }
   const redis = await getRedis();
-  const [latestUsps, latestRaw, count] = await Promise.all([
-    redis.get(REDIS_KEYS.LATEST_USPS_EMAILS),
-    redis.get(REDIS_KEYS.LATEST_EMAIL_RAW),
-    redis.get(REDIS_KEYS.EMAIL_WEBHOOK_COUNT),
-  ]);
+  const latestUsps = await redis.get(REDIS_KEYS.LATEST_USPS_EMAILS);
 
   return Response.json({
-    latestUsps: parseStringifiedMessages(latestUsps),
-    latestRaw,
-    count,
+    informedDelivery: parseStringifiedUspsMessages(latestUsps),
   });
 }

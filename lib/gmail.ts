@@ -1,10 +1,4 @@
 import { google } from "googleapis";
-import {
-  ParsedUspsMessage,
-  parseUspsInformedDeliveryHtml,
-} from "./usps-digest";
-
-export * from "./usps-digest";
 
 const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON!);
 const token = JSON.parse(process.env.GOOGLE_TOKEN_JSON!);
@@ -54,37 +48,6 @@ export async function startWatch() {
     },
   });
   console.log("Watch response:", res.data);
-}
-
-export function filterUspsMessages({ messages }: { messages: Message[] }) {
-  const filteredMessages = messages
-    .map((message) => {
-      const headers = message.data.payload?.headers || [];
-      const from = headers.find((h) => h.name === "From")?.value || "";
-      const subject = headers.find((h) => h.name === "Subject")?.value || "";
-      const isFromUsps = /informeddelivery\.usps\.com/i.test(from);
-      const isDailyDigest = subject.toLowerCase().includes("daily digest");
-      const isOverride = subject.toLowerCase().includes("[override]");
-      if ((isFromUsps && isDailyDigest) || isOverride) {
-        return message;
-      } else {
-        return null;
-      }
-    })
-    .filter((m): m is Message => !!m);
-
-  return { messages: filteredMessages };
-}
-
-export function parseUspsMessage({ message }: { message: Message }) {
-  const { html } = htmlFromMessage({ message });
-  const digest = parseUspsInformedDeliveryHtml(html);
-  const parsedMessage: ParsedUspsMessage = {
-    id: message.id,
-    message,
-    digest,
-  };
-  return parsedMessage;
 }
 
 export async function fetchMessages({ historyId }: { historyId: string }) {

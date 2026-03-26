@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 import type { Cheerio, CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import z from "zod";
-import { Message, parseUspsMessage } from "./gmail";
+import { htmlFromMessage, Message } from "./gmail";
 
 /** USPS repeats ids like `pra-shipper-name-id`; always scope under a section container. */
 const uspsPackacheSectionSchema = z.enum([
@@ -137,14 +137,57 @@ export function parseUspsInformedDeliveryHtml(html: string): UspsDigestParse {
   return { summary, packages, mailpieceImageRefs };
 }
 
-export function parseStringifiedMessages(messagesString: string | null) {
+export function parseStringifiedUspsMessages(messagesString: string | null) {
   if (!messagesString) return [];
   const messages = JSON.parse(messagesString);
   if (!Array.isArray(messages)) return [];
-  return messages.map((message) => {
-    const m = ParsedUspsMessageSchema.safeParse(message);
-    if (m.success) {
-      return parseUspsMessage({ message: m.data.message as Message });
-    }
-  });
+  const allMessages = messages
+    .map((message) => {
+      const m = ParsedUspsMessageSchema.safeParse(message);
+      if (m.success) {
+        return m.data.message as Message;
+      }
+    })
+    .filter((m): m is Message => !!m);
+  const latestMessage = allMessages.sort((a, b) => {
+    const aEpochTimestamp = Number(a.data.internalDate || 0);
+    const bEpochTimestamp = Number(b.data.internalDate || 0);
+    return aEpochTimestamp > bEpochTimestamp ? -1 : 1;
+  })[0];
+  const { digest } = parseUspsMessage({ message: latestMessage });
+  return {
+    ...digest,
+    epochTimestamp: latestMessage?.data.internalDate,
+  };
+}
+
+export function filterUspsMessages({ messages }: { messages: Message[] }) {
+  const filteredMessages = messages
+    .map((message) => {
+      const headers = message.data.payload?.headers || [];
+      const from = headers.find((h) => h.name === "From")?.value || "";
+      const subject = headers.find((h) => h.name === "Subject")?.value || "";
+      const isFromUsps = /informeddelivery\.usps\.com/i.test(from);
+      const isDailyDigest = subject.toLowerCase().includes("daily digest");
+      const isOverride = subject.toLowerCase().includes("[override]");
+      if ((isFromUsps && isDailyDigest) || isOverride) {
+        return message;
+      } else {
+        return null;
+      }
+    })
+    .filter((m): m is Message => !!m);
+
+  return { messages: filteredMessages };
+}
+
+export function parseUspsMessage({ message }: { message: Message }) {
+  const { html } = htmlFromMessage({ message });
+  const digest = parseUspsInformedDeliveryHtml(html);
+  const parsedMessage: ParsedUspsMessage = {
+    id: message.id,
+    message,
+    digest,
+  };
+  return parsedMessage;
 }
