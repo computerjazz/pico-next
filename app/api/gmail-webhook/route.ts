@@ -7,6 +7,62 @@ import {
 } from "@/lib/usps-digest";
 import jwt from "jsonwebtoken";
 
+const MAX_RESPONSE_BYTES = 100 * 1024;
+
+function getJsonSizeBytes(value: unknown) {
+  return Buffer.byteLength(JSON.stringify(value), "utf8");
+}
+
+function enforcePayloadBudget(payload: {
+  informedDelivery: Record<string, unknown>;
+}) {
+  if (getJsonSizeBytes(payload) <= MAX_RESPONSE_BYTES) return payload;
+
+  const informedDelivery = {
+    ...payload.informedDelivery,
+  } as Record<string, unknown>;
+  const rawImages = informedDelivery.mailpieceImages;
+  if (!Array.isArray(rawImages)) {
+    return payload;
+  }
+
+  const images = rawImages.map((img) => ({ ...(img as Record<string, unknown>) }));
+  informedDelivery.mailpieceImages = images;
+
+  const imageIndexesByBase64Size = images
+    .map((img, index) => ({
+      index,
+      size:
+        typeof img.base64Data === "string"
+          ? Buffer.byteLength(img.base64Data, "utf8")
+          : 0,
+    }))
+    .sort((a, b) => b.size - a.size);
+
+  let candidate = { informedDelivery };
+  for (const { index } of imageIndexesByBase64Size) {
+    if (getJsonSizeBytes(candidate) <= MAX_RESPONSE_BYTES) break;
+    images[index] = {
+      ...images[index],
+      base64Data: null,
+      dataUrl: null,
+    };
+    candidate = { informedDelivery };
+  }
+
+  // Last resort: clear all thumbnails if still over budget.
+  if (getJsonSizeBytes(candidate) > MAX_RESPONSE_BYTES) {
+    informedDelivery.mailpieceImages = images.map((img) => ({
+      ...img,
+      base64Data: null,
+      dataUrl: null,
+    }));
+    candidate = { informedDelivery };
+  }
+
+  return candidate;
+}
+
 export async function POST(req: Request) {
   const body = await req.json();
   try {
@@ -58,7 +114,7 @@ export async function GET(req: Request) {
     return new Response("Invalid token", { status: 403 });
   }
   const redis = await getRedis();
-  const [latestUsps, _historyId] = await Promise.all([
+  const [latestUsps] = await Promise.all([
     redis.get(REDIS_KEYS.LATEST_USPS_EMAILS),
     redis.get(REDIS_KEYS.LATEST_GMAIL_HISTORY_ID),
     redis.get(REDIS_KEYS.LATEST_EMAIL_RAW),
@@ -78,7 +134,13 @@ export async function GET(req: Request) {
   //   console.log("tstREsp!!", tstResp);
   // }
 
-  return Response.json({
+  const payload = {
     informedDelivery: parseStringifiedUspsMessages(latestUsps),
+  };
+
+  const boundedPayload = enforcePayloadBudget({
+    informedDelivery: payload.informedDelivery as Record<string, unknown>,
   });
+
+  return Response.json(boundedPayload);
 }

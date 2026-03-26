@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import type { Cheerio, CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
+import sharp from "sharp";
 import z from "zod";
 import { fetchMessageAttachmentData, htmlFromMessage, Message } from "./gmail";
 
@@ -110,6 +111,50 @@ function toBase64FromGmailBase64Url(data: string): string {
   const pad = normalized.length % 4;
   if (pad === 0) return normalized;
   return normalized + "=".repeat(4 - pad);
+}
+
+const TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES = 80 * 1024; // keep room for non-image JSON to stay sub-100KB overall
+
+function estimatedBytesFromBase64(base64Data: string) {
+  return Math.floor((base64Data.length * 3) / 4);
+}
+
+async function shrinkBase64Image({
+  base64Data,
+  targetBytes,
+}: {
+  base64Data: string;
+  targetBytes: number;
+}) {
+  try {
+    const input = Buffer.from(base64Data, "base64");
+    const profiles = [
+      { width: 500, quality: 55 },
+      { width: 420, quality: 48 },
+      { width: 360, quality: 42 },
+      { width: 320, quality: 36 },
+      { width: 260, quality: 30 },
+      { width: 220, quality: 26 },
+    ] as const;
+
+    let best: Buffer | null = null;
+    for (const profile of profiles) {
+      const out = await sharp(input)
+        .rotate()
+        .resize({ width: profile.width, withoutEnlargement: true })
+        .jpeg({ quality: profile.quality, mozjpeg: true })
+        .toBuffer();
+      best = out;
+      if (out.length <= targetBytes) break;
+    }
+    const processed = best ?? input;
+    return {
+      base64Data: processed.toString("base64"),
+      mimeType: "image/jpeg",
+    };
+  } catch {
+    return { base64Data, mimeType: "image/jpeg" };
+  }
 }
 
 function inferImageType({
@@ -338,19 +383,67 @@ export async function parseUspsMessage({ message }: { message: Message }) {
         contentId: part.contentId,
         attachmentId: part.attachmentId,
         filename: part.filename,
-        mimeType: part.mimeType,
+        mimeType: part.mimeType ?? "image/jpeg",
         base64Data,
-        dataUrl:
-          base64Data && part.mimeType
-            ? `data:${part.mimeType};base64,${base64Data}`
-            : null,
+        // Keep payload small: avoid duplicating base64 into a second string field.
+        dataUrl: null,
       };
     }),
   );
 
+  const imagesWithData = mailpieceImages.filter(
+    (img): img is (typeof mailpieceImages)[number] & { base64Data: string } =>
+      typeof img.base64Data === "string" && img.base64Data.length > 0,
+  );
+  const perImageBudget = Math.max(
+    4 * 1024,
+    Math.floor(TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES / Math.max(1, imagesWithData.length)),
+  );
+
+  const budgetedImages = await Promise.all(
+    mailpieceImages.map(async (img) => {
+      if (!img.base64Data) return img;
+      const shrunk = await shrinkBase64Image({
+        base64Data: img.base64Data,
+        targetBytes: perImageBudget,
+      });
+      return {
+        ...img,
+        mimeType: shrunk.mimeType,
+        base64Data: shrunk.base64Data,
+      };
+    }),
+  );
+
+  let totalBytes = budgetedImages.reduce((sum, img) => {
+    if (!img.base64Data) return sum;
+    return sum + estimatedBytesFromBase64(img.base64Data);
+  }, 0);
+
+  // Last-resort cap: if still over budget, drop largest images until we fit.
+  if (totalBytes > TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES) {
+    const bySize = budgetedImages
+      .map((img, index) => ({
+        index,
+        bytes: img.base64Data ? estimatedBytesFromBase64(img.base64Data) : 0,
+      }))
+      .sort((a, b) => b.bytes - a.bytes);
+    for (const entry of bySize) {
+      if (totalBytes <= TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES) break;
+      const img = budgetedImages[entry.index];
+      if (!img.base64Data) continue;
+      totalBytes -= estimatedBytesFromBase64(img.base64Data);
+      budgetedImages[entry.index] = {
+        ...img,
+        base64Data: null,
+        dataUrl: null,
+      };
+    }
+  }
+
   const digest: UspsDigestParse = {
     ...digestFromHtml,
-    mailpieceImages,
+    mailpieceImages: budgetedImages,
   };
   const parsedMessage: ParsedUspsMessage = {
     id: message.id,
