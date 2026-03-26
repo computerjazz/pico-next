@@ -28,6 +28,7 @@ export async function POST(req: Request) {
     }
 
     await Promise.all([
+      redis.set(REDIS_KEYS.LATEST_GMAIL_HISTORY_ID, historyId),
       redis.incr(REDIS_KEYS.EMAIL_WEBHOOK_COUNT),
       redis.set(REDIS_KEYS.LATEST_EMAIL_RAW, JSON.stringify(messages)),
     ]);
