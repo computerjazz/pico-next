@@ -1,13 +1,17 @@
 import * as cheerio from "cheerio";
 import type { Cheerio, CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
+import z from "zod";
 
 /** USPS repeats ids like `pra-shipper-name-id`; always scope under a section container. */
-export type UspsPackageSection =
-  | "expected_today"
-  | "expected_1_2_days"
-  | "awaiting_sender"
-  | "outbound";
+const uspsPackacheSectionSchema = z.enum([
+  "expected_today",
+  "expected_1_2_days",
+  "awaiting_sender",
+  "outbound",
+]);
+
+export type UspsPackageSection = z.infer<typeof uspsPackacheSectionSchema>;
 
 export interface UspsDigestPackage {
   section: UspsPackageSection;

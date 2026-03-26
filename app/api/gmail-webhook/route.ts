@@ -1,4 +1,8 @@
-import { fetchNewUspsEmails } from "@/lib/gmail";
+import {
+  fetchMessages,
+  filterUspsMessages,
+  parseUspsMessage,
+} from "@/lib/gmail";
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
 import jwt from "jsonwebtoken";
 
@@ -9,13 +13,16 @@ export async function POST(req: Request) {
       Buffer.from(body.message.data, "base64").toString(),
     );
     const historyId = decoded.historyId;
-    const newUspsEmails = await fetchNewUspsEmails(historyId);
+    const { messages } = await fetchMessages({ historyId });
+    const uspsMessages = filterUspsMessages({ messages }).messages.map((m) =>
+      parseUspsMessage({ message: m }),
+    );
 
     const redis = await getRedis();
     await Promise.all([
       redis.incr(REDIS_KEYS.EMAIL_WEBHOOK_COUNT),
-      redis.set(REDIS_KEYS.LATEST_USPS_EMAILS, JSON.stringify(newUspsEmails)),
-      redis.set(REDIS_KEYS.LATEST_EMAIL_RAW, JSON.stringify(decoded)),
+      redis.set(REDIS_KEYS.LATEST_USPS_EMAILS, JSON.stringify(uspsMessages)),
+      redis.set(REDIS_KEYS.LATEST_EMAIL_RAW, JSON.stringify(messages)),
     ]);
 
     // Here you could save images, trigger your frontend, etc.

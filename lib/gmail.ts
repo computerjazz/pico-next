@@ -57,47 +57,70 @@ export async function startWatch() {
   console.log("Watch response:", res.data);
 }
 
-export async function fetchNewUspsEmails(historyId: string) {
+type Message = Awaited<ReturnType<typeof fetchMessages>>["messages"][0];
+type ParsedUspsMessage = {
+  id: string;
+  images: string[];
+  digest: UspsDigestParse | null;
+  message: Message;
+};
+
+export function filterUspsMessages({ messages }: { messages: Message[] }) {
+  const filteredMessages = messages
+    .map((message) => {
+      const headers = message.data.payload?.headers || [];
+      const from = headers.find((h) => h.name === "From")?.value || "";
+      const subject = headers.find((h) => h.name === "Subject")?.value || "";
+      const isFromUsps = /informeddelivery\.usps\.com/i.test(from);
+      const isDailyDigest = subject.toLowerCase().includes("daily digest");
+      const isOverride = subject.toLowerCase().includes("[override]");
+      if ((isFromUsps && isDailyDigest) || isOverride) {
+        return message;
+      } else {
+        return null;
+      }
+    })
+    .filter((m): m is Message => !!m);
+
+  return { messages: filteredMessages };
+}
+
+export function parseUspsMessage({ message }: { message: Message }) {
+  const html = htmlFromMessagePayload(message.data.payload ?? undefined);
+  const digest = html ? parseUspsInformedDeliveryHtml(html) : null;
+  const images = html ? extractAllImgSrcs(html) : [];
+
+  const parsedMessage: ParsedUspsMessage = {
+    id: message.id,
+    message,
+    images,
+    digest,
+  };
+  return parsedMessage;
+}
+
+export async function fetchMessages({ historyId }: { historyId: string }) {
   const history = await gmail.users.history.list({
     userId: "me",
     startHistoryId: historyId,
     historyTypes: ["messageAdded"],
   });
 
-  const messages =
-    history.data.history?.flatMap(
-      (h) => h.messagesAdded?.map((m) => m.message?.id) || [],
-    ) || [];
+  const messageIds =
+    history.data.history
+      ?.flatMap((h) => h.messagesAdded?.map((m) => m.message?.id))
+      ?.filter((mId): mId is string => !!mId) ?? [];
 
-  const uspsEmails: {
-    id: string;
-    images: string[];
-    digest: UspsDigestParse | null;
-  }[] = [];
+  const messages = await Promise.all(
+    messageIds.map(async (mId) => {
+      const message = await gmail.users.messages.get({
+        userId: "me",
+        id: mId,
+        format: "full",
+      });
+      return { ...message, id: mId };
+    }),
+  );
 
-  for (const msgId of messages) {
-    const message = await gmail.users.messages.get({
-      userId: "me",
-      id: msgId ?? undefined,
-      format: "full",
-    });
-
-    const headers = message.data.payload?.headers || [];
-    const from = headers.find((h) => h.name === "From")?.value || "";
-    const subject = headers.find((h) => h.name === "Subject")?.value || "";
-
-    // Only handle USPS Informed Delivery (sender may be @email.informeddelivery.usps.com)
-    if (!/informeddelivery\.usps\.com/i.test(from)) continue;
-    if (!subject.includes("Daily Digest")) continue;
-
-    const html = htmlFromMessagePayload(message.data.payload ?? undefined);
-    const digest = html ? parseUspsInformedDeliveryHtml(html) : null;
-    const images = html ? extractAllImgSrcs(html) : [];
-
-    if (msgId) {
-      uspsEmails.push({ id: msgId, images, digest });
-    }
-  }
-
-  return uspsEmails;
+  return { messages };
 }
