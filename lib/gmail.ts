@@ -75,3 +75,18 @@ export async function fetchMessages({ historyId }: { historyId: string }) {
 
   return { messages };
 }
+
+export async function fetchMessageAttachmentData({
+  messageId,
+  attachmentId,
+}: {
+  messageId: string;
+  attachmentId: string;
+}) {
+  const res = await gmail.users.messages.attachments.get({
+    userId: "me",
+    messageId,
+    id: attachmentId,
+  });
+  return { data: res.data.data ?? null };
+}

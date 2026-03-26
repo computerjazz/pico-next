@@ -15,8 +15,10 @@ export async function POST(req: Request) {
     );
     const historyId = decoded.historyId;
     const { messages } = await fetchMessages({ historyId });
-    const uspsMessages = filterUspsMessages({ messages }).messages.map((m) =>
-      parseUspsMessage({ message: m }),
+    const uspsMessages = await Promise.all(
+      filterUspsMessages({ messages }).messages.map((m) =>
+        parseUspsMessage({ message: m }),
+      ),
     );
 
     const redis = await getRedis();
@@ -26,16 +28,17 @@ export async function POST(req: Request) {
         JSON.stringify(uspsMessages),
       );
     }
-
-    await Promise.all([
-      redis.set(REDIS_KEYS.LATEST_GMAIL_HISTORY_ID, historyId),
-      redis.incr(REDIS_KEYS.EMAIL_WEBHOOK_COUNT),
-      redis.set(REDIS_KEYS.LATEST_EMAIL_RAW, JSON.stringify(messages)),
-    ]);
+    if (messages.length) {
+      await Promise.all([
+        redis.set(REDIS_KEYS.LATEST_GMAIL_HISTORY_ID, historyId),
+        redis.incr(REDIS_KEYS.EMAIL_WEBHOOK_COUNT),
+        redis.set(REDIS_KEYS.LATEST_EMAIL_RAW, JSON.stringify(messages)),
+      ]);
+    }
 
     // Here you could save images, trigger your frontend, etc.
     return new Response(null, { status: 204 });
-  } catch (e) {
+  } catch {
     return new Response(null, { status: 500 });
   }
 }
@@ -55,12 +58,25 @@ export async function GET(req: Request) {
     return new Response("Invalid token", { status: 403 });
   }
   const redis = await getRedis();
-  const [latestUsps] = await Promise.all([
+  const [latestUsps, _historyId] = await Promise.all([
     redis.get(REDIS_KEYS.LATEST_USPS_EMAILS),
+    redis.get(REDIS_KEYS.LATEST_GMAIL_HISTORY_ID),
     redis.get(REDIS_KEYS.LATEST_EMAIL_RAW),
     redis.get(REDIS_KEYS.EMAIL_WEBHOOK_COUNT),
-    redis.get(REDIS_KEYS.LATEST_GMAIL_HISTORY_ID),
   ]);
+
+  // if (_historyId) {
+  //   const { messages } = await fetchMessages({ historyId: _historyId });
+  //   const uspsMessages = await Promise.all(
+  //     filterUspsMessages({ messages }).messages.map((m) =>
+  //       parseUspsMessage({ message: m }),
+  //     ),
+  //   );
+  //   const testMsg = uspsMessages[0];
+  //   console.log("test", testMsg);
+  //   const tstResp = parseStringifiedUspsMessages(JSON.stringify(uspsMessages));
+  //   console.log("tstREsp!!", tstResp);
+  // }
 
   return Response.json({
     informedDelivery: parseStringifiedUspsMessages(latestUsps),

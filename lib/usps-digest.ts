@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 import type { Cheerio, CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import z from "zod";
-import { htmlFromMessage, Message } from "./gmail";
+import { fetchMessageAttachmentData, htmlFromMessage, Message } from "./gmail";
 
 /** USPS repeats ids like `pra-shipper-name-id`; always scope under a section container. */
 const uspsPackacheSectionSchema = z.enum([
@@ -38,6 +38,26 @@ export const UspsDigestParseSchema = z.object({
   packages: z.array(UspsDigestPackageSchema),
   /** `cid:` refs for grayscale mail scans (not logos/ads). */
   mailpieceImageRefs: z.array(z.string()),
+  mailpieceImages: z
+    .array(
+      z.object({
+        cid: z.string(),
+        imageType: z.enum(["mailpiece", "campaign", "ridealong", "unknown"]),
+        section: z.string().nullable(),
+        sender: z.string().nullable(),
+        alt: z.string().nullable(),
+        sourceElementId: z.string().nullable(),
+        contentId: z.string().nullable(),
+        attachmentId: z.string().nullable(),
+        filename: z.string().nullable(),
+        mimeType: z.string().nullable(),
+        /** Base64-encoded content normalized from Gmail's base64url payload. */
+        base64Data: z.string().nullable(),
+        dataUrl: z.string().nullable(),
+      }),
+    )
+    .optional()
+    .nullable(),
 });
 export type UspsDigestParse = z.infer<typeof UspsDigestParseSchema>;
 
@@ -76,6 +96,60 @@ function extractPackagesInSection(
     if (!shipper && !trackingNumber) return;
     out.push({ section, shipper, trackingNumber, trackingUrl });
   });
+  return out;
+}
+
+function normalizeCid(value: string): string {
+  const v = value.trim();
+  if (v.startsWith("cid:")) return v.toLowerCase();
+  return `cid:${v.replace(/^<|>$/g, "").toLowerCase()}`;
+}
+
+function toBase64FromGmailBase64Url(data: string): string {
+  const normalized = data.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = normalized.length % 4;
+  if (pad === 0) return normalized;
+  return normalized + "=".repeat(4 - pad);
+}
+
+function inferImageType({
+  id,
+  alt,
+}: {
+  id: string | undefined;
+  alt: string | undefined;
+}) {
+  const key = `${id ?? ""} ${alt ?? ""}`.toLowerCase();
+  if (key.includes("mailpiece")) return "mailpiece" as const;
+  if (key.includes("ridealong")) return "ridealong" as const;
+  if (key.includes("campaign")) return "campaign" as const;
+  return "unknown" as const;
+}
+
+function inferSection($el: Cheerio<Element>) {
+  const sectionRoot = $el.closest(
+    '[id*="expected-today"], [id*="mailpiece-div-id"]',
+  );
+  if (sectionRoot.length) return "expected_today";
+  return null;
+}
+
+function inferSender($: CheerioAPI, $el: Cheerio<Element>) {
+  const cardRoot = $el.closest("table, div");
+  const sender =
+    cardRoot.find('[id*="campaign-from-span-id"]').first().text().trim() ||
+    cardRoot.find('[id*="pra-shipper-name-id"]').first().text().trim() ||
+    null;
+  return sender;
+}
+
+function flattenParts(
+  part: Message["data"]["payload"] | undefined,
+  out: Array<NonNullable<Message["data"]["payload"]>> = [],
+) {
+  if (!part) return out;
+  out.push(part);
+  (part.parts ?? []).forEach((p) => flattenParts(p, out));
   return out;
 }
 
@@ -123,15 +197,41 @@ export function parseUspsInformedDeliveryHtml(html: string): UspsDigestParse {
     return acc;
   }, new Map<string, UspsDigestPackage>());
 
-  const mailpieceImageRefs: string[] = [];
-  $('[id*="mailpiece-image-src-id"]').each((_, el) => {
-    const src = $(el).attr("src");
-    if (src?.startsWith("cid:")) mailpieceImageRefs.push(src);
-  });
+  const imageRefs = $('[src^="cid:"]');
+  const mailpieceImages = imageRefs
+    .map((_, el) => {
+      const $el = $(el);
+      const src = $el.attr("src");
+      if (!src) return null;
+      const cid = normalizeCid(src);
+      const id = $el.attr("id");
+      const alt = $el.attr("alt")?.trim() || null;
+      return {
+        cid,
+        imageType: inferImageType({ id, alt: alt ?? undefined }),
+        section: inferSection($el),
+        sender: inferSender($, $el),
+        alt,
+        sourceElementId: id ?? null,
+        contentId: null,
+        attachmentId: null,
+        filename: null,
+        mimeType: null,
+        base64Data: null,
+        dataUrl: null,
+      };
+    })
+    .get()
+    .filter((i): i is NonNullable<typeof i> => !!i);
+
+  // Preserve legacy field but keep only actual mailpiece scans.
+  const mailpieceImageRefs = mailpieceImages
+    .filter((img) => img.imageType === "mailpiece")
+    .map((img) => img.cid);
 
   const packages = [...packagesMap.values()];
 
-  return { summary, packages, mailpieceImageRefs };
+  return { summary, packages, mailpieceImageRefs, mailpieceImages };
 }
 
 export function parseStringifiedUspsMessages(messagesString: string | null) {
@@ -141,21 +241,18 @@ export function parseStringifiedUspsMessages(messagesString: string | null) {
   const allMessages = messages
     .map((message) => {
       const m = ParsedUspsMessageSchema.safeParse(message);
-      if (m.success) {
-        return m.data.message as Message;
-      }
+      if (m.success) return m.data;
     })
-    .filter((m): m is Message => !!m);
+    .filter((m): m is ParsedUspsMessage => !!m);
   const latestMessage = allMessages.sort((a, b) => {
-    const aEpochTimestamp = Number(a.data.internalDate || 0);
-    const bEpochTimestamp = Number(b.data.internalDate || 0);
+    const aEpochTimestamp = Number((a.message as Message).data.internalDate || 0);
+    const bEpochTimestamp = Number((b.message as Message).data.internalDate || 0);
     return aEpochTimestamp > bEpochTimestamp ? -1 : 1;
   })[0];
   if (!latestMessage) return {};
-  const { digest } = parseUspsMessage({ message: latestMessage });
   return {
-    ...digest,
-    epochTimestamp: latestMessage?.data.internalDate,
+    ...(latestMessage.digest ?? {}),
+    epochTimestamp: (latestMessage.message as Message)?.data.internalDate,
   };
 }
 
@@ -181,9 +278,80 @@ export function filterUspsMessages({ messages }: { messages: Message[] }) {
   return { messages: filteredMessages };
 }
 
-export function parseUspsMessage({ message }: { message: Message }) {
+export async function parseUspsMessage({ message }: { message: Message }) {
   const { html } = htmlFromMessage({ message });
-  const digest = parseUspsInformedDeliveryHtml(html);
+  const digestFromHtml = parseUspsInformedDeliveryHtml(html);
+  const parts = flattenParts(message.data.payload);
+  const partByCid = parts.reduce(
+    (acc, part) => {
+      const headers = part.headers ?? [];
+      const contentId = headers
+        .find((h) => (h.name ?? "").toLowerCase() === "content-id")
+        ?.value?.trim();
+      const xAttachmentId = headers
+        .find((h) => (h.name ?? "").toLowerCase() === "x-attachment-id")
+        ?.value?.trim();
+      const aliases = [contentId, xAttachmentId]
+        .filter((v): v is string => !!v)
+        .map((v) => normalizeCid(v));
+      aliases.forEach((alias) => {
+        acc.set(alias, {
+          contentId: contentId ?? null,
+          attachmentId: part.body?.attachmentId ?? null,
+          filename: part.filename?.trim() || null,
+          mimeType: part.mimeType ?? null,
+          data: part.body?.data ?? null,
+        });
+      });
+      return acc;
+    },
+    new Map<
+      string,
+      {
+        contentId: string | null;
+        attachmentId: string | null;
+        filename: string | null;
+        mimeType: string | null;
+        data: string | null;
+      }
+    >(),
+  );
+
+  const mailpieceImages = await Promise.all(
+    (digestFromHtml.mailpieceImages ?? []).map(async (img) => {
+      const part = partByCid.get(img.cid);
+      if (!part) return img;
+      let base64Data = part.data ? toBase64FromGmailBase64Url(part.data) : null;
+      if (!base64Data && part.attachmentId) {
+        try {
+          const { data } = await fetchMessageAttachmentData({
+            messageId: message.id,
+            attachmentId: part.attachmentId,
+          });
+          base64Data = data ? toBase64FromGmailBase64Url(data) : null;
+        } catch {
+          // Keep metadata if attachment fetch fails.
+        }
+      }
+      return {
+        ...img,
+        contentId: part.contentId,
+        attachmentId: part.attachmentId,
+        filename: part.filename,
+        mimeType: part.mimeType,
+        base64Data,
+        dataUrl:
+          base64Data && part.mimeType
+            ? `data:${part.mimeType};base64,${base64Data}`
+            : null,
+      };
+    }),
+  );
+
+  const digest: UspsDigestParse = {
+    ...digestFromHtml,
+    mailpieceImages,
+  };
   const parsedMessage: ParsedUspsMessage = {
     id: message.id,
     message,
