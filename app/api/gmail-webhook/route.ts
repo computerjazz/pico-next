@@ -59,6 +59,7 @@ export async function GET(req: Request) {
     redis.get(REDIS_KEYS.LATEST_USPS_EMAILS),
     redis.get(REDIS_KEYS.LATEST_EMAIL_RAW),
     redis.get(REDIS_KEYS.EMAIL_WEBHOOK_COUNT),
+    redis.get(REDIS_KEYS.LATEST_GMAIL_HISTORY_ID),
   ]);
 
   return Response.json({

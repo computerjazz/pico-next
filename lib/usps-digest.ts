@@ -50,7 +50,7 @@ export type ParsedUspsMessage = z.infer<typeof ParsedUspsMessageSchema>;
 
 function parseIntText(text: string): number | null {
   const n = parseInt(text.replace(/\D/g, ""), 10);
-  return Number.isFinite(n) ? n : null;
+  return Number.isFinite(n) ? n : 0;
 }
 
 function extractPackagesInSection(
@@ -83,29 +83,26 @@ function extractPackagesInSection(
  * Parses Informed Delivery daily digest HTML. Plain-text parts do not list per-package data;
  * rely on `#packages-section` and per-section div ids from the USPS template.
  */
+
 export function parseUspsInformedDeliveryHtml(html: string): UspsDigestParse {
   const $ = cheerio.load(html);
 
+  function parseById({ id }: { id: string }) {
+    return parseIntText($(`[id*="${id}"]`).first().text());
+  }
+
   const summary: UspsDigestSummary = {
-    inboundMailpieces: parseIntText(
-      $('[id*="total-mailpieces"]').first().text(),
-    ),
-    inboundPackages: parseIntText($('[id*="total-packages"]').first().text()),
-    expectedTodayMailItems: parseIntText(
-      $('[id*="today-mailitem-number"]').first().text(),
-    ),
-    expectedTodayPackageItems: parseIntText(
-      $('[id*="today-package-item-number"]').first().text(),
-    ),
-    expectedOneTwoDayPackageItems: parseIntText(
-      $('[id*="onetwodays-package-item-number"]').first().text(),
-    ),
-    awaitingSenderPackageItems: parseIntText(
-      $('[id*="awaiting-package-item-number"]').first().text(),
-    ),
-    outboundPackageItems: parseIntText(
-      $('[id*="outbound-package-item-number"]').first().text(),
-    ),
+    inboundMailpieces: parseById({ id: "total-mailpieces" }),
+    inboundPackages: parseById({ id: "total-packages" }),
+    expectedTodayMailItems: parseById({ id: "today-mailitem-number" }),
+    expectedTodayPackageItems: parseById({ id: "today-package-item-number" }),
+    expectedOneTwoDayPackageItems: parseById({
+      id: "onetwodays-package-item-number",
+    }),
+    awaitingSenderPackageItems: parseById({
+      id: "awaiting-package-item-number",
+    }),
+    outboundPackageItems: parseById({ id: "outbound-package-item-number" }),
   };
 
   const sectionRoots: { id: string; section: UspsPackageSection }[] = [
@@ -170,8 +167,10 @@ export function filterUspsMessages({ messages }: { messages: Message[] }) {
       const subject = headers.find((h) => h.name === "Subject")?.value || "";
       const isFromUsps = /informeddelivery\.usps\.com/i.test(from);
       const isDailyDigest = subject.toLowerCase().includes("daily digest");
-      const isOverride = subject.toLowerCase().includes("[override]");
-      if ((isFromUsps && isDailyDigest) || isOverride) {
+      const isOverride =
+        isDailyDigest && subject.toLowerCase().includes("[override]");
+      const isDailyDigestEmail = isFromUsps && isDailyDigest;
+      if (isDailyDigestEmail || isOverride) {
         return message;
       } else {
         return null;
