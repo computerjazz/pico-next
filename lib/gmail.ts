@@ -1,10 +1,9 @@
 import { google } from "googleapis";
-import type { gmail_v1 } from "googleapis";
 import {
   extractAllImgSrcs,
+  ParsedUspsMessage,
   parseUspsInformedDeliveryHtml,
 } from "./usps-digest";
-import type { UspsDigestParse } from "./usps-digest";
 
 export * from "./usps-digest";
 
@@ -12,6 +11,7 @@ const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON!);
 const token = JSON.parse(process.env.GOOGLE_TOKEN_JSON!);
 
 const { client_id, client_secret, redirect_uris } = credentials.installed;
+type Message = Awaited<ReturnType<typeof fetchMessages>>["messages"][0];
 
 export const auth = new google.auth.OAuth2(
   client_id,
@@ -24,8 +24,8 @@ auth.setCredentials(token);
 export const gmail = google.gmail({ version: "v1", auth });
 
 function findHtmlPart(
-  part: gmail_v1.Schema$MessagePart | undefined,
-): gmail_v1.Schema$MessagePart | null {
+  part: Message["data"]["payload"],
+): Message["data"]["payload"] | null {
   if (!part) return null;
   if (part.mimeType === "text/html" && part.body?.data) return part;
   for (const p of part.parts ?? []) {
@@ -36,7 +36,7 @@ function findHtmlPart(
 }
 
 export function htmlFromMessagePayload(
-  payload: gmail_v1.Schema$MessagePart | undefined,
+  payload: Message["data"]["payload"],
 ): string {
   if (!payload) return "";
   const direct =
@@ -56,14 +56,6 @@ export async function startWatch() {
   });
   console.log("Watch response:", res.data);
 }
-
-type Message = Awaited<ReturnType<typeof fetchMessages>>["messages"][0];
-type ParsedUspsMessage = {
-  id: string;
-  images: string[];
-  digest: UspsDigestParse | null;
-  message: Message;
-};
 
 export function filterUspsMessages({ messages }: { messages: Message[] }) {
   const filteredMessages = messages
@@ -86,9 +78,9 @@ export function filterUspsMessages({ messages }: { messages: Message[] }) {
 }
 
 export function parseUspsMessage({ message }: { message: Message }) {
-  const html = htmlFromMessagePayload(message.data.payload ?? undefined);
-  const digest = html ? parseUspsInformedDeliveryHtml(html) : null;
-  const images = html ? extractAllImgSrcs(html) : [];
+  const html = htmlFromMessagePayload(message.data.payload);
+  const digest = parseUspsInformedDeliveryHtml(html);
+  const images = extractAllImgSrcs(html);
 
   const parsedMessage: ParsedUspsMessage = {
     id: message.id,

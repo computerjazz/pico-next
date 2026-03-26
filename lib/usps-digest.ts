@@ -13,29 +13,40 @@ const uspsPackacheSectionSchema = z.enum([
 
 export type UspsPackageSection = z.infer<typeof uspsPackacheSectionSchema>;
 
-export interface UspsDigestPackage {
-  section: UspsPackageSection;
-  shipper: string;
-  trackingNumber: string;
-  trackingUrl: string | null;
-}
+export const UspsDigestPackageSchema = z.object({
+  section: uspsPackacheSectionSchema,
+  shipper: z.string(),
+  trackingNumber: z.string(),
+  trackingUrl: z.string().nullable(),
+});
+export type UspsDigestPackage = z.infer<typeof UspsDigestPackageSchema>;
 
-export interface UspsDigestSummary {
-  inboundMailpieces: number | null;
-  inboundPackages: number | null;
-  expectedTodayMailItems: number | null;
-  expectedTodayPackageItems: number | null;
-  expectedOneTwoDayPackageItems: number | null;
-  awaitingSenderPackageItems: number | null;
-  outboundPackageItems: number | null;
-}
+export const UspsDigestSummarySchema = z.object({
+  inboundMailpieces: z.number().nullable(),
+  inboundPackages: z.number().nullable(),
+  expectedTodayMailItems: z.number().nullable(),
+  expectedTodayPackageItems: z.number().nullable(),
+  expectedOneTwoDayPackageItems: z.number().nullable(),
+  awaitingSenderPackageItems: z.number().nullable(),
+  outboundPackageItems: z.number().nullable(),
+});
+export type UspsDigestSummary = z.infer<typeof UspsDigestSummarySchema>;
 
-export interface UspsDigestParse {
-  summary: UspsDigestSummary;
-  packages: UspsDigestPackage[];
+export const UspsDigestParseSchema = z.object({
+  summary: UspsDigestSummarySchema,
+  packages: z.array(UspsDigestPackageSchema),
   /** `cid:` refs for grayscale mail scans (not logos/ads). */
-  mailpieceImageRefs: string[];
-}
+  mailpieceImageRefs: z.array(z.string()),
+});
+export type UspsDigestParse = z.infer<typeof UspsDigestParseSchema>;
+
+export const ParsedUspsMessageSchema = z.object({
+  id: z.string(),
+  images: z.array(z.string()),
+  digest: UspsDigestParseSchema.nullable(),
+  message: z.unknown(), // Replace `z.unknown()` with a proper schema for `Message` if available
+});
+export type ParsedUspsMessage = z.infer<typeof ParsedUspsMessageSchema>;
 
 function parseIntText(text: string): number | null {
   const n = parseInt(text.replace(/\D/g, ""), 10);
@@ -128,4 +139,14 @@ export function extractAllImgSrcs(html: string): string[] {
     if (src) out.push(src);
   });
   return out;
+}
+
+export function parseStringifiedMessages(messagesString: string | null) {
+  if (!messagesString) return [];
+  const messages = JSON.parse(messagesString);
+  if (!Array.isArray(messages)) return [];
+  return messages.map((message) => {
+    const m = ParsedUspsMessageSchema.safeParse(message);
+    if (m.success) return m;
+  });
 }

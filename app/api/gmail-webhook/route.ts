@@ -1,6 +1,7 @@
 import {
   fetchMessages,
   filterUspsMessages,
+  parseStringifiedMessages,
   parseUspsMessage,
 } from "@/lib/gmail";
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
@@ -53,5 +54,9 @@ export async function GET(req: Request) {
     redis.get(REDIS_KEYS.EMAIL_WEBHOOK_COUNT),
   ]);
 
-  return Response.json({ latestUsps, latestRaw, count });
+  return Response.json({
+    latestUsps: parseStringifiedMessages(latestUsps),
+    latestRaw,
+    count,
+  });
 }
