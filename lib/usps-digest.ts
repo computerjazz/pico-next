@@ -138,9 +138,9 @@ export function parseUspsInformedDeliveryHtml(html: string): UspsDigestParse {
 }
 
 export function parseStringifiedUspsMessages(messagesString: string | null) {
-  if (!messagesString) return [];
+  if (!messagesString) return {};
   const messages = JSON.parse(messagesString);
-  if (!Array.isArray(messages)) return [];
+  if (!Array.isArray(messages)) return {};
   const allMessages = messages
     .map((message) => {
       const m = ParsedUspsMessageSchema.safeParse(message);
@@ -154,6 +154,7 @@ export function parseStringifiedUspsMessages(messagesString: string | null) {
     const bEpochTimestamp = Number(b.data.internalDate || 0);
     return aEpochTimestamp > bEpochTimestamp ? -1 : 1;
   })[0];
+  if (!latestMessage) return {};
   const { digest } = parseUspsMessage({ message: latestMessage });
   return {
     ...digest,
