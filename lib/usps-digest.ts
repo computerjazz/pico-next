@@ -34,31 +34,31 @@ export const UspsDigestSummarySchema = z.object({
 });
 export type UspsDigestSummary = z.infer<typeof UspsDigestSummarySchema>;
 
+const MailpieceImageSchema = z.object({
+  cid: z.string(),
+  imageType: z.enum(["mailpiece", "campaign", "ridealong", "unknown"]),
+  section: z.string().nullable(),
+  sender: z.string().nullable(),
+  alt: z.string().nullable(),
+  sourceElementId: z.string().nullable(),
+  contentId: z.string().nullable(),
+  attachmentId: z.string().nullable(),
+  filename: z.string().nullable(),
+  mimeType: z.string().nullable(),
+  /** Base64-encoded content normalized from Gmail's base64url payload. */
+  base64Data: z.string().nullable(),
+  dataUrl: z.string().nullable(),
+  ocrText: z.string().optional().nullable(),
+});
+
+type MailpieceImage = z.infer<typeof MailpieceImageSchema>;
+
 export const UspsDigestParseSchema = z.object({
   summary: UspsDigestSummarySchema,
   packages: z.array(UspsDigestPackageSchema),
   /** `cid:` refs for grayscale mail scans (not logos/ads). */
   mailpieceImageRefs: z.array(z.string()),
-  mailpieceImages: z
-    .array(
-      z.object({
-        cid: z.string(),
-        imageType: z.enum(["mailpiece", "campaign", "ridealong", "unknown"]),
-        section: z.string().nullable(),
-        sender: z.string().nullable(),
-        alt: z.string().nullable(),
-        sourceElementId: z.string().nullable(),
-        contentId: z.string().nullable(),
-        attachmentId: z.string().nullable(),
-        filename: z.string().nullable(),
-        mimeType: z.string().nullable(),
-        /** Base64-encoded content normalized from Gmail's base64url payload. */
-        base64Data: z.string().nullable(),
-        dataUrl: z.string().nullable(),
-      }),
-    )
-    .optional()
-    .nullable(),
+  mailpieceImages: z.array(MailpieceImageSchema).optional().nullable(),
 });
 export type UspsDigestParse = z.infer<typeof UspsDigestParseSchema>;
 
@@ -363,10 +363,30 @@ export async function parseUspsMessage({ message }: { message: Message }) {
     (img): img is (typeof mailpieceImages)[number] & { base64Data: string } =>
       typeof img.base64Data === "string" && img.base64Data.length > 0,
   );
+
+  const digest: UspsDigestParse = {
+    ...digestFromHtml,
+    mailpieceImages: imagesWithData.filter(
+      (img) => img.imageType === "mailpiece",
+    ),
+  };
+  const parsedMessage: ParsedUspsMessage = {
+    id: message.id,
+    message,
+    digest,
+  };
+  return parsedMessage;
+}
+
+export async function getBudgetedImages({
+  mailpieceImages,
+}: {
+  mailpieceImages: MailpieceImage[];
+}) {
   const perImageBudget = Math.max(
     4 * 1024,
     Math.floor(
-      TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES / Math.max(1, imagesWithData.length),
+      TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES / Math.max(1, mailpieceImages.length),
     ),
   );
 
@@ -410,22 +430,10 @@ export async function parseUspsMessage({ message }: { message: Message }) {
       };
     }
   }
-
-  const digest: UspsDigestParse = {
-    ...digestFromHtml,
-    mailpieceImages: budgetedImages.filter(
-      (img) => img.imageType === "mailpiece",
-    ),
-  };
-  const parsedMessage: ParsedUspsMessage = {
-    id: message.id,
-    message,
-    digest,
-  };
-  return parsedMessage;
+  return budgetedImages;
 }
 
-export function enforcePayloadBudget({
+export async function enforcePayloadBudget({
   digest,
   maxSizeInBytes,
 }: {
@@ -442,9 +450,7 @@ export function enforcePayloadBudget({
     return digest;
   }
 
-  const images = rawImages.map((img) => ({
-    ...img,
-  }));
+  const images = await getBudgetedImages({ mailpieceImages: rawImages });
   const budgetedDigest: UspsDigestParse = {
     ...digest,
     mailpieceImages: images,

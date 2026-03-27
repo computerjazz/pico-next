@@ -1,4 +1,16 @@
 import sharp from "sharp";
+import Tesseract, { createWorker } from "tesseract.js";
+import fs from "fs/promises";
+import path from "path";
+
+let workerPromise: Promise<Tesseract.Worker> | undefined = undefined;
+
+async function getWorker() {
+  if (!workerPromise) {
+    workerPromise = createWorker("eng");
+  }
+  return workerPromise;
+}
 
 export function getJsonSizeBytes(value: unknown) {
   return Buffer.byteLength(JSON.stringify(value), "utf8");
@@ -119,4 +131,53 @@ export async function cropBase64ImageQuadrant({
   } catch {
     return { base64Data, mimeType: "image/jpeg" };
   }
+}
+
+export async function extractOCRText({
+  imageBase64DataUrl = "",
+}: {
+  imageBase64DataUrl?: string;
+}) {
+  const cleanBase64 = imageBase64DataUrl.replace(
+    /^data:image\/\w+;base64,/,
+    "",
+  );
+  const buffer = Buffer.from(cleanBase64, "base64");
+  const worker = await getWorker();
+  const {
+    data: { text },
+  } = await worker.recognize(buffer);
+  return { text };
+}
+
+export async function preprocessImage(
+  input: string | Buffer = "",
+  debugFilename = "debug-ocr.png",
+) {
+  let buffer: Buffer;
+
+  if (typeof input === "string") {
+    const base64 = input.includes(",") ? input.split(",")[1] : input;
+    buffer = Buffer.from(base64, "base64");
+  } else {
+    buffer = input;
+  }
+
+  const processed = await sharp(buffer)
+    .resize({ width: 1600, withoutEnlargement: false })
+    .grayscale()
+    .normalize()
+    .sharpen()
+    .threshold(160)
+    .png() // PNG avoids JPEG artifacts during inspection
+    .toBuffer();
+
+  // Write to disk so you can inspect
+  const outPath = path.join(process.cwd(), debugFilename);
+  await fs.writeFile(debugFilename, processed);
+  await fs.writeFile("original.jpg", buffer);
+
+  console.log("Saved OCR debug image to:", outPath);
+
+  return processed;
 }

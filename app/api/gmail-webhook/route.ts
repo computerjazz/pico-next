@@ -107,7 +107,7 @@ export async function GET(req: Request) {
     ),
   };
 
-  const boundedDigest = enforcePayloadBudget({
+  const boundedDigest = await enforcePayloadBudget({
     digest: mappedDigest,
     maxSizeInBytes: MAX_RESPONSE_BYTES,
   });
