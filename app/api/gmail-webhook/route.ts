@@ -6,11 +6,19 @@ import {
   parseStringifiedUspsMessages,
   parseUspsMessage,
 } from "@/lib/usps-digest";
+import { extractAuthToken } from "@/lib/utils";
 import jwt from "jsonwebtoken";
 
 const MAX_RESPONSE_BYTES = 100 * 1024;
 
 export async function POST(req: Request) {
+  const authHeader = req.headers.get("Authorization");
+  console.log("google token:", authHeader);
+  const token = extractAuthToken(authHeader);
+  if (!token) {
+    return new Response("Missing token", { status: 401 });
+  }
+  const decoded = jwt.decode(token);
   const body = await req.json();
   try {
     const decoded = JSON.parse(
@@ -47,13 +55,11 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const auth = req.headers.get("authorization");
-  const authPrefix = "Bearer ";
-  if (!auth?.startsWith(authPrefix)) {
+  const authHeader = req.headers.get("authorization");
+  const token = extractAuthToken(authHeader);
+  if (!token) {
     return new Response("Missing token", { status: 401 });
   }
-
-  const token = auth.slice(authPrefix.length);
 
   try {
     jwt.verify(token, process.env.JWT_SECRET!);
