@@ -110,7 +110,7 @@ export async function GET(req: Request) {
         return {
           ...img,
           base64Data: null,
-          dataUrl: croppedDataUrl || null,
+          dataUrl: dataUrl || null,
           ocrText: firstLineTitle,
         };
       }) ?? [],
