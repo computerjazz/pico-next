@@ -81,16 +81,33 @@ export async function GET(req: Request) {
   //   console.log("tstREsp!!", tstResp);
   // }
 
-  const payload = {
-    informedDelivery: parseStringifiedUspsMessages(latestUsps),
+  const parsed = parseStringifiedUspsMessages(latestUsps);
+
+  const digest = parsed?.digest;
+
+  const mappedDigest = digest && {
+    ...digest,
+    mailpieceImages: digest.mailpieceImages?.map((img) => {
+      return {
+        ...img,
+        base64Data: null,
+        dataUrl:
+          img.base64Data && img.mimeType
+            ? `data:${img.mimeType};base64,${img.base64Data}`
+            : null,
+      };
+    }),
   };
 
-  const boundedPayload = enforcePayloadBudget({
-    payload: {
-      informedDelivery: payload.informedDelivery as Record<string, unknown>,
-    },
+  const boundedDigest = enforcePayloadBudget({
+    digest: mappedDigest,
     maxSizeInBytes: MAX_RESPONSE_BYTES,
   });
 
-  return Response.json(boundedPayload);
+  return Response.json({
+    informedDelivery: {
+      ...parsed,
+      digest: boundedDigest ?? {},
+    },
+  });
 }

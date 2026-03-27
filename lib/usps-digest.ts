@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 import type { Cheerio, CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import sharp from "sharp";
-import z from "zod";
+import z, { base64url } from "zod";
 import { fetchMessageAttachmentData, htmlFromMessage, Message } from "./gmail";
 import { getJsonSizeBytes } from "./utils";
 
@@ -280,10 +280,12 @@ export function parseUspsInformedDeliveryHtml(html: string): UspsDigestParse {
   return { summary, packages, mailpieceImageRefs, mailpieceImages };
 }
 
-export function parseStringifiedUspsMessages(messagesString: string | null) {
-  if (!messagesString) return {};
+export function parseStringifiedUspsMessages(
+  messagesString: string | null,
+): { digest: UspsDigestParse; epochTimestamp: string | null } | null {
+  if (!messagesString) return null;
   const messages = JSON.parse(messagesString);
-  if (!Array.isArray(messages)) return {};
+  if (!Array.isArray(messages)) return null;
   const allMessages = messages
     .map((message) => {
       const m = ParsedUspsMessageSchema.safeParse(message);
@@ -299,10 +301,11 @@ export function parseStringifiedUspsMessages(messagesString: string | null) {
     );
     return aEpochTimestamp > bEpochTimestamp ? -1 : 1;
   })[0];
-  if (!latestMessage) return {};
+  if (!latestMessage?.digest) return null;
   return {
-    ...(latestMessage.digest ?? {}),
-    epochTimestamp: (latestMessage.message as Message)?.data.internalDate,
+    digest: latestMessage.digest,
+    epochTimestamp:
+      (latestMessage.message as Message)?.data.internalDate || null,
   };
 }
 
@@ -390,7 +393,6 @@ export async function parseUspsMessage({ message }: { message: Message }) {
         filename: part.filename,
         mimeType: part.mimeType ?? "image/jpeg",
         base64Data,
-        // Keep payload small: avoid duplicating base64 into a second string field.
         dataUrl: null,
       };
     }),
@@ -460,29 +462,30 @@ export async function parseUspsMessage({ message }: { message: Message }) {
   return parsedMessage;
 }
 
-type Payload = { informedDelivery: Record<string, unknown> };
-
 export function enforcePayloadBudget({
-  payload,
+  digest,
   maxSizeInBytes,
 }: {
-  payload: Payload;
+  digest?: UspsDigestParse | null;
   maxSizeInBytes: number;
 }) {
-  if (getJsonSizeBytes(payload) <= maxSizeInBytes) return payload;
+  if (!digest) return null;
+  if (getJsonSizeBytes(digest) <= maxSizeInBytes) {
+    return digest;
+  }
 
-  const informedDelivery = {
-    ...payload.informedDelivery,
-  } as Record<string, unknown>;
-  const rawImages = informedDelivery.mailpieceImages;
+  const { mailpieceImages: rawImages } = digest;
   if (!Array.isArray(rawImages)) {
-    return payload;
+    return digest;
   }
 
   const images = rawImages.map((img) => ({
-    ...(img as Record<string, unknown>),
+    ...img,
   }));
-  informedDelivery.mailpieceImages = images;
+  const budgetedDigest: UspsDigestParse = {
+    ...digest,
+    mailpieceImages: images,
+  };
 
   const imageIndexesByBase64Size = images
     .map((img, index) => ({
@@ -494,26 +497,22 @@ export function enforcePayloadBudget({
     }))
     .sort((a, b) => b.size - a.size);
 
-  let candidate = { informedDelivery };
   for (const { index } of imageIndexesByBase64Size) {
-    if (getJsonSizeBytes(candidate) <= maxSizeInBytes) break;
+    if (getJsonSizeBytes(budgetedDigest) <= maxSizeInBytes) break;
     images[index] = {
       ...images[index],
       base64Data: null,
-      dataUrl: null,
     };
-    candidate = { informedDelivery };
   }
 
   // Last resort: clear all thumbnails if still over budget.
-  if (getJsonSizeBytes(candidate) > maxSizeInBytes) {
-    informedDelivery.mailpieceImages = images.map((img) => ({
+  if (getJsonSizeBytes(digest) > maxSizeInBytes) {
+    digest.mailpieceImages = images.map((img) => ({
       ...img,
       base64Data: null,
       dataUrl: null,
     }));
-    candidate = { informedDelivery };
   }
 
-  return candidate;
+  return budgetedDigest;
 }
