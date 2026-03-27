@@ -6,7 +6,11 @@ import {
   parseStringifiedUspsMessages,
   parseUspsMessage,
 } from "@/lib/usps-digest";
-import { cropBase64ImageQuadrant, extractAuthToken } from "@/lib/utils";
+import {
+  cropBase64ImageQuadrant,
+  extractAuthToken,
+  extractOCRText,
+} from "@/lib/utils";
 import jwt from "jsonwebtoken";
 
 const MAX_RESPONSE_BYTES = 100 * 1024;
@@ -98,10 +102,14 @@ export async function GET(req: Request) {
           base64Data: dataUrl,
           quadrant: "upperLeft",
         });
+        const { text: ocrText } = await extractOCRText({
+          imageBase64DataUrl: croppedDataUrl,
+        });
         return {
           ...img,
           base64Data: null,
           dataUrl: croppedDataUrl || null,
+          ocrText,
         };
       }) ?? [],
     ),
