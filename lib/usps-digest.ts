@@ -452,7 +452,9 @@ export async function parseUspsMessage({ message }: { message: Message }) {
 
   const digest: UspsDigestParse = {
     ...digestFromHtml,
-    mailpieceImages: budgetedImages,
+    mailpieceImages: budgetedImages.filter(
+      (img) => img.imageType === "mailpiece",
+    ),
   };
   const parsedMessage: ParsedUspsMessage = {
     id: message.id,
