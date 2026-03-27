@@ -105,11 +105,13 @@ export async function GET(req: Request) {
         const { text: ocrText } = await extractOCRText({
           imageBase64DataUrl: croppedDataUrl,
         });
+        const firstLine = ocrText.split("\n")[0];
+        const firstLineTitle = firstLine.replace(/[^a-zA-Z0-9 ]/g, "").trim();
         return {
           ...img,
           base64Data: null,
           dataUrl: croppedDataUrl || null,
-          ocrText,
+          ocrText: firstLineTitle,
         };
       }) ?? [],
     ),
