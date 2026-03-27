@@ -90,3 +90,16 @@ export async function fetchMessageAttachmentData({
   });
   return { data: res.data.data ?? null };
 }
+
+export async function validateGoogleToken({
+  token,
+}: {
+  token?: string | null;
+}) {
+  if (!token) return false;
+  const resp = await fetch(
+    `https://oauth2.googleapis.com/tokeninfo?id_token=${token}`,
+  );
+  const respJson = await resp.json();
+  return respJson["email"] === process.env.GOOGLE_PUBSUB_EMAIL;
+}

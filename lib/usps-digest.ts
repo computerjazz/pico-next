@@ -1,10 +1,9 @@
 import * as cheerio from "cheerio";
 import type { Cheerio, CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
-import sharp from "sharp";
-import z, { base64url } from "zod";
+import z from "zod";
 import { fetchMessageAttachmentData, htmlFromMessage, Message } from "./gmail";
-import { getJsonSizeBytes } from "./utils";
+import { getJsonSizeBytes, shrinkBase64Image } from "./utils";
 
 /** USPS repeats ids like `pra-shipper-name-id`; always scope under a section container. */
 const uspsPackacheSectionSchema = z.enum([
@@ -118,44 +117,6 @@ const TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES = 80 * 1024; // keep room for non-image J
 
 function estimatedBytesFromBase64(base64Data: string) {
   return Math.floor((base64Data.length * 3) / 4);
-}
-
-async function shrinkBase64Image({
-  base64Data,
-  targetBytes,
-}: {
-  base64Data: string;
-  targetBytes: number;
-}) {
-  try {
-    const input = Buffer.from(base64Data, "base64");
-    const profiles = [
-      { width: 500, quality: 55 },
-      { width: 420, quality: 48 },
-      { width: 360, quality: 42 },
-      { width: 320, quality: 36 },
-      { width: 260, quality: 30 },
-      { width: 220, quality: 26 },
-    ] as const;
-
-    let best: Buffer | null = null;
-    for (const profile of profiles) {
-      const out = await sharp(input)
-        .rotate()
-        .resize({ width: profile.width, withoutEnlargement: true })
-        .jpeg({ quality: profile.quality, mozjpeg: true })
-        .toBuffer();
-      best = out;
-      if (out.length <= targetBytes) break;
-    }
-    const processed = best ?? input;
-    return {
-      base64Data: processed.toString("base64"),
-      mimeType: "image/jpeg",
-    };
-  } catch {
-    return { base64Data, mimeType: "image/jpeg" };
-  }
 }
 
 function inferImageType({

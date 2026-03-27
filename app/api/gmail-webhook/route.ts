@@ -1,4 +1,4 @@
-import { fetchMessages } from "@/lib/gmail";
+import { fetchMessages, validateGoogleToken } from "@/lib/gmail";
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
 import {
   enforcePayloadBudget,
@@ -6,19 +6,25 @@ import {
   parseStringifiedUspsMessages,
   parseUspsMessage,
 } from "@/lib/usps-digest";
-import { extractAuthToken } from "@/lib/utils";
+import { cropBase64ImageQuadrant, extractAuthToken } from "@/lib/utils";
 import jwt from "jsonwebtoken";
 
 const MAX_RESPONSE_BYTES = 100 * 1024;
 
 export async function POST(req: Request) {
   const authHeader = req.headers.get("Authorization");
-  console.log("google token:", authHeader);
   const token = extractAuthToken(authHeader);
   if (!token) {
+    console.error("gmail-webhook POST: Missing token");
     return new Response("Missing token", { status: 401 });
   }
-  const decoded = jwt.decode(token);
+  const isTokenValid = await validateGoogleToken({ token });
+  if (!isTokenValid) {
+    if (!token) {
+      console.error("gmail-webhook POST: Invalid token");
+      return new Response("Invalid token", { status: 401 });
+    }
+  }
   const body = await req.json();
   try {
     const decoded = JSON.parse(
@@ -58,12 +64,14 @@ export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
   const token = extractAuthToken(authHeader);
   if (!token) {
+    console.error("gmail-webhook GET: Missing token");
     return new Response("Missing token", { status: 401 });
   }
 
   try {
     jwt.verify(token, process.env.JWT_SECRET!);
   } catch {
+    console.error("gmail-webhook GET Invalid token");
     return new Response("Invalid token", { status: 403 });
   }
   const redis = await getRedis();
@@ -74,35 +82,29 @@ export async function GET(req: Request) {
     redis.get(REDIS_KEYS.EMAIL_WEBHOOK_COUNT),
   ]);
 
-  // if (_historyId) {
-  //   const { messages } = await fetchMessages({ historyId: _historyId });
-  //   const uspsMessages = await Promise.all(
-  //     filterUspsMessages({ messages }).messages.map((m) =>
-  //       parseUspsMessage({ message: m }),
-  //     ),
-  //   );
-  //   const testMsg = uspsMessages[0];
-  //   console.log("test", testMsg);
-  //   const tstResp = parseStringifiedUspsMessages(JSON.stringify(uspsMessages));
-  //   console.log("tstREsp!!", tstResp);
-  // }
-
   const parsed = parseStringifiedUspsMessages(latestUsps);
 
   const digest = parsed?.digest;
 
   const mappedDigest = digest && {
     ...digest,
-    mailpieceImages: digest.mailpieceImages?.map((img) => {
-      return {
-        ...img,
-        base64Data: null,
-        dataUrl:
+    mailpieceImages: await Promise.all(
+      digest.mailpieceImages?.map(async (img) => {
+        const dataUrl =
           img.base64Data && img.mimeType
             ? `data:${img.mimeType};base64,${img.base64Data}`
-            : null,
-      };
-    }),
+            : null;
+        const { dataUrl: croppedDataUrl } = await cropBase64ImageQuadrant({
+          base64Data: dataUrl,
+          quadrant: "upperLeft",
+        });
+        return {
+          ...img,
+          base64Data: null,
+          dataUrl: croppedDataUrl || null,
+        };
+      }) ?? [],
+    ),
   };
 
   const boundedDigest = enforcePayloadBudget({
