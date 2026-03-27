@@ -4,6 +4,7 @@ import type { Element } from "domhandler";
 import sharp from "sharp";
 import z from "zod";
 import { fetchMessageAttachmentData, htmlFromMessage, Message } from "./gmail";
+import { getJsonSizeBytes } from "./utils";
 
 /** USPS repeats ids like `pra-shipper-name-id`; always scope under a section container. */
 const uspsPackacheSectionSchema = z.enum([
@@ -290,8 +291,12 @@ export function parseStringifiedUspsMessages(messagesString: string | null) {
     })
     .filter((m): m is ParsedUspsMessage => !!m);
   const latestMessage = allMessages.sort((a, b) => {
-    const aEpochTimestamp = Number((a.message as Message).data.internalDate || 0);
-    const bEpochTimestamp = Number((b.message as Message).data.internalDate || 0);
+    const aEpochTimestamp = Number(
+      (a.message as Message).data.internalDate || 0,
+    );
+    const bEpochTimestamp = Number(
+      (b.message as Message).data.internalDate || 0,
+    );
     return aEpochTimestamp > bEpochTimestamp ? -1 : 1;
   })[0];
   if (!latestMessage) return {};
@@ -397,7 +402,9 @@ export async function parseUspsMessage({ message }: { message: Message }) {
   );
   const perImageBudget = Math.max(
     4 * 1024,
-    Math.floor(TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES / Math.max(1, imagesWithData.length)),
+    Math.floor(
+      TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES / Math.max(1, imagesWithData.length),
+    ),
   );
 
   const budgetedImages = await Promise.all(
@@ -451,4 +458,62 @@ export async function parseUspsMessage({ message }: { message: Message }) {
     digest,
   };
   return parsedMessage;
+}
+
+type Payload = { informedDelivery: Record<string, unknown> };
+
+export function enforcePayloadBudget({
+  payload,
+  maxSizeInBytes,
+}: {
+  payload: Payload;
+  maxSizeInBytes: number;
+}) {
+  if (getJsonSizeBytes(payload) <= maxSizeInBytes) return payload;
+
+  const informedDelivery = {
+    ...payload.informedDelivery,
+  } as Record<string, unknown>;
+  const rawImages = informedDelivery.mailpieceImages;
+  if (!Array.isArray(rawImages)) {
+    return payload;
+  }
+
+  const images = rawImages.map((img) => ({
+    ...(img as Record<string, unknown>),
+  }));
+  informedDelivery.mailpieceImages = images;
+
+  const imageIndexesByBase64Size = images
+    .map((img, index) => ({
+      index,
+      size:
+        typeof img.base64Data === "string"
+          ? Buffer.byteLength(img.base64Data, "utf8")
+          : 0,
+    }))
+    .sort((a, b) => b.size - a.size);
+
+  let candidate = { informedDelivery };
+  for (const { index } of imageIndexesByBase64Size) {
+    if (getJsonSizeBytes(candidate) <= maxSizeInBytes) break;
+    images[index] = {
+      ...images[index],
+      base64Data: null,
+      dataUrl: null,
+    };
+    candidate = { informedDelivery };
+  }
+
+  // Last resort: clear all thumbnails if still over budget.
+  if (getJsonSizeBytes(candidate) > maxSizeInBytes) {
+    informedDelivery.mailpieceImages = images.map((img) => ({
+      ...img,
+      base64Data: null,
+      dataUrl: null,
+    }));
+    candidate = { informedDelivery };
+  }
+
+  return candidate;
 }
