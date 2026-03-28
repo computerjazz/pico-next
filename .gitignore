@@ -44,3 +44,4 @@ credentials.json
 token.json
 
 /tmp
+*.traineddata
