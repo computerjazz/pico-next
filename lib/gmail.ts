@@ -96,10 +96,15 @@ export async function validateGoogleToken({
 }: {
   token?: string | null;
 }) {
-  if (!token) return false;
-  const resp = await fetch(
-    `https://oauth2.googleapis.com/tokeninfo?id_token=${token}`,
-  );
-  const respJson = await resp.json();
-  return respJson["email"] === process.env.GOOGLE_PUBSUB_EMAIL;
+  try {
+    if (!token) return false;
+    const resp = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${token}`,
+    );
+    const respJson = await resp.json();
+    return respJson["email"] === process.env.GOOGLE_PUBSUB_EMAIL;
+  } catch (err) {
+    console.error("failed to validate Google token", err);
+    return false;
+  }
 }
