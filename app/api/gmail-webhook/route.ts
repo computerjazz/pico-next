@@ -2,6 +2,7 @@ import { fetchMessages, validateGoogleToken } from "@/lib/gmail";
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
 import {
   enforcePayloadBudget,
+  extractSenderText,
   filterUspsMessages,
   parseStringifiedUspsMessages,
   parseUspsMessage,
@@ -94,24 +95,11 @@ export async function GET(req: Request) {
     ...digest,
     mailpieceImages: await Promise.all(
       digest.mailpieceImages?.map(async (img) => {
-        const dataUrl =
-          img.base64Data && img.mimeType
-            ? `data:${img.mimeType};base64,${img.base64Data}`
-            : null;
-        const { dataUrl: croppedDataUrl } = await cropBase64ImageQuadrant({
-          base64Data: dataUrl,
-          quadrant: "upperLeft",
-        });
-        const { text: ocrText } = await extractOCRText({
-          imageBase64DataUrl: croppedDataUrl,
-        });
-        const firstLine = ocrText.split("\n")[0];
-        const firstLineTitle = firstLine.replace(/[^a-zA-Z0-9 ]/g, "").trim();
+        // extract OCR text _before_ shrinking images
+        const ocrText = await extractSenderText(img.base64Data);
         return {
           ...img,
-          base64Data: null,
-          dataUrl: dataUrl || null,
-          ocrText: firstLineTitle,
+          ocrText,
         };
       }) ?? [],
     ),
@@ -122,10 +110,27 @@ export async function GET(req: Request) {
     maxSizeInBytes: MAX_RESPONSE_BYTES,
   });
 
+  const dataUrlDigest = boundedDigest && {
+    ...boundedDigest,
+    mailpieceImages: await Promise.all(
+      boundedDigest.mailpieceImages?.map(async (img) => {
+        const dataUrl =
+          img.base64Data && img.mimeType
+            ? `data:${img.mimeType};base64,${img.base64Data}`
+            : null;
+        return {
+          ...img,
+          base64Data: null,
+          dataUrl,
+        };
+      }) ?? [],
+    ),
+  };
+
   return Response.json({
     informedDelivery: {
       ...parsed,
-      digest: boundedDigest ?? {},
+      digest: dataUrlDigest ?? {},
     },
   });
 }

@@ -3,7 +3,12 @@ import type { Cheerio, CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import z from "zod";
 import { fetchMessageAttachmentData, htmlFromMessage, Message } from "./gmail";
-import { getJsonSizeBytes, shrinkBase64Image } from "./utils";
+import {
+  cropBase64ImageQuadrant,
+  extractOCRText,
+  getJsonSizeBytes,
+  shrinkBase64Image,
+} from "./utils";
 
 /** USPS repeats ids like `pra-shipper-name-id`; always scope under a section container. */
 const uspsPackacheSectionSchema = z.enum([
@@ -112,8 +117,6 @@ function toBase64FromGmailBase64Url(data: string): string {
   if (pad === 0) return normalized;
   return normalized + "=".repeat(4 - pad);
 }
-
-const TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES = 80 * 1024; // keep room for non-image JSON to stay sub-100KB overall
 
 function estimatedBytesFromBase64(base64Data: string) {
   return Math.floor((base64Data.length * 3) / 4);
@@ -380,14 +383,14 @@ export async function parseUspsMessage({ message }: { message: Message }) {
 
 export async function getBudgetedImages({
   mailpieceImages,
+  totalImagePayloadBytes = 50 * 1024,
 }: {
   mailpieceImages: MailpieceImage[];
+  totalImagePayloadBytes?: number;
 }) {
   const perImageBudget = Math.max(
     4 * 1024,
-    Math.floor(
-      TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES / Math.max(1, mailpieceImages.length),
-    ),
+    Math.floor(totalImagePayloadBytes / Math.max(1, mailpieceImages.length)),
   );
 
   const budgetedImages = await Promise.all(
@@ -397,6 +400,7 @@ export async function getBudgetedImages({
         base64Data: img.base64Data,
         targetBytes: perImageBudget,
       });
+      console.log("shrunk!", getJsonSizeBytes(shrunk.base64Data));
       return {
         ...img,
         mimeType: shrunk.mimeType,
@@ -411,7 +415,7 @@ export async function getBudgetedImages({
   }, 0);
 
   // Last-resort cap: if still over budget, drop largest images until we fit.
-  if (totalBytes > TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES) {
+  if (totalBytes > totalImagePayloadBytes) {
     const bySize = budgetedImages
       .map((img, index) => ({
         index,
@@ -419,7 +423,7 @@ export async function getBudgetedImages({
       }))
       .sort((a, b) => b.bytes - a.bytes);
     for (const entry of bySize) {
-      if (totalBytes <= TOTAL_IMAGE_PAYLOAD_BUDGET_BYTES) break;
+      if (totalBytes <= totalImagePayloadBytes) break;
       const img = budgetedImages[entry.index];
       if (!img.base64Data) continue;
       totalBytes -= estimatedBytesFromBase64(img.base64Data);
@@ -441,9 +445,6 @@ export async function enforcePayloadBudget({
   maxSizeInBytes: number;
 }) {
   if (!digest) return null;
-  if (getJsonSizeBytes(digest) <= maxSizeInBytes) {
-    return digest;
-  }
 
   const { mailpieceImages: rawImages } = digest;
   if (!Array.isArray(rawImages)) {
@@ -484,4 +485,18 @@ export async function enforcePayloadBudget({
   }
 
   return budgetedDigest;
+}
+
+export async function extractSenderText(base64Data?: string | null) {
+  if (!base64Data) return "";
+  const { dataUrl: croppedDataUrl } = await cropBase64ImageQuadrant({
+    base64Data: base64Data,
+    quadrant: "upperLeft",
+  });
+  const { text: ocrText } = await extractOCRText({
+    imageBase64DataUrl: croppedDataUrl,
+  });
+  const firstLine = ocrText.split("\n")[0];
+  const firstLineTitle = firstLine.replace(/[^a-zA-Z0-9 ]/g, "").trim();
+  return firstLineTitle;
 }

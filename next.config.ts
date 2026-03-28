@@ -5,8 +5,8 @@ const nextConfig: NextConfig = {
     "/api/**/*": ["./node_modules/tesseract.js/**"],
   },
   productionBrowserSourceMaps: true,
+  serverExternalPackages: ["tesseract.js"],
   experimental: {
-    serverComponentsExternalPackages: ["tesseract.js"],
     serverSourceMaps: true,
   },
 };
