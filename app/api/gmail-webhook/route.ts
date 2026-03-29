@@ -1,3 +1,4 @@
+import { extractAuthToken, verifyAuth } from "@/lib/auth";
 import { fetchMessages, validateGoogleToken } from "@/lib/gmail";
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
 import {
@@ -7,29 +8,28 @@ import {
   parseStringifiedUspsMessages,
   parseUspsMessage,
 } from "@/lib/usps-digest";
-import {
-  cropBase64ImageQuadrant,
-  extractAuthToken,
-  extractOCRText,
-} from "@/lib/utils";
-import jwt from "jsonwebtoken";
 
 const MAX_RESPONSE_BYTES = 100 * 1024;
 
 export async function POST(req: Request) {
-  const authHeader = req.headers.get("Authorization");
-  const token = extractAuthToken(authHeader);
-  if (!token) {
-    console.error("gmail-webhook POST: Missing token");
-    return new Response("Missing token", { status: 401 });
-  }
-  const isTokenValid = await validateGoogleToken({ token });
-  if (!isTokenValid) {
-    if (!token) {
-      console.error("gmail-webhook POST: Invalid token");
-      return new Response("Invalid token", { status: 401 });
+  async function validateToken(token: string) {
+    const isTokenValid = await validateGoogleToken({ token });
+    if (!isTokenValid) {
+      throw new Error("Invalid Google token");
     }
+    return true;
   }
+
+  const errRsp = await verifyAuth(req, {
+    tag: "gmail-webhook",
+    method: "POST",
+    validateToken,
+  });
+
+  if (errRsp) {
+    return errRsp;
+  }
+
   const body = await req.json();
   try {
     const decoded = JSON.parse(
@@ -66,19 +66,8 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  const token = extractAuthToken(authHeader);
-  if (!token) {
-    console.error("gmail-webhook GET: Missing token");
-    return new Response("Missing token", { status: 401 });
-  }
-
-  try {
-    jwt.verify(token, process.env.JWT_SECRET!);
-  } catch {
-    console.error("gmail-webhook GET Invalid token");
-    return new Response("Invalid token", { status: 403 });
-  }
+  const errRsp = await verifyAuth(req, { tag: "gmail-webhook", method: "GET" });
+  if (errRsp) return errRsp;
   const redis = await getRedis();
   const [latestUsps] = await Promise.all([
     redis.get(REDIS_KEYS.LATEST_USPS_EMAILS),

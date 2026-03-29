@@ -9,6 +9,10 @@ RUN npm run build
 # Stage 2: production image
 FROM node:20-alpine
 WORKDIR /app
+
+# Install ffmpeg in the runtime image
+RUN apk add --no-cache ffmpeg
+
 COPY --from=builder /app ./
 EXPOSE 3000
 CMD ["npm", "start"]

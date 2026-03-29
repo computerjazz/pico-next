@@ -400,7 +400,6 @@ export async function getBudgetedImages({
         base64Data: img.base64Data,
         targetBytes: perImageBudget,
       });
-      console.log("shrunk!", getJsonSizeBytes(shrunk.base64Data));
       return {
         ...img,
         mimeType: shrunk.mimeType,
