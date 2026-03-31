@@ -1,4 +1,4 @@
-import { extractAuthToken, verifyAuth } from "@/lib/auth";
+import { verifyAuth } from "@/lib/auth";
 import { fetchMessages, validateGoogleToken } from "@/lib/gmail";
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
 import {

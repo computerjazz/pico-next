@@ -1,4 +1,6 @@
 import { google } from "googleapis";
+import { OAuth2Client } from "google-auth-library";
+const client = new OAuth2Client();
 
 const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON!);
 const token = JSON.parse(process.env.GOOGLE_TOKEN_JSON!);
@@ -97,12 +99,18 @@ export async function validateGoogleToken({
   token?: string | null;
 }) {
   try {
-    if (!token) return false;
-    const resp = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${token}`,
+    console.log(
+      "validate google auth",
+      process.env.NEXT_PUBLIC_BASE_URL,
+      token,
     );
-    const respJson = await resp.json();
-    return respJson["email"] === process.env.GOOGLE_PUBSUB_EMAIL;
+    if (!token) return false;
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.NEXT_PUBLIC_BASE_URL + "/api/gmail-webhook",
+    });
+    const payload = ticket.getPayload();
+    return payload?.email === process.env.GOOGLE_PUBSUB_EMAIL;
   } catch (err) {
     console.error("failed to validate Google token", err);
     return false;
