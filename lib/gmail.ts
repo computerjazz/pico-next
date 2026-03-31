@@ -100,7 +100,7 @@ export async function validateGoogleToken({
 }) {
   try {
     console.log(
-      "validate google auth",
+      "validate google auth: start",
       process.env.NEXT_PUBLIC_BASE_URL,
       token,
     );
@@ -110,6 +110,7 @@ export async function validateGoogleToken({
       audience: process.env.NEXT_PUBLIC_BASE_URL + "/api/gmail-webhook",
     });
     const payload = ticket.getPayload();
+    console.log("validate google auth: end", payload);
     return payload?.email === process.env.GOOGLE_PUBSUB_EMAIL;
   } catch (err) {
     console.error("failed to validate Google token", err);
