@@ -45,3 +45,5 @@ token.json
 
 /tmp
 *.traineddata
+
+secrets.h
