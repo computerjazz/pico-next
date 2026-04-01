@@ -12,19 +12,13 @@ import {
 const MAX_RESPONSE_BYTES = 100 * 1024;
 
 export async function POST(req: Request) {
-  async function validateToken(token: string) {
-    const isTokenValid = await validateGoogleToken({ token });
-    if (!isTokenValid) {
-      throw new Error("Invalid Google token");
-    }
-    return true;
-  }
-
   const errRsp = await verifyAuth(req, {
     tag: "gmail-webhook",
     method: "POST",
-    validateToken,
+    validateToken: (token: string) => validateGoogleToken({ token }),
   });
+
+  console.log("gmail-webhook: verifyAuth err?", !!errRsp);
 
   if (errRsp) {
     return errRsp;
@@ -36,12 +30,15 @@ export async function POST(req: Request) {
       Buffer.from(body.message.data, "base64").toString(),
     );
     const historyId = decoded.historyId;
+    console.log("getting history", historyId);
     const { messages } = await fetchMessages({ historyId });
+    console.log("got messages", messages);
     const uspsMessages = await Promise.all(
       filterUspsMessages({ messages }).messages.map((m) =>
         parseUspsMessage({ message: m }),
       ),
     );
+    console.log("usps messages", uspsMessages);
 
     const redis = await getRedis();
     if (uspsMessages.length) {
@@ -58,9 +55,12 @@ export async function POST(req: Request) {
       ]);
     }
 
+    console.log("gmail-webhook: return 204");
+
     // Here you could save images, trigger your frontend, etc.
     return new Response(null, { status: 204 });
   } catch {
+    console.log("gmail-webhook: return 500");
     return new Response(null, { status: 500 });
   }
 }
