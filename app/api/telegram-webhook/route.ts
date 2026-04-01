@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     await redis.set(REDIS_KEYS.LATEST_TELEGRAM_MESSAGE, JSON.stringify(body));
 
     // Here you could save images, trigger your frontend, etc.
-    return new Response(null, { status: 204 });
+    return new Response(null, { status: 200 });
   } catch {
     console.log("telegram-webhook: return 500");
     return new Response(null, { status: 500 });
