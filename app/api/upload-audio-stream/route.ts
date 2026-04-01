@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     if (errRsp) return errRsp;
 
     const recordingId = req.headers.get("x-recording-id");
+    const sampleRate = req.headers.get("x-sample-rate") ?? "44100";
     if (!recordingId)
       return new Response("Missing recording ID", { status: 400 });
 
@@ -25,20 +26,23 @@ export async function POST(req: Request) {
 
     return await new Promise<Response>((resolve) => {
       const ffmpeg = spawn("ffmpeg", [
-        "-f",
-        "s16le",
-        "-ar",
-        "16000",
-        "-ac",
-        "1",
-        "-i",
-        "pipe:0", // read raw PCM from stdin
-        "-acodec",
-        "libmp3lame",
-        "-ab",
-        "128k",
-        "-y",
-        outputMp3Path,
+        "-f", // input format is:
+        "s16le", // ... 16-bit signed little endian PCM audio
+        "-ar", // audio sample rate
+        sampleRate, // ... pass from header or default to 44100 Hz
+        "-ac", // number of audio channels
+        "1", // ... mono input
+        "-i", // input filename/stream
+        "pipe:0", // ... stdin (we will pipe the audio stream in)
+        "-af", // apply audio filters:
+        // compand: dynamic range compression, loudnorm: normalize loudness
+        "compand=attacks=0.3:decays=0.8:points=-80/-900|-40/-20|-20/-6|0/0:soft-knee=6:gain=8:volume=0,loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-acodec", // set audio codec to:
+        "libmp3lame", // ... LAME MP3 encoder
+        "-ab", // set audio bitrate
+        "128k", // ... 128 kbps
+        "-y", // overwrite output file without asking
+        outputMp3Path, // output file path
       ]);
 
       let ffmpegErr = "";
