@@ -2,8 +2,12 @@ import path from "path";
 import { mkdirSync } from "fs";
 import { verifyAuth } from "@/lib/auth";
 import { spawn } from "child_process";
+import fs from "fs";
 
 export const runtime = "nodejs";
+
+const BYTES_PER_SAMPLE = 2; // 16-bit
+const MIN_SECONDS = 1;
 
 export async function POST(req: Request) {
   try {
@@ -15,6 +19,9 @@ export async function POST(req: Request) {
 
     const recordingId = req.headers.get("x-recording-id");
     const sampleRate = req.headers.get("x-sample-rate") ?? "44100";
+
+    const minBytes = parseInt(sampleRate) * BYTES_PER_SAMPLE * MIN_SECONDS;
+
     if (!recordingId)
       return new Response("Missing recording ID", { status: 400 });
 
@@ -48,10 +55,20 @@ export async function POST(req: Request) {
       let ffmpegErr = "";
       ffmpeg.stderr.on("data", (d) => (ffmpegErr += d.toString()));
 
+      let bytesReceived = 0;
+
       ffmpeg.on("close", (code) => {
         if (code === 0) {
-          console.log(`Recording saved: ${outputMp3Path}`);
-          resolve(Response.json({ ok: true }));
+          if (bytesReceived < minBytes) {
+            console.log(
+              `Recording too short (${bytesReceived} bytes), discarding`,
+            );
+            fs.unlinkSync(outputMp3Path);
+            resolve(Response.json({ ok: true, discarded: true }));
+          } else {
+            console.log(`Recording saved: ${outputMp3Path}`);
+            resolve(Response.json({ ok: true }));
+          }
         } else {
           console.error("ffmpeg error:", ffmpegErr);
           resolve(new Response("Encoding failed", { status: 500 }));
@@ -68,6 +85,7 @@ export async function POST(req: Request) {
               ffmpeg.stdin.end();
               break;
             }
+            bytesReceived += value.byteLength; // ← count bytes as they arrive
             ffmpeg.stdin.write(value);
           }
         } catch (err) {

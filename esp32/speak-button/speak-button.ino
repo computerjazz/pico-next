@@ -19,6 +19,8 @@
 #define I2S_WS            27
 #define I2S_SD            32
 #define I2S_SCK           14
+#define LED_PIN           33
+
 
 #define BUTTON_ACTIVE_STATE HIGH
 #define REQUIRED_STABLE     5     // Consecutive stable reads required for debounce
@@ -255,6 +257,8 @@ void networkTask(void* param) {
 void setup() {
   Serial.begin(115200);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
 
   WiFi.begin(ssid, password);
   Serial.print("Connecting to Wi-Fi");
@@ -361,6 +365,6 @@ void loop() {
     stopRequested = true;
     Serial.println("Recording stopped");
   }
-
+  digitalWrite(LED_PIN, recording ? HIGH : LOW);
   delay(5);
 }
