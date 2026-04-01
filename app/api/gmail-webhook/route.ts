@@ -59,8 +59,8 @@ export async function POST(req: Request) {
 
     // Here you could save images, trigger your frontend, etc.
     return new Response(null, { status: 204 });
-  } catch {
-    console.log("gmail-webhook: return 500");
+  } catch (err) {
+    console.log("gmail-webhook: return 500", err);
     return new Response(null, { status: 500 });
   }
 }
