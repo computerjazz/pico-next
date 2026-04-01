@@ -3,6 +3,7 @@ import { mkdirSync } from "fs";
 import { verifyAuth } from "@/lib/auth";
 import { spawn } from "child_process";
 import fs from "fs";
+import { sendVoice } from "@/lib/telegram";
 
 export const runtime = "nodejs";
 
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
     mkdirSync(uploadsDir, { recursive: true });
     const outputMp3Path = path.join(uploadsDir, `${recordingId}.mp3`);
 
-    return await new Promise<Response>((resolve) => {
+    const ffmpegResult = await new Promise<Response>((resolve) => {
       const ffmpeg = spawn("ffmpeg", [
         "-f", // input format is:
         "s16le", // ... 16-bit signed little endian PCM audio
@@ -95,6 +96,15 @@ export async function POST(req: Request) {
       };
       pump();
     });
+
+    try {
+      console.log("sending as voice ", outputMp3Path);
+      const resp = await sendVoice(outputMp3Path);
+      console.log("voice resp", resp);
+    } catch (err) {
+      console.log("Send voice error", err);
+    }
+    return ffmpegResult;
   } catch (err) {
     console.error(err);
     return new Response("Upload failed", { status: 500 });

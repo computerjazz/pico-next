@@ -47,3 +47,4 @@ token.json
 *.traineddata
 
 secrets.h
+/uploads/

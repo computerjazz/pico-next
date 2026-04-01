@@ -99,19 +99,15 @@ export async function validateGoogleToken({
   token?: string | null;
 }) {
   try {
-    console.log(
-      "validate google auth: start",
-      process.env.NEXT_PUBLIC_BASE_URL,
-      token,
-    );
     if (!token) return false;
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.NEXT_PUBLIC_BASE_URL + "/api/gmail-webhook",
     });
     const payload = ticket.getPayload();
-    console.log("validate google auth: end", payload);
-    return payload?.email === process.env.GOOGLE_PUBSUB_EMAIL;
+    const isValid = payload?.email === process.env.GOOGLE_PUBSUB_EMAIL;
+    console.log("validate google auth: ", isValid, payload);
+    return isValid;
   } catch (err) {
     console.error("failed to validate Google token", err);
     return false;
