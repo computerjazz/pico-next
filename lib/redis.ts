@@ -21,4 +21,5 @@ export const REDIS_KEYS = {
   LATEST_EMAIL_RAW: "latestEmailRaw",
   EMAIL_WEBHOOK_COUNT: "emailWebhookCount",
   LATEST_GMAIL_HISTORY_ID: "latestGmailHistoryId",
+  LATEST_TELEGRAM_MESSAGE: "latestTelegramMessage",
 };
