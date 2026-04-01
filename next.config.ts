@@ -4,11 +4,11 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/**/*": ["./node_modules/tesseract.js/**"],
   },
-  productionBrowserSourceMaps: true,
+  // productionBrowserSourceMaps: true,
   serverExternalPackages: ["tesseract.js"],
-  experimental: {
-    serverSourceMaps: true,
-  },
+  // experimental: {
+  //   serverSourceMaps: true,
+  // },
 };
 
 export default nextConfig;
