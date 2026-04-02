@@ -3,7 +3,7 @@ import FormData from "form-data";
 import fetch from "node-fetch";
 import os from "os";
 import path from "path";
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 
 // send a voice note (OGG/OPUS)
 export async function sendVoice(filePath: string) {
@@ -30,6 +30,7 @@ export async function sendVoice(filePath: string) {
   );
 
   console.log("Duration:", durationSec);
+
   const fadeDurationSec = 0.5;
   const fadeStart = durationSec - fadeDurationSec;
   try {
@@ -78,4 +79,59 @@ export async function sendAudio(filePath: string) {
     body: form,
   });
   return resp.json();
+}
+
+export async function downloadAndConvertVoice(
+  fileId: string,
+  recordingId: string,
+) {
+  const token = process.env.TELEGRAM_TOKEN;
+
+  // --- Step 1: get file path from Telegram ---
+  const fileUrl = `https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`;
+  const getFileRes = await fetch(fileUrl);
+  const fileData = (await getFileRes.json()) as {
+    result: { file_path: string };
+  };
+  const filePath = fileData.result.file_path;
+
+  // --- Step 2: download OGG file to disk ---
+  const oggRes = await fetch(
+    `https://api.telegram.org/file/bot${token}/${filePath}`,
+  );
+  const arrayBuffer = await oggRes.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  fs.mkdirSync(uploadsDir, { recursive: true });
+
+  const inputOggPath = path.join(uploadsDir, `${recordingId}.ogg`);
+  fs.writeFileSync(inputOggPath, buffer);
+
+  // --- Step 3: convert OGG -> MP3 using ffmpeg ---
+  const outputMp3Path = path.join(uploadsDir, `${recordingId}.mp3`);
+  await new Promise((resolve, reject) => {
+    const ffmpeg = spawn("ffmpeg", [
+      "-i",
+      inputOggPath, // input file is our downloaded OGG
+      "-af",
+      "compand=attacks=0.3:decays=0.8:points=-80/-900|-40/-20|-20/-6|0/0:soft-knee=6:gain=8:volume=0,loudnorm=I=-16:TP=-1.5:LRA=11",
+      "-acodec",
+      "libmp3lame",
+      "-ab",
+      "128k",
+      "-y",
+      outputMp3Path,
+    ]);
+
+    ffmpeg.stdout.on("data", (data) => console.log(data.toString()));
+    ffmpeg.stderr.on("data", (data) => console.log(data.toString()));
+
+    ffmpeg.on("close", (code) => {
+      if (code === 0) resolve(true);
+      else reject(new Error(`ffmpeg exited with code ${code}`));
+    });
+  });
+
+  return outputMp3Path;
 }
