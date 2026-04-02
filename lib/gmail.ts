@@ -5,7 +5,8 @@ const client = new OAuth2Client();
 const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON!);
 const token = JSON.parse(process.env.GOOGLE_TOKEN_JSON!);
 
-const { client_id, client_secret, redirect_uris } = credentials.installed;
+const { client_id, client_secret, redirect_uris } = credentials.web;
+
 export type Message = Awaited<ReturnType<typeof fetchMessages>>["messages"][0];
 
 export const auth = new google.auth.OAuth2(
@@ -43,10 +44,11 @@ export function htmlFromMessage({ message }: { message: Message }) {
 
 // Register a watch
 export async function startWatch() {
+  console.log("start watch", client_id, process.env.GOOGLE_TOPIC_NAME);
   const res = await gmail.users.watch({
     userId: "me",
     requestBody: {
-      topicName: "projects/apt-deployment-491305-a0/topics/gmail-incoming-mail",
+      topicName: process.env.GOOGLE_TOPIC_NAME!,
     },
   });
   console.log("Watch response:", res.data);
