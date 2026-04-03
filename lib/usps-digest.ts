@@ -279,11 +279,20 @@ export function filterUspsMessages({ messages }: { messages: Message[] }) {
       const headers = message.data.payload?.headers || [];
       const from = headers.find((h) => h.name === "From")?.value || "";
       const subject = headers.find((h) => h.name === "Subject")?.value || "";
-      const isFromUsps = /informeddelivery\.usps\.com/i.test(from);
+      const isFromUsps = from
+        .toLowerCase()
+        .includes("informeddelivery.usps.com");
       const isDailyDigest = subject.toLowerCase().includes("daily digest");
       const isOverride =
         isDailyDigest && subject.toLowerCase().includes("[override]");
       const isDailyDigestEmail = isFromUsps && isDailyDigest;
+      console.log(
+        "test is fromUsps: ",
+        isFromUsps,
+        isDailyDigestEmail,
+        from,
+        subject,
+      );
       if (isDailyDigestEmail || isOverride) {
         return message;
       } else {
