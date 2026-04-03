@@ -4,6 +4,7 @@ import fetch from "node-fetch";
 import os from "os";
 import path from "path";
 import { execSync, spawn } from "child_process";
+import { ANSWERING_MACHINE_AUDIO_DIR } from "@/app/api/answering-machine/utils";
 
 // send a voice note (OGG/OPUS)
 export async function sendVoice(filePath: string) {
@@ -102,14 +103,17 @@ export async function downloadAndConvertVoice(
   const arrayBuffer = await oggRes.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const uploadsDir = path.join(process.cwd(), "uploads");
-  fs.mkdirSync(uploadsDir, { recursive: true });
-
-  const inputOggPath = path.join(uploadsDir, `${recordingId}.ogg`);
+  const inputOggPath = path.join(
+    ANSWERING_MACHINE_AUDIO_DIR,
+    `${recordingId}.ogg`,
+  );
   fs.writeFileSync(inputOggPath, buffer);
 
   // --- Step 3: convert OGG -> MP3 using ffmpeg ---
-  const outputMp3Path = path.join(uploadsDir, `${recordingId}.mp3`);
+  const outputMp3Path = path.join(
+    ANSWERING_MACHINE_AUDIO_DIR,
+    `${recordingId}.mp3`,
+  );
   await new Promise((resolve, reject) => {
     const ffmpeg = spawn("ffmpeg", [
       "-i",
