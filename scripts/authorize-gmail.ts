@@ -13,11 +13,10 @@ const oAuth2Client = new google.auth.OAuth2(
   redirect_uris[0],
 );
 
-const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
-
 const authUrl = oAuth2Client.generateAuthUrl({
-  access_type: "offline",
-  scope: SCOPES,
+  access_type: "offline", // required for refresh token
+  prompt: "consent", // forces re-consent, guarantees refresh token
+  scope: ["https://www.googleapis.com/auth/gmail.readonly"],
 });
 
 console.log("\nAuthorize this app by visiting:\n");
