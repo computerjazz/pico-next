@@ -28,9 +28,14 @@ export async function POST(req: Request) {
 
     console.log(`Recording started: ${recordingId}`);
 
-    const uploadsDir = path.join(process.cwd(), "uploads");
-    mkdirSync(uploadsDir, { recursive: true });
-    const outputMp3Path = path.join(uploadsDir, `${recordingId}.mp3`);
+    const audioDir = path.join(
+      process.cwd(),
+      "uploads",
+      "sh0rtwave",
+      "outbound",
+    );
+    mkdirSync(audioDir, { recursive: true });
+    const outputMp3Path = path.join(audioDir, `${recordingId}.mp3`);
 
     const ffmpegResult = await new Promise<Response>((resolve) => {
       const ffmpeg = spawn("ffmpeg", [
