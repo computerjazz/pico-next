@@ -82,12 +82,13 @@ export async function sendAudio(filePath: string) {
   return resp.json();
 }
 
-export async function downloadAndConvertVoice(
-  fileId: string,
-  recordingId: string,
-) {
-  const token = process.env.TELEGRAM_TOKEN;
+export function getFilePath(fileId: string, ext = "mp3") {
+  return path.join(ANSWERING_MACHINE_AUDIO_DIR, `${fileId}.${ext}`);
+}
 
+export async function downloadAndConvertVoice(fileId: string) {
+  const token = process.env.TELEGRAM_TOKEN;
+  console.log("downloading voice");
   // --- Step 1: get file path from Telegram ---
   const fileUrl = `https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`;
   const getFileRes = await fetch(fileUrl);
@@ -103,17 +104,12 @@ export async function downloadAndConvertVoice(
   const arrayBuffer = await oggRes.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const inputOggPath = path.join(
-    ANSWERING_MACHINE_AUDIO_DIR,
-    `${recordingId}.ogg`,
-  );
-  fs.writeFileSync(inputOggPath, buffer);
+  const inputOggPath = getFilePath(fileId, "ogg");
 
+  fs.writeFileSync(inputOggPath, buffer);
+  console.log("wrote ogg file", inputOggPath);
   // --- Step 3: convert OGG -> MP3 using ffmpeg ---
-  const outputMp3Path = path.join(
-    ANSWERING_MACHINE_AUDIO_DIR,
-    `${recordingId}.mp3`,
-  );
+  const outputMp3Path = getFilePath(fileId, "mp3");
   await new Promise((resolve, reject) => {
     const ffmpeg = spawn("ffmpeg", [
       "-i",
@@ -136,6 +132,7 @@ export async function downloadAndConvertVoice(
       else reject(new Error(`ffmpeg exited with code ${code}`));
     });
   });
+  console.log("wrote mp3 file", outputMp3Path);
 
   return outputMp3Path;
 }

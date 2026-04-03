@@ -1,22 +1,8 @@
 import { verifyAuth } from "@/lib/auth";
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
-import { downloadAndConvertVoice } from "@/lib/telegram";
+import { downloadAndConvertVoice, getFilePath } from "@/lib/telegram";
 import z from "zod";
-
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const redis = await getRedis();
-    console.log("telegram-webhook body", body);
-    await redis.set(REDIS_KEYS.LATEST_TELEGRAM_MESSAGE, JSON.stringify(body));
-
-    // Here you could save images, trigger your frontend, etc.
-    return new Response(null, { status: 200 });
-  } catch {
-    console.log("telegram-webhook: return 500");
-    return new Response(null, { status: 500 });
-  }
-}
+import fs from "fs";
 
 const TelegramVoiceMessageSchema = z.object({
   update_id: z.number(),
@@ -44,13 +30,35 @@ const TelegramVoiceMessageSchema = z.object({
   }),
 });
 
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const redis = await getRedis();
+    console.log("telegram-webhook body", body);
+    await redis.set(REDIS_KEYS.LATEST_TELEGRAM_MESSAGE, JSON.stringify(body));
+
+    const parsed = TelegramVoiceMessageSchema.safeParse(JSON.parse(body ?? {}));
+    if (parsed.success) {
+      const { voice } = parsed.data.message;
+      console.log("successfully parsed telegram voice message", voice);
+      const voiceMp3 = await downloadAndConvertVoice(voice.file_id);
+      console.log("voiceMp3", voiceMp3);
+    }
+    // Here you could save images, trigger your frontend, etc.
+    return new Response(null, { status: 200 });
+  } catch {
+    console.log("telegram-webhook: return 500");
+    return new Response(null, { status: 500 });
+  }
+}
+
 export async function GET(req: Request) {
   const errRsp = await verifyAuth(req, {
     tag: "telegram-webhook",
     method: "GET",
   });
   if (errRsp) return errRsp;
-  console.log("telegram-webhook!");
+  console.log("GET telegram-webhook");
   const redis = await getRedis();
   const latestTelegramMessage = await redis.get(
     REDIS_KEYS.LATEST_TELEGRAM_MESSAGE,
@@ -58,20 +66,19 @@ export async function GET(req: Request) {
 
   let latestVoiceMessagePath = "";
 
-  if (latestTelegramMessage) {
-    const parsed = TelegramVoiceMessageSchema.safeParse(
-      JSON.parse(latestTelegramMessage ?? {}),
-    );
-    if (parsed.success) {
-      const { voice } = parsed.data.message;
-      const voiceMp3 = await downloadAndConvertVoice(
-        voice.file_id,
-        `telegram-${voice.file_id}`,
-      );
-      latestVoiceMessagePath = voiceMp3;
-      console.log("voiceMp3", voiceMp3);
-    }
+  const parsed = TelegramVoiceMessageSchema.safeParse(
+    JSON.parse(latestTelegramMessage ?? "{}"),
+  );
+  console.log("parsed:", parsed);
+  if (parsed.success) {
+    const fileId = parsed.data.message.voice.file_id;
+    latestVoiceMessagePath = getFilePath(fileId); // Check whether file already exists
+    const fileExists = fs.existsSync(latestVoiceMessagePath);
+    console.log("file exists:", fileExists);
+    if (!fileExists)
+      latestVoiceMessagePath = await downloadAndConvertVoice(fileId);
   }
+
   return Response.json({
     latestTelegramMessage,
     latestVoiceMessagePath,

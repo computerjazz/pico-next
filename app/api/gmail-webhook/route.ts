@@ -18,9 +18,8 @@ export async function POST(req: Request) {
     validateToken: (token: string) => validateGoogleToken({ token }),
   });
 
-  console.log("gmail-webhook: verifyAuth err?", !!errRsp);
-
   if (errRsp) {
+    console.log("gmail-webhook: verifyAuth err:", errRsp);
     return errRsp;
   }
 
