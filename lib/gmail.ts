@@ -61,13 +61,18 @@ export async function fetchMessages({ historyId }: { historyId: string }) {
     historyTypes: ["messageAdded"],
   });
 
-  const messageIds =
+  const messageAddedIds =
     history.data.history
       ?.flatMap((h) => h.messagesAdded?.map((m) => m.message?.id))
       ?.filter((mId): mId is string => !!mId) ?? [];
-  console.log("messageIds", messageIds);
-  const messages = await Promise.all(
-    messageIds.map(async (mId) => {
+  const allMessageIds =
+    history.data.history
+      ?.flatMap((h) => h.messages?.map((m) => m?.id))
+      ?.filter((mId): mId is string => !!mId) ?? [];
+  console.log("messageIds", messageAddedIds, allMessageIds);
+
+  const messagesAdded = await Promise.all(
+    messageAddedIds.map(async (mId) => {
       const message = await gmail.users.messages.get({
         userId: "me",
         id: mId,
@@ -77,7 +82,19 @@ export async function fetchMessages({ historyId }: { historyId: string }) {
     }),
   );
 
-  return { messages };
+  const messagesAll = await Promise.all(
+    allMessageIds.map(async (mId) => {
+      const message = await gmail.users.messages.get({
+        userId: "me",
+        id: mId,
+        format: "full",
+      });
+      return { ...message, id: mId };
+    }),
+  );
+  console.log("messagesAll", messagesAll);
+
+  return { messages: messagesAdded };
 }
 
 export async function fetchMessageAttachmentData({
