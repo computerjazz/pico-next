@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
+import { isTruthy } from "./utils";
 const client = new OAuth2Client();
 
 const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON!);
@@ -64,37 +65,24 @@ export async function fetchMessages({ historyId }: { historyId: string }) {
   const messageAddedIds =
     history.data.history
       ?.flatMap((h) => h.messagesAdded?.map((m) => m.message?.id))
-      ?.filter((mId): mId is string => !!mId) ?? [];
-  const allMessageIds =
-    history.data.history
-      ?.flatMap((h) => h.messages?.map((m) => m?.id))
-      ?.filter((mId): mId is string => !!mId) ?? [];
-  console.log("messageIds", messageAddedIds, allMessageIds);
+      ?.filter(isTruthy) ?? [];
 
   const messagesAdded = await Promise.all(
     messageAddedIds.map(async (mId) => {
-      const message = await gmail.users.messages.get({
-        userId: "me",
-        id: mId,
-        format: "full",
-      });
-      return { ...message, id: mId };
+      try {
+        const message = await gmail.users.messages.get({
+          userId: "me",
+          id: mId,
+          format: "full",
+        });
+        return { ...message, id: mId };
+      } catch {
+        return null;
+      }
     }),
   );
 
-  const messagesAll = await Promise.all(
-    allMessageIds.map(async (mId) => {
-      const message = await gmail.users.messages.get({
-        userId: "me",
-        id: mId,
-        format: "full",
-      });
-      return { ...message, id: mId };
-    }),
-  );
-  console.log("messagesAll", messagesAll);
-
-  return { messages: messagesAdded };
+  return { messages: messagesAdded.filter(isTruthy) };
 }
 
 export async function fetchMessageAttachmentData({

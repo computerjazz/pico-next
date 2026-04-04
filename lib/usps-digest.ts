@@ -7,6 +7,7 @@ import {
   cropBase64ImageQuadrant,
   extractOCRText,
   getJsonSizeBytes,
+  isTruthy,
   shrinkBase64Image,
 } from "./utils";
 
@@ -232,7 +233,7 @@ export function parseUspsInformedDeliveryHtml(html: string): UspsDigestParse {
       };
     })
     .get()
-    .filter((i): i is NonNullable<typeof i> => !!i);
+    .filter(isTruthy);
 
   // Preserve legacy field but keep only actual mailpiece scans.
   const mailpieceImageRefs = mailpieceImages
@@ -299,7 +300,7 @@ export function filterUspsMessages({ messages }: { messages: Message[] }) {
         return null;
       }
     })
-    .filter((m): m is Message => !!m);
+    .filter(isTruthy);
 
   return { messages: filteredMessages };
 }
