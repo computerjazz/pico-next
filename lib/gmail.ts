@@ -65,7 +65,7 @@ export async function fetchMessages({ historyId }: { historyId: string }) {
     history.data.history
       ?.flatMap((h) => h.messagesAdded?.map((m) => m.message?.id))
       ?.filter((mId): mId is string => !!mId) ?? [];
-
+  console.log("messageIds", messageIds);
   const messages = await Promise.all(
     messageIds.map(async (mId) => {
       const message = await gmail.users.messages.get({
