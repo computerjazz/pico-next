@@ -31,7 +31,11 @@ export async function POST(req: Request) {
     const historyId = decoded.historyId;
     console.log("getting history", historyId);
     const { messages } = await fetchMessages({ historyId });
-    console.log("got messages", messages);
+    console.log(
+      "got messages",
+      messages.length,
+      messages.map((m) => m.headers),
+    );
     const uspsMessages = await Promise.all(
       filterUspsMessages({ messages }).messages.map((m) =>
         parseUspsMessage({ message: m }),
