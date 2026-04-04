@@ -25,12 +25,17 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   try {
+    const redis = await getRedis();
+
     const decoded = JSON.parse(
       Buffer.from(body.message.data, "base64").toString(),
     );
-    const historyId = decoded.historyId;
+    const { historyId } = decoded;
+    const prevHistoryId = await redis.get(REDIS_KEYS.LATEST_GMAIL_HISTORY_ID);
     console.log("getting history", historyId);
-    const { messages } = await fetchMessages({ historyId });
+    const { messages } = await fetchMessages({
+      historyId: prevHistoryId ?? "",
+    });
     console.log(
       "got messages",
       messages.length,
@@ -43,20 +48,13 @@ export async function POST(req: Request) {
     );
     console.log("usps messages", uspsMessages);
 
-    const redis = await getRedis();
     if (uspsMessages.length) {
       await redis.set(
         REDIS_KEYS.LATEST_USPS_EMAILS,
         JSON.stringify(uspsMessages),
       );
     }
-    if (messages.length) {
-      await Promise.all([
-        redis.set(REDIS_KEYS.LATEST_GMAIL_HISTORY_ID, historyId),
-        redis.incr(REDIS_KEYS.EMAIL_WEBHOOK_COUNT),
-        redis.set(REDIS_KEYS.LATEST_EMAIL_RAW, JSON.stringify(messages)),
-      ]);
-    }
+    await redis.set(REDIS_KEYS.LATEST_GMAIL_HISTORY_ID, historyId);
 
     console.log("gmail-webhook: return 204");
 
