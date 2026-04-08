@@ -36,8 +36,9 @@ export async function POST(req: Request) {
     const redis = await getRedis();
     console.log("telegram-webhook body", body);
     await redis.set(REDIS_KEYS.LATEST_TELEGRAM_MESSAGE, JSON.stringify(body));
-
+    console.log("telegram-webhook: set latest telegram message");
     const parsed = TelegramVoiceMessageSchema.safeParse(JSON.parse(body ?? {}));
+    console.log("telegram-webhook: parsed", parsed);
     if (parsed.success) {
       const { voice } = parsed.data.message;
       console.log("successfully parsed telegram voice message", voice);
@@ -46,8 +47,8 @@ export async function POST(req: Request) {
     }
     // Here you could save images, trigger your frontend, etc.
     return new Response(null, { status: 200 });
-  } catch {
-    console.log("telegram-webhook: return 500");
+  } catch (err) {
+    console.log("telegram-webhook POST: return 500", err);
     return new Response(null, { status: 500 });
   }
 }
