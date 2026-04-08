@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     console.log("telegram-webhook body", body);
     await redis.set(REDIS_KEYS.LATEST_TELEGRAM_MESSAGE, JSON.stringify(body));
     console.log("telegram-webhook: set latest telegram message");
-    const parsed = TelegramVoiceMessageSchema.safeParse(JSON.parse(body ?? {}));
+    const parsed = TelegramVoiceMessageSchema.safeParse(body);
     console.log("telegram-webhook: parsed", parsed);
     if (parsed.success) {
       const { voice } = parsed.data.message;
