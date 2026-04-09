@@ -2,7 +2,7 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <driver/i2s.h>
-#include "secrets.h"
+#include "env.h"
 #include <time.h>
 
 // MP3 decode: bundled minimp3 (legacy I2S TX only — avoids ESP8266Audio, which uses the *new* I2S
@@ -14,7 +14,6 @@
 // Configuration — tweak these without touching anything below
 // ============================================================
 
-#define SAMPLE_RATE       32000   // Hz — 32000 is broadcast quality; try 22050 for lighter load
 #define BUFFER_SAMPLES    1024    // Samples per chunk — 1024 = ~32ms at 32kHz
 #define QUEUE_DEPTH       4       // Number of pre-allocated chunk slots in the pool
 
@@ -38,17 +37,17 @@
 
 #define BYTES_PER_SAMPLE      2                           // 16-bit = 2 bytes
 #define CHUNK_BYTES           (BUFFER_SAMPLES * BYTES_PER_SAMPLE)
-#define CHUNK_MS              ((BUFFER_SAMPLES * 1000) / SAMPLE_RATE)
+#define CHUNK_MS              ((BUFFER_SAMPLES * 1000) / ENV_SAMPLE_RATE)
 
 // ============================================================
 // Credentials / server
 // ============================================================
 
-const char* ssid        = SECRET_SSID;
-const char* password    = SECRET_PASSWORD;
-const char* serverHost  = SECRET_SERVER_HOST;
+const char* ssid        = ENV_SSID;
+const char* password    = ENV_PASSWORD;
+const char* serverHost  = ENV_SERVER_HOST;
 const int   serverPort  = 443;
-const char* authToken   = SECRET_AUTH_TOKEN;
+const char* authToken   = ENV_AUTH_TOKEN;
 
 #define POLL_INTERVAL_MS       60000UL
 #define SHORT_PRESS_MAX_MS     1000UL
@@ -138,7 +137,7 @@ bool openStream() {
     "x-recording-id: %s\r\n"
     "x-sample-rate: %s\r\n"
     "\r\n",
-    serverHost, authToken, recordingId.c_str(), String(SAMPLE_RATE)
+    serverHost, authToken, recordingId.c_str(), String(ENV_SAMPLE_RATE)
   );
 
   Serial.println("Stream opened");
@@ -210,7 +209,7 @@ static void idlePlaybackDataPin() {
 bool installMicI2S() {
   i2s_config_t i2s_config = {
     .mode                 = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
-    .sample_rate          = SAMPLE_RATE,
+    .sample_rate          = ENV_SAMPLE_RATE,
     .bits_per_sample      = I2S_BITS_PER_SAMPLE_16BIT,
     .channel_format       = I2S_CHANNEL_FMT_ONLY_LEFT,
     .communication_format = I2S_COMM_FORMAT_I2S_MSB,
@@ -386,6 +385,8 @@ static bool streamAnsweringMachineMp3() {
   http->addHeader("Authorization", authHdr);
   http->addHeader("ngrok-skip-browser-warning", "true");
   int code = http->GET();
+  Serial.printf("play: HTTP %d, heap after GET: %d\n", code, esp_get_free_heap_size());
+
   if (code != 200) {
     Serial.printf("play: HTTP %d\n", code);
     http->end();
@@ -412,8 +413,10 @@ static bool streamAnsweringMachineMp3() {
   size_t filled      = 0;
   size_t totalRead   = 0;
   unsigned long lastDataMs = millis();
+  const char* exitReason = "unknown";
 
   while (stream->connected() || stream->available() || filled > 0) {
+
     while (filled < sizeof(g_ansMachMp3buf) && stream->available()) {
       size_t space = sizeof(g_ansMachMp3buf) - filled;
       int n = stream->read(g_ansMachMp3buf + filled, space);
@@ -422,35 +425,41 @@ static bool streamAnsweringMachineMp3() {
         totalRead += (size_t)n;
         lastDataMs = millis();
         if (totalRead > MAX_ANSWERING_MACHINE_STREAM_BYTES) {
-          Serial.println("play: stream size cap");
+          exitReason = "stream size cap";
           decodeAborted = true;
           break;
         }
         continue;
       }
       if (n < 0) {
+        exitReason = "stream read error";
         break;
       }
       break;
     }
     if (decodeAborted) {
+      exitReason = "decode aborted";
       break;
     }
 
-    if (filled == 0 && !stream->connected()) {
+    if (filled == 0 && totalRead > 0 && (millis() - lastDataMs) > 8000UL) {
+      exitReason = "stall timeout";
       break;
     }
-    if (filled == 0 && (millis() - lastDataMs) > 1500UL) {
-      // Some servers keep TLS alive briefly at EOF; don't spin forever.
+
+    if (filled == 0 && totalRead == 0 && (millis() - lastDataMs) > 3000UL) {
+      exitReason = "no data timeout";
       break;
     }
 
     mp3dec_frame_info_t info;
     int samples = mp3dec_decode_frame(&dec, g_ansMachMp3buf, (int)filled, g_ansMachPcm, &info);
 
+    Serial.printf("play: MP3 sample rate: %d Hz, channels: %d\n", info.hz, info.channels);
+
     if (info.frame_bytes > 0) {
       if ((size_t)info.frame_bytes > filled) {
-        Serial.printf("play: bad frame size %d > %u\n", info.frame_bytes, (unsigned)filled);
+        exitReason = "bad frame size";
         decodeAborted = true;
         break;
       }
@@ -468,7 +477,10 @@ static bool streamAnsweringMachineMp3() {
           uninstallPlaybackI2S();
           playbackI2sUp = false;
         }
+        Serial.printf("play: installing I2S at %d Hz, %d ch\n", info.hz, info.channels);
+
         if (!installPlaybackI2S(info.hz, info.channels)) {
+          exitReason = "playback I2S install failed";
           decodeAborted = true;
           break;
         }
@@ -483,12 +495,15 @@ static bool streamAnsweringMachineMp3() {
       while (written < pcmBytes) {
         size_t w = 0;
         if (i2s_write(I2S_NUM_0, p + written, pcmBytes - written, &w, portMAX_DELAY) != ESP_OK) {
+          exitReason = "i2s_write failed";
           decodeAborted = true;
           break;
         }
         written += w;
       }
+      
       if (decodeAborted) {
+        exitReason = "decode aborted";
         break;
       }
     }
@@ -496,6 +511,7 @@ static bool streamAnsweringMachineMp3() {
     yield();
   }
 
+  Serial.printf("play: exit reason: %s\n", exitReason);
   http->end();
   delete http;
   delete client;
@@ -519,7 +535,8 @@ void playAnsweringMachineAudio() {
   Serial.println("Playing answering-machine audio…");
 
   unsigned long waitStart = millis();
-  while (uploadStreamActive && (millis() - waitStart) < 2500UL) {
+  if (recording || stopRequested || uploadStreamActive) Serial.println("play: waiting for upload to finish...");
+  while ((recording || stopRequested || uploadStreamActive) && (millis() - waitStart) < 10000UL) {
     vTaskDelay(pdMS_TO_TICKS(20));
   }
 
@@ -611,7 +628,7 @@ void audioTask(void* param) {
 #else
     // Sine-wave test tone (440 Hz)
     static float phase = 0.0f;
-    const float increment = 2.0f * M_PI * 440.0f / SAMPLE_RATE;
+    const float increment = 2.0f * M_PI * 440.0f / ENV_SAMPLE_RATE;
     int16_t* samples = (int16_t*)chunk->data;
     for (int i = 0; i < BUFFER_SAMPLES; i++) {
       samples[i] = (int16_t)(sinf(phase) * 16000.0f);
@@ -803,7 +820,7 @@ void loop() {
         recordingId = String(millis());
       }
       Serial.printf("Recording started — id: %s, %dHz, %d samples/chunk (%dms)\n",
-        recordingId.c_str(), SAMPLE_RATE, BUFFER_SAMPLES, CHUNK_MS);
+        recordingId.c_str(), ENV_SAMPLE_RATE, BUFFER_SAMPLES, CHUNK_MS);
     }
   }
 

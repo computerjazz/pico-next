@@ -47,4 +47,5 @@ token.json
 *.traineddata
 
 secrets.h
+env.h
 /uploads/
