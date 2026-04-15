@@ -4,7 +4,7 @@ import { getLatestInboundAudioFilePath } from "./utils";
 export async function GET(req: Request) {
   try {
     const maybeResp = await verifyAuth(req, {
-      tag: "answering-machine/audio",
+      tag: "answering-machine/mp3",
     });
     if (maybeResp) return maybeResp;
     const file = getLatestInboundAudioFilePath();
