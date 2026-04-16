@@ -1,43 +1,33 @@
-// ============================================================
-// Answering-machine recorder/player — ESP32 (fragmentation-resistant)
-// ============================================================
+// shortwave.ino — Answering-machine recorder/player for ESP32-S3
 
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <time.h>
-
 #include <ESP32I2SAudio.h>
 #include <BackgroundAudioMP3.h>
 #include "driver/i2s_std.h"
 #include "env.h"
 
 // ============================================================
-// Pin configuration
+// Audio / buffering  (generous sizing for ESP32-S3 N16R8 PSRAM)
 // ============================================================
 
-#define BUTTON_PIN        34
-#define I2S_MIC_SCK       14
-#define I2S_MIC_WS        27
-#define I2S_MIC_SD        32
-#define I2S_PLAY_SCK      14
-#define I2S_PLAY_WS       27
-#define I2S_PLAY_DOUT     25
-#define LED_PIN           33
-
-#define BUTTON_ACTIVE_STATE HIGH
-#define REQUIRED_STABLE     5
-
-// ============================================================
-// Audio / buffering
-// ============================================================
-
-#define BUFFER_SAMPLES   512
+#define BUFFER_SAMPLES   1024
 #define BYTES_PER_SAMPLE 2
 #define CHUNK_BYTES      (BUFFER_SAMPLES * BYTES_PER_SAMPLE)
 #define CHUNK_MS         ((BUFFER_SAMPLES * 1000) / ENV_SAMPLE_RATE)
-#define QUEUE_DEPTH      4
-#define BA_FEED_CHUNK    1024
+#define QUEUE_DEPTH      8
+
+// ============================================================
+// Timing
+// ============================================================
+
+#define POLL_INTERVAL_MS       60000UL
+#define SHORT_PRESS_MAX_MS     1000UL
+#define SHORT_PRESS_MIN_MS     40
+#define DOUBLE_BLINK_PERIOD_MS 5000UL
+#define BUTTON_ACTIVE_STATE    HIGH
 
 // ============================================================
 // Credentials
@@ -50,24 +40,71 @@ const int   serverPort = 443;
 const char* authToken  = ENV_AUTH_TOKEN;
 
 // ============================================================
-// Timing constants
+// BackgroundAudio (speaker output, I2S_NUM_0 via library)
 // ============================================================
 
-#define POLL_INTERVAL_MS        60000UL
-#define SHORT_PRESS_MAX_MS      1000UL
-#define SHORT_PRESS_MIN_MS      40
-#define DOUBLE_BLINK_PERIOD_MS  5000UL
-#define MAX_STREAM_BYTES        (2 * 1024 * 1024)
+static ESP32I2SAudio           g_i2sOut(I2S_PLAY_SCK, I2S_PLAY_WS, I2S_PLAY_DOUT);
+static BackgroundAudioMP3Class<RawDataBuffer<8 * 1024>> g_mp3(g_i2sOut);
+static bool g_mp3Started = false;
 
 // ============================================================
-// BackgroundAudio objects
+// Mic I2S (raw driver, I2S_NUM_1)
+// Mic and speaker share BCLK/WS pins so they must alternate:
+// micDisable() before playback, micEnable() after.
 // ============================================================
-
-static ESP32I2SAudio         g_i2sOut(I2S_PLAY_SCK, I2S_PLAY_WS, I2S_PLAY_DOUT);
-static BackgroundAudioMP3Class<RawDataBuffer<4 * 1024>> g_mp3(g_i2sOut);
 
 static i2s_chan_handle_t g_micRxChan = nullptr;
-static bool              g_micInstalled = false;
+
+static bool micEnable() {
+  if (g_micRxChan) return true;
+
+  i2s_chan_config_t chanCfg = {
+    .id                  = I2S_NUM_1,
+    .role                = I2S_ROLE_MASTER,
+    .dma_desc_num        = 6,
+    .dma_frame_num       = 1024,
+    .auto_clear          = false,
+    .auto_clear_before_cb = false,
+    .intr_priority       = 0,
+  };
+  if (i2s_new_channel(&chanCfg, nullptr, &g_micRxChan) != ESP_OK) {
+    Serial.println("mic: new_channel failed");
+    return false;
+  }
+
+  i2s_std_config_t stdCfg = {
+    .clk_cfg  = I2S_STD_CLK_DEFAULT_CONFIG((uint32_t)ENV_SAMPLE_RATE),
+    .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO),
+    .gpio_cfg = {
+      .mclk = I2S_GPIO_UNUSED,
+      .bclk = (gpio_num_t)I2S_MIC_SCK,
+      .ws   = (gpio_num_t)I2S_MIC_WS,
+      .dout = I2S_GPIO_UNUSED,
+      .din  = (gpio_num_t)I2S_MIC_SD,
+      .invert_flags = { .mclk_inv = false, .bclk_inv = false, .ws_inv = false },
+    },
+  };
+  stdCfg.slot_cfg.slot_mask = I2S_STD_SLOT_LEFT;
+
+  if (i2s_channel_init_std_mode(g_micRxChan, &stdCfg) != ESP_OK) {
+    Serial.println("mic: init failed");
+    i2s_del_channel(g_micRxChan); g_micRxChan = nullptr;
+    return false;
+  }
+  if (i2s_channel_enable(g_micRxChan) != ESP_OK) {
+    Serial.println("mic: enable failed");
+    i2s_del_channel(g_micRxChan); g_micRxChan = nullptr;
+    return false;
+  }
+  return true;
+}
+
+static void micDisable() {
+  if (!g_micRxChan) return;
+  i2s_channel_disable(g_micRxChan);
+  i2s_del_channel(g_micRxChan);
+  g_micRxChan = nullptr;
+}
 
 // ============================================================
 // Audio chunk pool (upload path)
@@ -87,98 +124,25 @@ static QueueHandle_t audioQueue;
 // State
 // ============================================================
 
-static String         recordingId     = "";
-static volatile bool  recording       = false;
-static volatile int   chunkIndex      = 0;
-static volatile bool  stopRequested   = false;
-static volatile bool  uploadStreamActive = false;
+static String        recordingId        = "";
+static volatile bool recording          = false;
+static volatile int  chunkIndex         = 0;
+static volatile bool stopRequested      = false;
+static volatile bool uploadStreamActive = false;
 
-static String latestMsgKey           = "";
-static String lastListenedMsgKey     = "";
-static bool   firstAnsweringPollDone = false;
-static bool   playbackPending        = false;
-static bool   playbackActive         = false;
-static unsigned long lastPollMs      = 0;
-static unsigned long nextDoubleBlinkMs = 0;
-static int    doubleBlinkPhase       = 0;
+static String        latestMsgKey       = "";
+static String        lastListenedMsgKey = "";
+static bool          firstPollDone      = false;
+static bool          playbackPending    = false;
+static bool          playbackActive     = false;
+static unsigned long lastPollMs         = 0;
+static unsigned long nextDoubleBlinkMs  = 0;
+static int           doubleBlinkPhase   = 0;
 
-#define PLAYBACK_TASK_STACK 24576
-static TaskHandle_t  playbackTask = nullptr;
-
-// ============================================================
-// New-driver mic: install / uninstall
-// ============================================================
-
-static bool installMicI2S() {
-#if USE_MIC
-  if (g_micInstalled) return true;
-
-  i2s_chan_config_t chanCfg = {
-    .id             = I2S_NUM_1,
-    .role           = I2S_ROLE_MASTER,
-    .dma_desc_num   = 4,
-    .dma_frame_num  = 512,
-    .auto_clear     = false,
-    .auto_clear_before_cb = false,
-    .intr_priority  = 0,
-  };
-  esp_err_t err = i2s_new_channel(&chanCfg, nullptr, &g_micRxChan);
-  if (err != ESP_OK) {
-    Serial.printf("mic: i2s_new_channel failed: %d\n", (int)err);
-    return false;
-  }
-  i2s_std_config_t stdCfg = {
-    .clk_cfg  = I2S_STD_CLK_DEFAULT_CONFIG((uint32_t)ENV_SAMPLE_RATE),
-    .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(
-                    I2S_DATA_BIT_WIDTH_32BIT,
-                    I2S_SLOT_MODE_MONO),
-    .gpio_cfg = {
-      .mclk  = I2S_GPIO_UNUSED,
-      .bclk  = (gpio_num_t)I2S_MIC_SCK,
-      .ws    = (gpio_num_t)I2S_MIC_WS,
-      .dout  = I2S_GPIO_UNUSED,
-      .din   = (gpio_num_t)I2S_MIC_SD,
-      .invert_flags = {
-        .mclk_inv = false,
-        .bclk_inv = false,
-        .ws_inv   = false,
-      },
-    },
-  };
-  stdCfg.slot_cfg.slot_mask = I2S_STD_SLOT_LEFT;
-  err = i2s_channel_init_std_mode(g_micRxChan, &stdCfg);
-  if (err != ESP_OK) {
-    Serial.printf("mic: i2s_channel_init_std_mode failed: %d\n", (int)err);
-    i2s_del_channel(g_micRxChan);
-    g_micRxChan = nullptr;
-    return false;
-  }
-  err = i2s_channel_enable(g_micRxChan);
-  if (err != ESP_OK) {
-    Serial.printf("mic: i2s_channel_enable failed: %d\n", (int)err);
-    i2s_del_channel(g_micRxChan);
-    g_micRxChan = nullptr;
-    return false;
-  }
-  g_micInstalled = true;
-  Serial.println("mic: I2S channel installed (new driver, port 1)");
-#endif
-  return true;
-}
-
-static void uninstallMicI2S() {
-#if USE_MIC
-  if (!g_micInstalled || !g_micRxChan) return;
-  i2s_channel_disable(g_micRxChan);
-  i2s_del_channel(g_micRxChan);
-  g_micRxChan    = nullptr;
-  g_micInstalled = false;
-  Serial.println("mic: I2S channel removed");
-#endif
-}
+static TaskHandle_t playbackTask = nullptr;
 
 // ============================================================
-// Stream helpers
+// HTTPS stream helpers (upload)
 // ============================================================
 
 static WiFiClientSecure* streamClient = nullptr;
@@ -187,11 +151,8 @@ static bool openStream() {
   if (streamClient) { streamClient->stop(); delete streamClient; }
   streamClient = new WiFiClientSecure();
   streamClient->setInsecure();
-  Serial.printf("openStream: heap=%d largest=%d\n",
-                esp_get_free_heap_size(),
-                heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
   if (!streamClient->connect(serverHost, serverPort)) {
-    Serial.println("Stream connect failed");
+    Serial.println("openStream: connect failed");
     delete streamClient; streamClient = nullptr;
     return false;
   }
@@ -204,9 +165,9 @@ static bool openStream() {
     "Connection: close\r\n"
     "ngrok-skip-browser-warning: true\r\n"
     "x-recording-id: %s\r\n"
-    "x-sample-rate: %s\r\n"
+    "x-sample-rate: %d\r\n"
     "\r\n",
-    serverHost, authToken, recordingId.c_str(), String(ENV_SAMPLE_RATE).c_str());
+    serverHost, authToken, recordingId.c_str(), ENV_SAMPLE_RATE);
   Serial.println("Stream opened");
   return true;
 }
@@ -224,8 +185,7 @@ static int closeStream() {
   streamClient->print("0\r\n\r\n");
   unsigned long t0 = millis();
   while (streamClient->available() == 0) {
-    if (!streamClient->connected()) break;
-    if (millis() - t0 > 10000) break;
+    if (!streamClient->connected() || millis() - t0 > 10000) break;
     vTaskDelay(10);
   }
   int code = -1;
@@ -233,7 +193,7 @@ static int closeStream() {
     String line = streamClient->readStringUntil('\n');
     code = line.substring(9, 12).toInt();
   }
-  Serial.printf("Stream closed, HTTP: %d\n", code);
+  Serial.printf("Stream closed, HTTP %d\n", code);
   streamClient->stop(); delete streamClient; streamClient = nullptr;
   return code;
 }
@@ -250,26 +210,24 @@ static String extractJsonField(const String& json, const char* key) {
   return json.substring(i, j);
 }
 
-static void buildMsgKey(const String& fn, const String& mt, String* out) {
-  *out = (fn.length() && mt.length()) ? (fn + "|" + mt) : "";
-}
-
 static bool pollAnsweringMachine() {
-  HTTPClient http; WiFiClientSecure client; client.setInsecure();
-  String url = String("https://") + serverHost + "/api/answering-machine";
-  if (!http.begin(client, url)) { Serial.println("poll: begin failed"); return false; }
+  WiFiClientSecure client; client.setInsecure();
+  HTTPClient http;
+  if (!http.begin(client, String("https://") + serverHost + "/api/answering-machine")) return false;
   http.addHeader("Authorization", String("Bearer ") + authToken);
   http.addHeader("ngrok-skip-browser-warning", "true");
   int code = http.GET();
   String body = http.getString(); http.end();
   if (code == 404) {
     latestMsgKey = "";
-    if (!firstAnsweringPollDone) { lastListenedMsgKey = ""; firstAnsweringPollDone = true; }
+    if (!firstPollDone) { lastListenedMsgKey = ""; firstPollDone = true; }
     return true;
   }
   if (code != 200) { Serial.printf("poll: HTTP %d\n", code); return false; }
-  buildMsgKey(extractJsonField(body, "fileName"), extractJsonField(body, "mtime"), &latestMsgKey);
-  if (!firstAnsweringPollDone) { lastListenedMsgKey = latestMsgKey; firstAnsweringPollDone = true; }
+  String fn = extractJsonField(body, "fileName");
+  String mt = extractJsonField(body, "mtime");
+  latestMsgKey = (fn.length() && mt.length()) ? fn + "|" + mt : "";
+  if (!firstPollDone) { lastListenedMsgKey = latestMsgKey; firstPollDone = true; }
   return true;
 }
 
@@ -281,104 +239,68 @@ static bool hasUnlistenedMessages() {
 // Playback
 // ============================================================
 
-static bool g_mp3Started = false;
-
 static bool streamAnsweringMachineMp3() {
   char url[192];
-  snprintf(url, sizeof(url), "https://%s/api/answering-machine/audio", serverHost);
+  snprintf(url, sizeof(url), "https://%s/api/answering-machine/mp3", serverHost);
 
   WiFiClientSecure* client = new WiFiClientSecure();
   HTTPClient*       http   = new HTTPClient();
-  if (!client || !http) {
-    if (http) delete http; if (client) delete client;
-    return false;
-  }
   client->setInsecure();
 
   if (!http->begin(*client, url)) {
     Serial.println("play: http begin failed");
     delete http; delete client; return false;
   }
-  char authHdr[256];
-  snprintf(authHdr, sizeof(authHdr), "Bearer %s", authToken);
-  http->addHeader("Authorization", authHdr);
+  http->addHeader("Authorization", String("Bearer ") + authToken);
   http->addHeader("ngrok-skip-browser-warning", "true");
 
   int code = http->GET();
-  Serial.printf("play: HTTP %d\n", code);
-  if (code != 200) { http->end(); delete http; delete client; return false; }
+  if (code != 200) {
+    Serial.printf("play: HTTP %d\n", code);
+    http->end(); delete http; delete client; return false;
+  }
 
   WiFiClient* stream = http->getStreamPtr();
-  if (!stream) { Serial.println("play: no stream"); http->end(); delete http; delete client; return false; }
-
   g_mp3.flush();
-  uint8_t feedBuf[BA_FEED_CHUNK];
-  size_t totalRead = 0;
-  bool   aborted   = false;
-  unsigned long lastDataMs = millis();
 
-  while ((stream->connected() || stream->available()) && !aborted) {
-    while (stream->available() && g_mp3.availableForWrite() >= (int)sizeof(feedBuf)) {
-      int n = stream->read(feedBuf, sizeof(feedBuf));
-      if (n > 0) {
-        g_mp3.write(feedBuf, n);
-        totalRead  += (size_t)n;
-        lastDataMs  = millis();
-        if (totalRead > MAX_STREAM_BYTES) {
-          Serial.println("play: stream size cap");
-          aborted = true; break;
-        }
-      } else if (n < 0) {
-        Serial.println("play: stream read error");
-        aborted = true; break;
-      } else {
-        break;
-      }
+  uint8_t buf[2048];
+  size_t totalRead = 0;
+  unsigned long lastDataMs = millis();
+  bool aborted = false;
+
+  while (!aborted && (stream->connected() || stream->available())) {
+    while (stream->available() && g_mp3.availableForWrite() >= (int)sizeof(buf)) {
+      int n = stream->read(buf, sizeof(buf));
+      if (n > 0) { g_mp3.write(buf, n); totalRead += n; lastDataMs = millis(); }
+      else if (n < 0) { aborted = true; break; }
+      else break;
     }
-    if (!aborted && totalRead > 0 && (millis() - lastDataMs) > 8000UL) {
-      Serial.println("play: stall timeout");
-      aborted = true; break;
-    }
+    if (millis() - lastDataMs > 8000UL) { Serial.println("play: stall"); aborted = true; }
     yield();
   }
 
   if (!aborted) {
-    unsigned long drainStart = millis();
-    while (g_mp3.available() > 0 && (millis() - drainStart < 5000UL)) {
-      yield();
-    }
+    unsigned long t0 = millis();
+    while (g_mp3.available() > 0 && millis() - t0 < 5000UL) yield();
   }
 
   http->end(); delete http; delete client;
-  Serial.printf("play: done (totalRead=%zu, aborted=%d)\n", totalRead, (int)aborted);
+  Serial.printf("play: done (%zu B, aborted=%d)\n", totalRead, (int)aborted);
   return !aborted;
 }
 
 static void playAnsweringMachineAudio() {
-  Serial.println("play: waiting for any active upload...");
-  unsigned long t0 = millis();
-  while ((recording || stopRequested || uploadStreamActive) && millis() - t0 < 10000UL) {
-    vTaskDelay(pdMS_TO_TICKS(20));
-  }
+  while (recording || stopRequested || uploadStreamActive) vTaskDelay(pdMS_TO_TICKS(20));
 
-  uninstallMicI2S();
+  micDisable();
 
-  if (!g_mp3Started) {
-    Serial.printf("play: begin() heap before=%d largest=%d\n",
-                  esp_get_free_heap_size(),
-                  heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-    g_mp3.begin();
-    g_mp3Started = true;
-    Serial.printf("play: begin() done heap=%d\n", esp_get_free_heap_size());
-  }
+  // g_mp3.begin() allocates ~40 KB of internal SRAM (I2S DMA + libmad workspace).
+  // DMA cannot use PSRAM, so this must happen while the upload path is idle or
+  // TLS handshakes will fail to find contiguous internal heap.
+  if (!g_mp3Started) { g_mp3.begin(); g_mp3Started = true; }
 
   bool ok = streamAnsweringMachineMp3();
-
-  if (!installMicI2S()) {
-    Serial.println("mic: reinstall failed, retrying once");
-    delay(20);
-    installMicI2S();
-  }
+  if (!micEnable()) { delay(20); micEnable(); }
 
   if (ok) {
     lastListenedMsgKey = latestMsgKey;
@@ -387,7 +309,7 @@ static void playAnsweringMachineAudio() {
 }
 
 // ============================================================
-// Playback worker task (large stack, Core 1)
+// Playback worker task (Core 1)
 // ============================================================
 
 static void playbackWorker(void*) {
@@ -399,10 +321,12 @@ static void playbackWorker(void*) {
 }
 
 // ============================================================
-// Audio task (Core 0) — reads mic via new I2S driver
+// Audio task (Core 0) — reads mic, fills queue
 // ============================================================
 
 static void audioTask(void*) {
+  static int32_t rawBuf[BUFFER_SAMPLES];
+
   while (true) {
     if (!recording) {
       if (stopRequested) {
@@ -411,60 +335,35 @@ static void audioTask(void*) {
           chunk->size    = 0;
           chunk->isFinal = true;
           xQueueSend(audioQueue, &chunk, portMAX_DELAY);
-          stopRequested = false;
+          stopRequested  = false;
         }
       }
       vTaskDelay(10);
       continue;
     }
 
+    if (!g_micRxChan) { vTaskDelay(10); continue; }
+
     AudioChunk* chunk;
     if (xQueueReceive(freeChunks, &chunk, pdMS_TO_TICKS(100)) != pdTRUE) {
-      Serial.println("audioTask: no free chunks, dropping window");
       vTaskDelay(pdMS_TO_TICKS(CHUNK_MS));
       continue;
     }
 
-#if USE_MIC
-    if (!g_micInstalled || !g_micRxChan) {
-      xQueueSend(freeChunks, &chunk, portMAX_DELAY);
-      vTaskDelay(pdMS_TO_TICKS(10));
-      continue;
-    }
-    static int32_t s_raw32[BUFFER_SAMPLES];
     size_t bytesRead = 0;
-    esp_err_t err = i2s_channel_read(
-        g_micRxChan,
-        s_raw32,
-        BUFFER_SAMPLES * sizeof(int32_t),
-        &bytesRead,
-        pdMS_TO_TICKS(250));
-
+    esp_err_t err = i2s_channel_read(g_micRxChan, rawBuf,
+                                     BUFFER_SAMPLES * sizeof(int32_t),
+                                     &bytesRead, pdMS_TO_TICKS(250));
     if (err != ESP_OK) {
-      Serial.printf("audioTask: i2s_channel_read err %d\n", (int)err);
       chunk->size = 0;
       i2s_channel_disable(g_micRxChan);
       i2s_channel_enable(g_micRxChan);
     } else {
-      size_t samplesRead = bytesRead / sizeof(int32_t);
+      size_t n = bytesRead / sizeof(int32_t);
       int16_t* dst = (int16_t*)chunk->data;
-      for (size_t i = 0; i < samplesRead; i++) {
-        dst[i] = (int16_t)(s_raw32[i] >> 16);
-      }
-      chunk->size = samplesRead * sizeof(int16_t);
+      for (size_t i = 0; i < n; i++) dst[i] = (int16_t)(rawBuf[i] >> 16);
+      chunk->size = n * sizeof(int16_t);
     }
-#else
-    static float phase = 0.0f;
-    const float  inc   = 2.0f * (float)M_PI * 440.0f / ENV_SAMPLE_RATE;
-    int16_t* samples   = (int16_t*)chunk->data;
-    for (int i = 0; i < BUFFER_SAMPLES; i++) {
-      samples[i] = (int16_t)(sinf(phase) * 16000.0f);
-      phase += inc;
-      if (phase > 2.0f * (float)M_PI) phase -= 2.0f * (float)M_PI;
-    }
-    chunk->size = CHUNK_BYTES;
-    vTaskDelay(pdMS_TO_TICKS(CHUNK_MS));
-#endif
 
     chunk->isFinal = false;
     xQueueSend(audioQueue, &chunk, portMAX_DELAY);
@@ -476,35 +375,33 @@ static void audioTask(void*) {
 // ============================================================
 
 static void networkTask(void*) {
-  Serial.println("networkTask: started");
   AudioChunk* chunk;
   bool streaming = false;
 
   while (true) {
-    if (xQueueReceive(audioQueue, &chunk, portMAX_DELAY) != pdTRUE) continue;
-    if (!chunk) continue;
+    if (xQueueReceive(audioQueue, &chunk, portMAX_DELAY) != pdTRUE || !chunk) continue;
 
     if (chunk->isFinal) {
       if (streaming) { closeStream(); streaming = false; uploadStreamActive = false; }
       xQueueSend(freeChunks, &chunk, portMAX_DELAY);
     } else {
       if (!streaming) {
-        if (openStream()) { streaming = true; uploadStreamActive = true; }
-        else {
-          // DRAIN QUEUE in event of connect failure, else fragments accumulate
-          Serial.println("Connect failed — draining queue");
+        if (openStream()) {
+          streaming = true; uploadStreamActive = true;
+        } else {
           uploadStreamActive = false;
           xQueueSend(freeChunks, &chunk, portMAX_DELAY);
           AudioChunk* d;
-          while (xQueueReceive(audioQueue, &d, 0) == pdTRUE)
-            if (d) xQueueSend(freeChunks, &d, portMAX_DELAY);
+          while (xQueueReceive(audioQueue, &d, 0) == pdTRUE && d)
+            xQueueSend(freeChunks, &d, portMAX_DELAY);
           vTaskDelay(pdMS_TO_TICKS(1000));
           continue;
         }
       }
-      sendChunk(chunk->data, chunk->size);
-      Serial.printf("Sent chunk %d (%zu B), heap=%d\n",
-                    chunkIndex++, chunk->size, esp_get_free_heap_size());
+      if (chunk->size > 0) {
+        sendChunk(chunk->data, chunk->size);
+        Serial.printf("Sent chunk %d (%zu B)\n", chunkIndex++, chunk->size);
+      }
       xQueueSend(freeChunks, &chunk, portMAX_DELAY);
     }
   }
@@ -520,7 +417,7 @@ static bool getIsButtonPressed() {
   static int  stableCount = 0;
   bool reading = digitalRead(BUTTON_PIN);
   if (reading == lastReading) stableCount++; else stableCount = 0;
-  if (stableCount >= REQUIRED_STABLE) stableState = reading;
+  if (stableCount >= 5) stableState = reading;
   lastReading = reading;
   return stableState == BUTTON_ACTIVE_STATE;
 }
@@ -534,8 +431,6 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
-  pinMode(I2S_PLAY_DOUT, OUTPUT);
-  digitalWrite(I2S_PLAY_DOUT, LOW);
 
   WiFi.begin(ssid, password);
   Serial.print("Wi-Fi");
@@ -547,76 +442,41 @@ void setup() {
   while (!getLocalTime(&ti)) { delay(500); Serial.println("Waiting NTP..."); }
   Serial.println("Time synced");
 
-  // Chunk pool — metadata static, data buffers heap-allocated
   freeChunks = xQueueCreate(QUEUE_DEPTH, sizeof(AudioChunk*));
   audioQueue = xQueueCreate(QUEUE_DEPTH, sizeof(AudioChunk*));
   for (int i = 0; i < QUEUE_DEPTH; i++) {
-    chunkPool[i].data = (uint8_t*)malloc(CHUNK_BYTES);
-    if (!chunkPool[i].data) {
-      Serial.printf("setup: chunk[%d] data alloc failed!", i);
-    }
+    chunkPool[i].data = (uint8_t*)ps_malloc(CHUNK_BYTES);
+    if (!chunkPool[i].data) Serial.printf("chunk[%d] alloc failed\n", i);
     AudioChunk* p = &chunkPool[i];
     xQueueSend(freeChunks, &p, 0);
   }
-  Serial.printf("setup: heap after chunk alloc: %d, largest: %d",
-                esp_get_free_heap_size(),
-                heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
 
-  if (!installMicI2S()) Serial.println("setup: mic install failed");
+  if (!micEnable()) Serial.println("setup: mic enable failed");
 
-  // NOTE: g_mp3.begin() is intentionally NOT called here.
-  // BackgroundAudio's I2S DMA buffers + the libmad decoder workspace
-  // together consume ~40 KB of heap that WiFiClientSecure also needs
-  // for TLS handshakes during recording upload. Calling begin() here
-  // would fragment the heap and cause "Stream connect failed" on every
-  // upload attempt. Instead, begin() is called lazily on first playback
-  // inside playAnsweringMachineAudio(), at which point the upload path
-  // is fully idle (enforced by the recording/uploadStreamActive guard).
-
-  xTaskCreatePinnedToCore(audioTask,     "audio", 12288,             nullptr, 2, nullptr,       0);
-  xTaskCreatePinnedToCore(networkTask,   "net",   16384,             nullptr, 1, nullptr,       1);
-  xTaskCreatePinnedToCore(playbackWorker,"play",  PLAYBACK_TASK_STACK, nullptr, 1, &playbackTask, 1);
-  if (!playbackTask) Serial.println("playback task create failed");
-
-  Serial.printf("Free heap after setup: %d\n", esp_get_free_heap_size());
+  xTaskCreatePinnedToCore(audioTask,      "audio", 8192,  nullptr, 2, nullptr,       0);
+  xTaskCreatePinnedToCore(networkTask,    "net",   16384, nullptr, 1, nullptr,       1);
+  xTaskCreatePinnedToCore(playbackWorker, "play",  16384, nullptr, 1, &playbackTask, 1);
 }
 
 // ============================================================
 // loop
 // ============================================================
 
-static bool safeToRecord() {
-  // Only start a recording if all chunk buffers are presently free
-  UBaseType_t freeCount = uxQueueMessagesWaiting(freeChunks);
-  UBaseType_t queueCount = uxQueueMessagesWaiting(audioQueue);
-  if (freeCount==QUEUE_DEPTH && queueCount==0 && !playbackActive && !recording && !uploadStreamActive && !stopRequested) {
-    // Also, require that a sufficiently large contiguous heap block is available.
-    size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-    if (largest >= 34000) { // empirically, WiFiClientSecure needs ~32K-38K
-      return true;
-    }
-  }
-  return false;
-}
-
 void loop() {
   unsigned long now = millis();
 
-  // Periodic answering-machine poll
   if (lastPollMs == 0 || now - lastPollMs >= POLL_INTERVAL_MS) {
     lastPollMs = now;
     pollAnsweringMachine();
   }
 
-  // --- Button ---
-  static bool prevPressed    = false;
-  static unsigned long pressStart = 0;
+  static bool          prevPressed = false;
+  static unsigned long pressStart  = 0;
   bool isPressed = getIsButtonPressed();
 
-  // Only allow recording to start when it's actually safe to do so!
   if (isPressed && !prevPressed) {
     pressStart = millis();
-    if (safeToRecord()) {
+    if (!recording && !playbackActive && !uploadStreamActive && !stopRequested) {
       recording  = true;
       chunkIndex = 0;
       struct tm ti;
@@ -627,8 +487,6 @@ void loop() {
         recordingId = String(millis());
       }
       Serial.printf("Recording started — id: %s\n", recordingId.c_str());
-    } else if (!playbackActive && !recording) {
-      Serial.println("Refusing to record: memory not safe, chunk buffers not all free, or in flight");
     }
   }
 
@@ -640,7 +498,6 @@ void loop() {
   }
   prevPressed = isPressed;
 
-  // Kick playback task
   if (playbackPending && !recording && !playbackActive) {
     playbackPending = false;
     playbackActive  = true;
@@ -650,27 +507,25 @@ void loop() {
     else { Serial.println("playback task missing"); playbackActive = false; }
   }
 
-  // --- LED ---
+  // LED
   if (recording) {
     digitalWrite(LED_PIN, HIGH);
-    doubleBlinkPhase  = 0;
-    nextDoubleBlinkMs = 0;
+    doubleBlinkPhase = 0; nextDoubleBlinkMs = 0;
   } else if (playbackActive) {
     digitalWrite(LED_PIN, LOW);
   } else if (hasUnlistenedMessages()) {
     if (nextDoubleBlinkMs == 0) nextDoubleBlinkMs = now;
     if (now >= nextDoubleBlinkMs) {
       switch (doubleBlinkPhase) {
-        case 0: digitalWrite(LED_PIN, HIGH); nextDoubleBlinkMs = now + 80;                  doubleBlinkPhase = 1; break;
-        case 1: digitalWrite(LED_PIN, LOW);  nextDoubleBlinkMs = now + 120;                 doubleBlinkPhase = 2; break;
-        case 2: digitalWrite(LED_PIN, HIGH); nextDoubleBlinkMs = now + 80;                  doubleBlinkPhase = 3; break;
+        case 0: digitalWrite(LED_PIN, HIGH); nextDoubleBlinkMs = now + 80;                     doubleBlinkPhase = 1; break;
+        case 1: digitalWrite(LED_PIN, LOW);  nextDoubleBlinkMs = now + 120;                    doubleBlinkPhase = 2; break;
+        case 2: digitalWrite(LED_PIN, HIGH); nextDoubleBlinkMs = now + 80;                     doubleBlinkPhase = 3; break;
         case 3: digitalWrite(LED_PIN, LOW);  nextDoubleBlinkMs = now + DOUBLE_BLINK_PERIOD_MS; doubleBlinkPhase = 0; break;
       }
     }
   } else {
     digitalWrite(LED_PIN, LOW);
-    doubleBlinkPhase  = 0;
-    nextDoubleBlinkMs = 0;
+    doubleBlinkPhase = 0; nextDoubleBlinkMs = 0;
   }
 
   delay(5);
