@@ -24,8 +24,8 @@
 // ============================================================
 
 #define POLL_INTERVAL_MS       60000UL
-#define SHORT_PRESS_MAX_MS     1000UL
-#define SHORT_PRESS_MIN_MS     40
+#define RECORD_HOLD_MS         500UL   // hold longer than this to record; tap shorter for playback
+#define SHORT_PRESS_MIN_MS     40      // debounce: ignore taps shorter than this
 #define DOUBLE_BLINK_PERIOD_MS 5000UL
 #define BUTTON_ACTIVE_STATE    HIGH
 
@@ -129,6 +129,7 @@ static volatile bool recording          = false;
 static volatile int  chunkIndex         = 0;
 static volatile bool stopRequested      = false;
 static volatile bool uploadStreamActive = false;
+static volatile bool stopPlayback       = false;
 
 static String        latestMsgKey       = "";
 static String        lastListenedMsgKey = "";
@@ -255,12 +256,14 @@ static bool streamAnsweringMachineMp3() {
   http->addHeader("ngrok-skip-browser-warning", "true");
 
   int code = http->GET();
+  Serial.printf("play begin %d\n", code);
   if (code != 200) {
     Serial.printf("play: HTTP %d\n", code);
     http->end(); delete http; delete client; return false;
   }
 
   WiFiClient* stream = http->getStreamPtr();
+  int contentLength  = http->getSize();  // -1 if server didn't send Content-Length
   g_mp3.flush();
 
   uint8_t buf[2048];
@@ -268,30 +271,45 @@ static bool streamAnsweringMachineMp3() {
   unsigned long lastDataMs = millis();
   bool aborted = false;
 
-  while (!aborted && (stream->connected() || stream->available())) {
-    while (stream->available() && g_mp3.availableForWrite() >= (int)sizeof(buf)) {
-      int n = stream->read(buf, sizeof(buf));
-      if (n > 0) { g_mp3.write(buf, n); totalRead += n; lastDataMs = millis(); }
-      else if (n < 0) { aborted = true; break; }
-      else break;
+  while (!stopPlayback && !aborted && (stream->connected() || stream->available())) {
+    // If we know the total size, stop as soon as we have it all —
+    // the TCP connection may stay open (keep-alive) even after the body is done.
+    if (contentLength > 0 && (int)totalRead >= contentLength) break;
+
+    if (stream->available() > 0) {
+      lastDataMs = millis();
+      if (g_mp3.availableForWrite() >= (int)sizeof(buf)) {
+        int n = stream->read(buf, sizeof(buf));
+        if (n > 0) { g_mp3.write(buf, n); totalRead += n; }
+        else if (n < 0) { aborted = true; }
+      }
+    } else if (!stream->connected()) {
+      break;
+    } else if (millis() - lastDataMs > 8000UL) {
+      Serial.println("play: stall");
+      aborted = true;
     }
-    if (millis() - lastDataMs > 8000UL) { Serial.println("play: stall"); aborted = true; }
     yield();
   }
 
-  if (!aborted) {
+  bool success = !aborted && !stopPlayback;
+  if (success) {
     unsigned long t0 = millis();
     while (g_mp3.available() > 0 && millis() - t0 < 5000UL) yield();
+  } else {
+    g_mp3.flush();
   }
 
   http->end(); delete http; delete client;
-  Serial.printf("play: done (%zu B, aborted=%d)\n", totalRead, (int)aborted);
-  return !aborted;
+  Serial.printf("play: done (%zu B%s)\n", totalRead,
+                stopPlayback ? ", interrupted" : aborted ? ", stalled" : "");
+  return success;
 }
 
 static void playAnsweringMachineAudio() {
   while (recording || stopRequested || uploadStreamActive) vTaskDelay(pdMS_TO_TICKS(20));
 
+  stopPlayback = false;
   micDisable();
 
   // g_mp3.begin() allocates ~40 KB of internal SRAM (I2S DMA + libmad workspace).
@@ -470,31 +488,45 @@ void loop() {
     pollAnsweringMachine();
   }
 
-  static bool          prevPressed = false;
-  static unsigned long pressStart  = 0;
+  static bool          prevPressed     = false;
+  static unsigned long pressStart      = 0;
+  static bool          holdingToRecord = false;
   bool isPressed = getIsButtonPressed();
 
   if (isPressed && !prevPressed) {
-    pressStart = millis();
-    if (!recording && !playbackActive && !uploadStreamActive && !stopRequested) {
-      recording  = true;
-      chunkIndex = 0;
-      struct tm ti;
-      if (getLocalTime(&ti)) {
-        char buf[20]; strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", &ti);
-        recordingId = String(buf);
-      } else {
-        recordingId = String(millis());
-      }
-      Serial.printf("Recording started — id: %s\n", recordingId.c_str());
+    pressStart      = millis();
+    holdingToRecord = false;
+    if (playbackActive) stopPlayback = true;  // any press cancels playback
+  }
+
+  // Arm recording once the button has been held past the threshold
+  if (isPressed && !holdingToRecord && !recording && !playbackActive &&
+      !uploadStreamActive && !stopRequested &&
+      millis() - pressStart >= RECORD_HOLD_MS) {
+    holdingToRecord = true;
+    recording  = true;
+    chunkIndex = 0;
+    struct tm ti;
+    if (getLocalTime(&ti)) {
+      char buf[20]; strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", &ti);
+      recordingId = String(buf);
+    } else {
+      recordingId = String(millis());
     }
+    Serial.printf("Recording started — id: %s\n", recordingId.c_str());
   }
 
   if (!isPressed && prevPressed) {
     unsigned long dur = millis() - pressStart;
-    if (recording) { recording = false; stopRequested = true; Serial.println("Recording stopped"); }
-    if (!playbackActive && dur >= SHORT_PRESS_MIN_MS && dur < SHORT_PRESS_MAX_MS)
+    if (holdingToRecord) {
+      // Long press: stop recording and upload
+      recording = false; stopRequested = true;
+      Serial.println("Recording stopped");
+    } else if (dur >= SHORT_PRESS_MIN_MS) {
+      // Short tap: trigger playback (recording never started)
       playbackPending = true;
+    }
+    holdingToRecord = false;
   }
   prevPressed = isPressed;
 
