@@ -52,12 +52,14 @@ const char* authToken  = ENV_AUTH_TOKEN;
 static ESP32I2SAudio           g_i2sOut(I2S_PLAY_SCK, I2S_PLAY_WS, I2S_PLAY_DOUT);
 static BackgroundAudioMP3Class<RawDataBuffer<8 * 1024>> g_mp3(g_i2sOut);
 static bool g_mp3Started = false;
+static float g_gain = 0.5f;  // default: half volume
+
 
 // ============================================================
 // Test tone generation (basic diagnostics)
 // ============================================================
 
-void playTestTone(int ms = 1500, float freq = 880.0f) {
+void playTestTone(int ms = 15000, float freq = 440.0f) {
   i2s_chan_handle_t txChan = nullptr;
 
   i2s_chan_config_t chanCfg = {
@@ -390,9 +392,11 @@ static void playAnsweringMachineAudio() {
     // the BCLK/WS pins (GPIO 9/46) as I2S master without any conflict.
     g_mp3.begin();
     g_mp3Started = true;
+    g_mp3.setGain(g_gain);
   }
 
   g_mp3.flush();
+
   bool ok = streamAnsweringMachineMp3();
 
   // Re-enable mic in slave mode now that playback is done.
@@ -608,11 +612,20 @@ void setup() {
 
 void loop() {
   unsigned long now = millis();
+  static unsigned long lastVolMs = 0;
+
 
   if (lastPollMs == 0 || now - lastPollMs >= POLL_INTERVAL_MS) {
     lastPollMs = now;
     pollAnsweringMachine();
   }
+
+  if (now - lastVolMs > 150) {
+  lastVolMs = now;
+  int raw = analogRead(VOLUME_PIN);          // 0–4095 on ESP32-S3
+  g_gain = raw / 4095.0f * 2.0f;         // 0.0–2.0 (pot center = unity gain)
+  if (g_mp3Started) g_mp3.setGain(g_gain);
+}
 
   static bool          prevPressed     = false;
   static unsigned long pressStart      = 0;
