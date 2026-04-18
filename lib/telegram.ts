@@ -32,7 +32,7 @@ export async function sendVoice(filePath: string) {
 
   console.log("Duration:", durationSec);
 
-  const fadeDurationSec = 0.5;
+  const fadeDurationSec = 0.15;
   const fadeStart = durationSec - fadeDurationSec;
   try {
     // ffmpeg: mono, 48kHz sample rate, opus codec, 64k bitrate
