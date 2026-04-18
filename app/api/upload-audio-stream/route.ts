@@ -3,7 +3,7 @@ import { mkdirSync } from "fs";
 import { verifyAuth } from "@/lib/auth";
 import { spawn } from "child_process";
 import fs from "fs";
-import { sendVoice } from "@/lib/telegram";
+import { sendVoiceToChat } from "@/lib/telegram";
 
 export const runtime = "nodejs";
 
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
 
     try {
       console.log("sending as voice ", outputMp3Path);
-      const resp = await sendVoice(outputMp3Path);
+      const resp = await sendVoiceToChat(outputMp3Path, { fadeOutDuration: 0 });
       console.log("voice resp", resp);
     } catch (err) {
       console.log("Send voice error", err);

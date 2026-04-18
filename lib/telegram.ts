@@ -7,12 +7,15 @@ import { execSync, spawn } from "child_process";
 import { ANSWERING_MACHINE_AUDIO_DIR } from "@/app/api/answering-machine/utils";
 
 // send a voice note (OGG/OPUS)
-export async function sendVoice(filePath: string) {
+export async function sendVoiceToChat(
+  filePath: string,
+  options?: { fadeOutDuration: number },
+) {
   console.log("Telegram: sendvoice");
-
-  const form = new FormData();
   const chatId = process.env.TELEGRAM_CHAT_ID;
   const token = process.env.TELEGRAM_TOKEN;
+
+  const form = new FormData();
 
   // Ensure the file extension is .ogg for voice
   const outVoicePath = path.join(
@@ -24,20 +27,25 @@ export async function sendVoice(filePath: string) {
       ".ogg",
   );
 
-  const durationSec = parseFloat(
-    execSync(
-      `ffprobe -i "${filePath}" -show_entries format=duration -v quiet -of csv="p=0"`,
-    ).toString(),
-  );
+  let durationSec = 0;
+  let fadeFilter = "";
 
-  console.log("Duration:", durationSec);
-
-  const fadeDurationSec = 0.15;
-  const fadeStart = durationSec - fadeDurationSec;
+  const fadeDurationSec = options?.fadeOutDuration ?? 0.15;
+  const hasFade = fadeDurationSec > 0;
+  if (hasFade) {
+    durationSec = parseFloat(
+      execSync(
+        `ffprobe -i "${filePath}" -show_entries format=duration -v quiet -of csv="p=0"`,
+      ).toString(),
+    );
+    console.log("Duration:", durationSec);
+    const fadeStart = durationSec - fadeDurationSec;
+    fadeFilter = `-af "afade=t=out:st=${fadeStart}:d=${fadeDurationSec}"`;
+  }
   try {
     // ffmpeg: mono, 48kHz sample rate, opus codec, 64k bitrate
     execSync(
-      `ffmpeg -y -i "${filePath}" -af "afade=t=out:st=${fadeStart}:d=${fadeDurationSec}" -ac 1 -ar 48000 -c:a libopus -b:a 64k "${outVoicePath}"`,
+      `ffmpeg -y -i "${filePath}" ${fadeFilter} -ac 1 -ar 48000 -c:a libopus -b:a 64k "${outVoicePath}"`,
     );
   } catch (err) {
     throw new Error("Failed to convert to OGG/OPUS for Telegram voice: " + err);
