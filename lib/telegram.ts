@@ -30,7 +30,7 @@ export async function sendVoiceToChat(
   let durationSec = 0;
   let fadeFilter = "";
 
-  const fadeDurationSec = options?.fadeOutDuration ?? 0.15;
+  const fadeDurationSec = options?.fadeOutDuration ?? 0;
   const hasFade = fadeDurationSec > 0;
   if (hasFade) {
     durationSec = parseFloat(
