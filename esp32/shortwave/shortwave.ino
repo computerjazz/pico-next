@@ -52,7 +52,7 @@ const char* authToken  = ENV_AUTH_TOKEN;
 static ESP32I2SAudio           g_i2sOut(I2S_PLAY_SCK, I2S_PLAY_WS, I2S_PLAY_DOUT);
 static BackgroundAudioMP3Class<RawDataBuffer<8 * 1024>> g_mp3(g_i2sOut);
 static bool g_mp3Started = false;
-static float g_gain = 0.5f;  // default: half volume
+static float g_gain = 0.1f;  // default: half volume
 
 
 // ============================================================
@@ -621,11 +621,13 @@ void loop() {
   }
 
   if (now - lastVolMs > 150) {
-  lastVolMs = now;
-  int raw = analogRead(VOLUME_PIN);          // 0–4095 on ESP32-S3
-  g_gain = raw / 4095.0f * 2.0f;         // 0.0–2.0 (pot center = unity gain)
-  if (g_mp3Started) g_mp3.setGain(g_gain);
-}
+    lastVolMs = now;
+    int raw = analogRead(VOLUME_PIN);          // 0–4095 on ESP32-S3
+    g_gain = USE_VOLUME_PIN ? raw / 4095.0f * 2.0f : g_gain;         // 0.0–2.0 (pot center = unity gain)
+    if (g_mp3Started) {
+      g_mp3.setGain(g_gain);
+    }
+  }
 
   static bool          prevPressed     = false;
   static unsigned long pressStart      = 0;
