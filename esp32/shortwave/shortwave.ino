@@ -231,8 +231,9 @@ static bool openStream() {
     "ngrok-skip-browser-warning: true\r\n"
     "x-recording-id: %s\r\n"
     "x-sample-rate: %d\r\n"
+    "x-device-id: %s\r\n"
     "\r\n",
-    serverHost, authToken, recordingId.c_str(), ENV_SAMPLE_RATE);
+    serverHost, authToken, recordingId.c_str(), ENV_SAMPLE_RATE, DEVICE_ID);
   Serial.println("Stream opened");
   return true;
 }
