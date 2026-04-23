@@ -792,9 +792,17 @@ void loop() {
       Serial.println("Recording stopped");
     } else if (dur >= SHORT_PRESS_MIN_MS) {
       Serial.printf("[DEBUG] pending=%d recording=%d active=%d\n", playbackPending, recording, playbackActive);
-
+      // Quick double-blink LED to acknowledge short press
+      digitalWrite(LED_PIN, HIGH);
+      delay(60);
+      digitalWrite(LED_PIN, LOW);
+      delay(60);
+      digitalWrite(LED_PIN, HIGH);
+      delay(60);
+      digitalWrite(LED_PIN, LOW);
       // Short tap: trigger playback (recording never started)
       Serial.println("[PLAYBACK] Button tap detected: will trigger playback.");
+
       playbackPending = true;
     }
     holdingToRecord = false;

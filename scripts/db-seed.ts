@@ -7,17 +7,17 @@ async function seedDb() {
   await db
     .insert(devices)
     .values({
-      deviceId: "sh0rtwave-alpha",
-      type: "shortwave",
+      deviceId: process.argv[2],
+      type: process.argv[3] || "shortwave",
     })
     .onConflictDoNothing();
 
   await db
     .insert(deviceChannels)
     .values({
-      deviceId: "sh0rtwave-alpha",
-      channelId: "-5123240552",
-      type: "telegram",
+      deviceId: process.argv[2],
+      channelId: process.argv[4],
+      type: process.argv[5] || "telegram",
     })
     .onConflictDoNothing();
 
