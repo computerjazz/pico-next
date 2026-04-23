@@ -1,11 +1,4 @@
-import {
-  pgSchema,
-  pgTable,
-  uuid,
-  text,
-  timestamp,
-  varchar,
-} from "drizzle-orm/pg-core";
+import { pgSchema, uuid, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 // define the schema
 const pico = pgSchema("pico_next_db");
@@ -18,4 +11,20 @@ export const users = pico.table("users", {
   passwordHash: text("password_hash").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const devices = pico.table("devices", {
+  deviceId: varchar("device_id", { length: 100 }).primaryKey(),
+  type: varchar("type", { length: 50 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const deviceChannels = pico.table("device_channels", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  deviceId: varchar("device_id", { length: 100 })
+    .notNull()
+    .references(() => devices.deviceId),
+  channelId: varchar("channel_id", { length: 100 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull().default("telegram"),
+  createdAt: timestamp("created_at").defaultNow(),
 });

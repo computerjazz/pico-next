@@ -4,6 +4,7 @@ import { verifyAuth } from "@/lib/auth";
 import { spawn } from "child_process";
 import fs from "fs";
 import { sendVoiceToChat } from "@/lib/telegram";
+import { db } from "@/db";
 
 export const runtime = "nodejs";
 
@@ -20,11 +21,13 @@ export async function POST(req: Request) {
 
     const recordingId = req.headers.get("x-recording-id");
     const sampleRate = req.headers.get("x-sample-rate") ?? "44100";
+    const deviceId = req.headers.get("x-device-id");
 
     const minBytes = parseInt(sampleRate) * BYTES_PER_SAMPLE * MIN_SECONDS;
 
-    if (!recordingId)
+    if (!recordingId) {
       return new Response("Missing recording ID", { status: 400 });
+    }
 
     console.log(`Recording started: ${recordingId}`);
 
@@ -104,7 +107,17 @@ export async function POST(req: Request) {
 
     try {
       console.log("sending as voice ", outputMp3Path);
-      const resp = await sendVoiceToChat(outputMp3Path, { fadeOutDuration: 0 });
+      const channels = await db.query.deviceChannels.findMany({
+        where: (t, { eq, and }) =>
+          and(eq(t.deviceId, deviceId ?? ""), eq(t.type, "telegram")),
+        columns: { channelId: true },
+      });
+
+      const chatIds = channels.map((c) => c.channelId);
+      const resp = await sendVoiceToChat(outputMp3Path, {
+        fadeOutDuration: 0,
+        chatIds,
+      });
       console.log("voice resp", resp);
     } catch (err) {
       console.log("Send voice error", err);

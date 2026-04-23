@@ -580,6 +580,12 @@ void setup() {
   WiFi.begin(ssid, password);
   Serial.print("Wi-Fi");
   while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(LED_PIN, HIGH);
+    delay(70);
+    digitalWrite(LED_PIN, LOW);
+    delay(70);
+  }
   Serial.println("\nConnected!");
 
   configTime(0, 0, "pool.ntp.org");

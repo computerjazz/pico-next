@@ -6,14 +6,14 @@ import path from "path";
 import { execSync, spawn } from "child_process";
 import { ANSWERING_MACHINE_AUDIO_DIR } from "@/app/api/answering-machine/utils";
 
+const telegramToken = process.env.TELEGRAM_TOKEN;
+
 // send a voice note (OGG/OPUS)
 export async function sendVoiceToChat(
   filePath: string,
-  options?: { fadeOutDuration: number },
+  options?: { fadeOutDuration: number; chatIds: string[] },
 ) {
   console.log("Telegram: sendvoice");
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  const token = process.env.TELEGRAM_TOKEN;
 
   const form = new FormData();
 
@@ -53,40 +53,50 @@ export async function sendVoiceToChat(
 
   console.log("Telegram: sending", outVoicePath);
 
-  if (!chatId || !token) {
-    throw new Error(
-      `Missing Telegram ${!chatId && "chatId"} ${!token && "token"}`,
-    );
+  if (!telegramToken) {
+    throw new Error(`Missing Telegram token`);
   }
 
-  form.append("chat_id", chatId);
-  form.append("voice", fs.createReadStream(outVoicePath));
+  const chatIds = options?.chatIds ?? [];
 
-  const resp = await fetch(`https://api.telegram.org/bot${token}/sendVoice`, {
-    method: "POST",
-    body: form,
-  });
-  return resp.json();
+  const responses = await Promise.all(
+    chatIds?.map(async (chatId) => {
+      form.append("chat_id", chatId);
+      form.append("voice", fs.createReadStream(outVoicePath));
+
+      const resp = await fetch(
+        `https://api.telegram.org/bot${telegramToken}/sendVoice`,
+        {
+          method: "POST",
+          body: form,
+        },
+      );
+      return resp.json();
+    }),
+  );
+
+  return responses;
 }
 
 // send an audio file (MP3)
-export async function sendAudio(filePath: string) {
+export async function sendAudio(filePath: string, chatId: string) {
   const form = new FormData();
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  const token = process.env.TELEGRAM_TOKEN;
 
-  if (!chatId || !token) {
+  if (!chatId || !telegramToken) {
     throw new Error(
-      `Missing Telegram ${!chatId && "chatId"} ${!token && "token"}`,
+      `Missing Telegram ${!chatId && "chatId"} ${!telegramToken && "token"}`,
     );
   }
   form.append("chat_id", chatId);
   form.append("audio", fs.createReadStream(filePath));
 
-  const resp = await fetch(`https://api.telegram.org/bot${token}/sendAudio`, {
-    method: "POST",
-    body: form,
-  });
+  const resp = await fetch(
+    `https://api.telegram.org/bot${telegramToken}/sendAudio`,
+    {
+      method: "POST",
+      body: form,
+    },
+  );
   return resp.json();
 }
 
