@@ -392,6 +392,7 @@ static bool pollAnsweringMachine() {
   HTTPClient http;
   if (!http.begin(client, String("https://") + serverHost + "/api/answering-machine")) return false;
   http.addHeader("Authorization", String("Bearer ") + authToken);
+  http.addHeader("x-device-id", String(DEVICE_ID));
   http.addHeader("ngrok-skip-browser-warning", "true");
   int code = http.GET();
   String body = http.getString(); http.end();
@@ -434,6 +435,7 @@ static bool streamAnsweringMachineMp3() {
     delete http; delete client; return false;
   }
   http->addHeader("Authorization", String("Bearer ") + authToken);
+  http->addHeader("x-device-id", String(DEVICE_ID));
   http->addHeader("ngrok-skip-browser-warning", "true");
 
   int code = http->GET();

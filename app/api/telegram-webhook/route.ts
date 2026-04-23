@@ -3,6 +3,7 @@ import { getRedis, REDIS_KEYS } from "@/lib/redis";
 import { downloadAndConvertVoice, getFilePath } from "@/lib/telegram";
 import z from "zod";
 import fs from "fs";
+import { db } from "@/db";
 
 const TelegramVoiceMessageSchema = z.object({
   update_id: z.number(),
@@ -39,11 +40,26 @@ export async function POST(req: Request) {
     console.log("telegram-webhook: set latest telegram message");
     const parsed = TelegramVoiceMessageSchema.safeParse(body);
     console.log("telegram-webhook: parsed", parsed);
+
     if (parsed.success) {
-      const { voice } = parsed.data.message;
-      console.log("successfully parsed telegram voice message", voice);
-      const voiceMp3 = await downloadAndConvertVoice(voice.file_id);
-      console.log("voiceMp3", voiceMp3);
+      const { voice, chat } = parsed.data.message;
+      console.log("successfully parsed telegram voice message", voice, chat);
+
+      const chatId = chat.id;
+
+      const devices = await db.query.deviceChannels.findMany({
+        where: (t, { eq }) => eq(t.channelId, String(chatId)),
+      });
+
+      await Promise.all(
+        devices.map(async (device) => {
+          const voiceMp3 = await downloadAndConvertVoice({
+            fileId: voice.file_id,
+            deviceId: device.id,
+          });
+          console.log("voiceMp3", voiceMp3);
+        }),
+      );
     }
     // Here you could save images, trigger your frontend, etc.
     return new Response(null, { status: 200 });
@@ -58,6 +74,7 @@ export async function GET(req: Request) {
     tag: "telegram-webhook",
     method: "GET",
   });
+  const deviceId = req.headers.get("x-device-id") ?? "unknown";
   if (errRsp) return errRsp;
   console.log("GET telegram-webhook");
   const redis = await getRedis();
@@ -73,11 +90,17 @@ export async function GET(req: Request) {
   console.log("parsed:", parsed);
   if (parsed.success) {
     const fileId = parsed.data.message.voice.file_id;
-    latestVoiceMessagePath = getFilePath(fileId); // Check whether file already exists
+    latestVoiceMessagePath = getFilePath({
+      fileId,
+      deviceId,
+    }); // Check whether file already exists
     const fileExists = fs.existsSync(latestVoiceMessagePath);
     console.log("file exists:", fileExists);
     if (!fileExists)
-      latestVoiceMessagePath = await downloadAndConvertVoice(fileId);
+      latestVoiceMessagePath = await downloadAndConvertVoice({
+        fileId,
+        deviceId,
+      });
   }
 
   return Response.json({

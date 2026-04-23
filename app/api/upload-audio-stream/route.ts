@@ -35,6 +35,7 @@ export async function POST(req: Request) {
       process.cwd(),
       "uploads",
       "sh0rtwave",
+      deviceId ?? "unknown",
       "outbound",
     );
     mkdirSync(audioDir, { recursive: true });

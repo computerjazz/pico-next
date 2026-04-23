@@ -4,7 +4,7 @@ import fetch from "node-fetch";
 import os from "os";
 import path from "path";
 import { execSync, spawn } from "child_process";
-import { ANSWERING_MACHINE_AUDIO_DIR } from "@/app/api/answering-machine/utils";
+import { getAnsweringMachineDir } from "@/app/api/answering-machine/utils";
 
 const telegramToken = process.env.TELEGRAM_TOKEN;
 
@@ -100,11 +100,25 @@ export async function sendAudio(filePath: string, chatId: string) {
   return resp.json();
 }
 
-export function getFilePath(fileId: string, ext = "mp3") {
-  return path.join(ANSWERING_MACHINE_AUDIO_DIR, `${fileId}.${ext}`);
+export function getFilePath({
+  fileId,
+  ext = "mp3",
+  deviceId,
+}: {
+  fileId: string;
+  ext?: string;
+  deviceId: string;
+}) {
+  return path.join(getAnsweringMachineDir({ deviceId }), `${fileId}.${ext}`);
 }
 
-export async function downloadAndConvertVoice(fileId: string) {
+export async function downloadAndConvertVoice({
+  fileId,
+  deviceId,
+}: {
+  fileId: string;
+  deviceId: string;
+}) {
   const token = process.env.TELEGRAM_TOKEN;
   console.log("downloading voice");
   // --- Step 1: get file path from Telegram ---
@@ -122,12 +136,12 @@ export async function downloadAndConvertVoice(fileId: string) {
   const arrayBuffer = await oggRes.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  const inputOggPath = getFilePath(fileId, "ogg");
+  const inputOggPath = getFilePath({ fileId, ext: "ogg", deviceId });
 
   fs.writeFileSync(inputOggPath, buffer);
   console.log("wrote ogg file", inputOggPath);
   // --- Step 3: convert OGG -> MP3 using ffmpeg ---
-  const outputMp3Path = getFilePath(fileId, "mp3");
+  const outputMp3Path = getFilePath({ fileId, ext: "mp3", deviceId });
   await new Promise((resolve, reject) => {
     const ffmpeg = spawn("ffmpeg", [
       "-i",
