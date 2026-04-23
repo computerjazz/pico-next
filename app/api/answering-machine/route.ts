@@ -6,8 +6,9 @@ export async function GET(req: Request) {
     const maybeResp = await verifyAuth(req, {
       tag: "answering-machine/mp3",
     });
+    const deviceId = req.headers.get("x-device-id") ?? "unknown";
     if (maybeResp) return maybeResp;
-    const file = getLatestInboundAudioFilePath();
+    const file = getLatestInboundAudioFilePath({ deviceId });
 
     return Response.json(file, {
       status: 200,
