@@ -55,7 +55,7 @@ export async function POST(req: Request) {
         devices.map(async (device) => {
           const voiceMp3 = await downloadAndConvertVoice({
             fileId: voice.file_id,
-            deviceId: device.id,
+            deviceId: device.deviceId,
           });
           console.log("voiceMp3", voiceMp3);
         }),
