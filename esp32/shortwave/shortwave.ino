@@ -6,6 +6,9 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <WebServer.h>
+#include <DNSServer.h>
+#include <Preferences.h>
 #include <time.h>
 #include <ESP32I2SAudio.h>
 #include <BackgroundAudioMP3.h>
@@ -39,11 +42,119 @@
 // Credentials
 // ============================================================
 
-const char* ssid       = ENV_SSID;
-const char* password   = ENV_PASSWORD;
 const char* serverHost = ENV_SERVER_HOST;
 const int   serverPort = 443;
 const char* authToken  = ENV_AUTH_TOKEN;
+const char* portalSsid = "sh0rtwave-setup";
+
+static DNSServer dnsServer;
+static WebServer portalServer(80);
+static Preferences wifiPrefs;
+static bool portalWantsConnect = false;
+static String portalNewSsid;
+static String portalNewPassword;
+
+static bool connectToWifi(const char* ssid, const char* password, unsigned long timeoutMs = 15000UL) {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  Serial.printf("Connecting to Wi-Fi SSID: %s\n", ssid);
+  unsigned long startMs = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - startMs < timeoutMs) {
+    delay(500);
+    Serial.print(".");
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nConnected!");
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
+    return true;
+  }
+  Serial.println("\nConnection timed out.");
+  WiFi.disconnect(true, true);
+  delay(250);
+  return false;
+}
+
+static void startWifiPortal() {
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.softAP(portalSsid);
+  delay(100);
+  const IPAddress apIp = WiFi.softAPIP();
+  dnsServer.start(53, "*", apIp);
+
+  portalServer.on("/", HTTP_GET, []() {
+    String page =
+      "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>"
+      "<title>shortwave setup</title></head><body style='font-family:sans-serif;max-width:420px;margin:2rem auto;padding:0 1rem;'>"
+      "<h2>Connect shortwave</h2>"
+      "<p>Enter your Wi-Fi credentials:</p>"
+      "<form action='/save' method='POST'>"
+      "<label>SSID<br><input name='ssid' style='width:100%;padding:.5rem'></label><br><br>"
+      "<label>Password<br><input name='password' type='password' style='width:100%;padding:.5rem'></label><br><br>"
+      "<button type='submit' style='padding:.6rem 1rem'>Connect</button>"
+      "</form></body></html>";
+    portalServer.send(200, "text/html", page);
+  });
+
+  portalServer.on("/save", HTTP_POST, []() {
+    if (!portalServer.hasArg("ssid")) {
+      portalServer.send(400, "text/plain", "Missing ssid.");
+      return;
+    }
+    portalNewSsid = portalServer.arg("ssid");
+    portalNewPassword = portalServer.arg("password");
+    portalWantsConnect = true;
+    portalServer.send(200, "text/html",
+      "<html><body style='font-family:sans-serif;max-width:420px;margin:2rem auto;'>"
+      "<h3>Trying to connect...</h3><p>You can close this page in a few seconds.</p>"
+      "</body></html>");
+  });
+
+  portalServer.onNotFound([]() {
+    portalServer.sendHeader("Location", String("http://") + WiFi.softAPIP().toString(), true);
+    portalServer.send(302, "text/plain", "");
+  });
+
+  portalServer.begin();
+  Serial.println("Wi-Fi setup portal started.");
+  Serial.print("Connect to AP: ");
+  Serial.println(portalSsid);
+  Serial.print("Open: http://");
+  Serial.println(apIp);
+}
+
+static void connectWifiWithPortal() {
+  wifiPrefs.begin("wifi", false);
+  String savedSsid = wifiPrefs.getString("ssid", "");
+  String savedPassword = wifiPrefs.getString("password", "");
+
+  if (savedSsid.length() > 0 && connectToWifi(savedSsid.c_str(), savedPassword.c_str())) {
+    wifiPrefs.end();
+    return;
+  }
+
+  startWifiPortal();
+  while (WiFi.status() != WL_CONNECTED) {
+    dnsServer.processNextRequest();
+    portalServer.handleClient();
+    if (portalWantsConnect) {
+      portalWantsConnect = false;
+      if (portalNewSsid.length() > 0 && connectToWifi(portalNewSsid.c_str(), portalNewPassword.c_str(), 20000UL)) {
+        wifiPrefs.putString("ssid", portalNewSsid);
+        wifiPrefs.putString("password", portalNewPassword);
+        portalServer.stop();
+        dnsServer.stop();
+        WiFi.softAPdisconnect(true);
+        wifiPrefs.end();
+        return;
+      }
+      Serial.println("Portal connect attempt failed. Waiting for new credentials...");
+    }
+    delay(10);
+  }
+
+  wifiPrefs.end();
+}
 
 // ============================================================
 // BackgroundAudio (speaker output, I2S_NUM_0 via library)
@@ -577,17 +688,13 @@ void setup() {
     Serial.println("[TEST] Setup continues...");
   }
 
-  WiFi.begin(ssid, password);
-  Serial.print("Wi-Fi");
-  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  connectWifiWithPortal();
   for (int i = 0; i < 3; i++) {
     digitalWrite(LED_PIN, HIGH);
     delay(70);
     digitalWrite(LED_PIN, LOW);
     delay(70);
   }
-  Serial.println("\nConnected!");
-
   configTime(0, 0, "pool.ntp.org");
   struct tm ti;
   while (!getLocalTime(&ti)) { delay(500); Serial.println("Waiting NTP..."); }
