@@ -51,9 +51,6 @@ export async function POST(req: Request) {
         "1", // ... mono input
         "-i", // input filename/stream
         "pipe:0", // ... stdin (we will pipe the audio stream in)
-        "-af", // apply audio filters:
-        // compand: dynamic range compression, loudnorm: normalize loudness
-        "compand=attacks=0.3:decays=0.8:points=-80/-900|-40/-20|-20/-6|0/0:soft-knee=6:gain=8:volume=0,loudnorm=I=-16:TP=-1.5:LRA=11",
         "-acodec", // set audio codec to:
         "libmp3lame", // ... LAME MP3 encoder
         "-ab", // set audio bitrate

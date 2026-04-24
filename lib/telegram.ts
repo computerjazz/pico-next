@@ -28,7 +28,11 @@ export async function sendVoiceToChat(
   );
 
   let durationSec = 0;
-  let fadeFilter = "";
+  // Speech-focused processing for phone playback:
+  // band-limit to voice range, compress dynamics, then normalize loudness.
+  const speechFilter =
+    "highpass=f=120,lowpass=f=4200,acompressor=threshold=-24dB:ratio=3:attack=20:release=250:makeup=6,loudnorm=I=-16:TP=-1.5:LRA=7";
+  let finalFilter = speechFilter;
 
   const fadeDurationSec = options?.fadeOutDuration ?? 0;
   const hasFade = fadeDurationSec > 0;
@@ -40,12 +44,12 @@ export async function sendVoiceToChat(
     );
     console.log("Duration:", durationSec);
     const fadeStart = durationSec - fadeDurationSec;
-    fadeFilter = `-af "afade=t=out:st=${fadeStart}:d=${fadeDurationSec}"`;
+    finalFilter = `${speechFilter},afade=t=out:st=${fadeStart}:d=${fadeDurationSec}`;
   }
   try {
     // ffmpeg: mono, 48kHz sample rate, opus codec, 64k bitrate
     execSync(
-      `ffmpeg -y -i "${filePath}" ${fadeFilter} -ac 1 -ar 48000 -c:a libopus -b:a 64k "${outVoicePath}"`,
+      `ffmpeg -y -i "${filePath}" -af "${finalFilter}" -ac 1 -ar 48000 -c:a libopus -b:a 64k "${outVoicePath}"`,
     );
   } catch (err) {
     throw new Error("Failed to convert to OGG/OPUS for Telegram voice: " + err);
