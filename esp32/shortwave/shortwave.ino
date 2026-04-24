@@ -84,15 +84,35 @@ static void startWifiPortal() {
 
   portalServer.on("/", HTTP_GET, []() {
     String page =
-      "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>"
-      "<title>shortwave setup</title></head><body style='font-family:sans-serif;max-width:420px;margin:2rem auto;padding:0 1rem;'>"
-      "<h2>Connect shortwave</h2>"
-      "<p>Enter your Wi-Fi credentials:</p>"
+      "<!DOCTYPE html><html><head>"
+      "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+      "<title>sh0rtwave setup</title>"
+      "<style>"
+        "body{font-family:sans-serif;max-width:440px;margin:2.5rem auto;padding:2rem 1.4rem 1rem;background:#f4f6fa;color:#222;box-shadow:0 4px 16px #0001;border-radius:18px;}"
+        "h2{margin-top:0;font-size:2rem;font-weight:700;letter-spacing:-1px;}"
+        "form{margin:2.2rem 0 .5rem 0;}"
+        "label{display:block;margin-bottom:.85rem;font-weight:600;font-size:1rem;}"
+        "input[type='text'],input[type='password']{width:100%;padding:.65rem .8rem;border:1.5px solid #ccd2e3;border-radius:10px;font-size:1.05rem;box-sizing:border-box;margin-top:.2em;margin-bottom:.4em;}"
+        "button{padding:.8rem 1.7rem;border:none;border-radius:10px;background:#3367d6;color:white;font-weight:600;font-size:1.05rem;letter-spacing:.03em;box-shadow:0 2px 6px #0002;cursor:pointer;margin-top:.8rem;transition:.1s background;}"
+        "button:hover{background:#254b9c;}"
+        ".device-id{margin-top:2.3rem;padding:1rem .9rem;background:#eef0f5;border-radius:10px;color:#444;font-size:.97rem;word-break:break-all;}"
+      "</style></head>"
+      "<body>"
+      "<h2>Connect sh0rtwave</h2>"
+      "<div class='device-id'><b>Device ID:</b><br>" + String(DEVICE_ID) + "</div>"
+      "<p style='margin-top:2.1rem;'>"
+      "Enter your Wi-Fi credentials to connect your device:"
+      "</p>"
       "<form action='/save' method='POST'>"
-      "<label>SSID<br><input name='ssid' style='width:100%;padding:.5rem'></label><br><br>"
-      "<label>Password<br><input name='password' type='password' style='width:100%;padding:.5rem'></label><br><br>"
-      "<button type='submit' style='padding:.6rem 1rem'>Connect</button>"
-      "</form></body></html>";
+      "<label>SSID<br><input name='ssid' type='text' autocomplete='username wifi-ssid'></label>"
+      "<label>Password<br><input name='password' type='password' autocomplete='current-password wifi-password'></label>"
+      "<button type='submit'>Connect</button>"
+      "</form>"
+      "<p style='color:#7e869a;margin-top:2.2rem;font-size:.97rem;'>"
+      "If your Wi-Fi is hidden or does not show up, type its name (SSID) and password manually."
+      "</p>"
+      "</body></html>";
+ 
     portalServer.send(200, "text/html", page);
   });
 
@@ -125,6 +145,9 @@ static void startWifiPortal() {
 
 static void connectWifiWithPortal() {
   wifiPrefs.begin("wifi", false);
+  if (FORCE_WIFI_ONBOARDING) {
+    wifiPrefs.clear();
+  }
   String savedSsid = wifiPrefs.getString("ssid", "");
   String savedPassword = wifiPrefs.getString("password", "");
 
@@ -148,7 +171,14 @@ static void connectWifiWithPortal() {
         wifiPrefs.end();
         return;
       }
-      Serial.println("Portal connect attempt failed. Waiting for new credentials...");
+      Serial.println("Portal connect attempt failed. Re-opening portal...");
+      portalServer.stop();
+      dnsServer.stop();
+      WiFi.softAPdisconnect(true);
+      // Recursively call connectWifiWithPortal to restart the portal
+      wifiPrefs.end();
+      connectWifiWithPortal();
+      return;
     }
     delay(10);
   }
