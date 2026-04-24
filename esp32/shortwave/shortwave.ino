@@ -33,7 +33,7 @@
 // ============================================================
 
 #define POLL_INTERVAL_MS       60000UL
-#define RECORD_HOLD_MS         500UL   // hold longer than this to record; tap shorter for playback
+#define RECORD_HOLD_MS         300UL   // hold longer than this to record; tap shorter for playback
 #define SHORT_PRESS_MIN_MS     40      // debounce: ignore taps shorter than this
 #define DOUBLE_BLINK_PERIOD_MS 5000UL
 #define BUTTON_ACTIVE_STATE    HIGH
