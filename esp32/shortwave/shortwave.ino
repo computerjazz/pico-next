@@ -523,9 +523,9 @@ static bool streamAnsweringMachineMp3() {
 }
 
 static void playAnsweringMachineAudio() {
+  if (stopPlayback) return;  // canceled before worker began
   while (recording || stopRequested || uploadStreamActive) vTaskDelay(pdMS_TO_TICKS(20));
-
-  stopPlayback = false;
+  if (stopPlayback) return;  // canceled while waiting for record/upload to drain
 
   // Disable mic during playback — both peripherals share the I2S DMA bus and
   // having the mic's DMA running in the background causes audible noise.
@@ -592,7 +592,8 @@ static void audioTask(void*) {
       continue;
     }
 
-    if (!g_micRxChan) { vTaskDelay(10); continue; }
+    i2s_chan_handle_t micChan = g_micRxChan;
+    if (!micChan) { vTaskDelay(10); continue; }
 
     AudioChunk* chunk;
     if (xQueueReceive(freeChunks, &chunk, pdMS_TO_TICKS(100)) != pdTRUE) {
@@ -601,13 +602,16 @@ static void audioTask(void*) {
     }
 
     size_t bytesRead = 0;
-    esp_err_t err = i2s_channel_read(g_micRxChan, rawBuf,
+    esp_err_t err = i2s_channel_read(micChan, rawBuf,
                                      BUFFER_SAMPLES * sizeof(int32_t),
                                      &bytesRead, pdMS_TO_TICKS(250));
     if (err != ESP_OK) {
       chunk->size = 0;
-      i2s_channel_disable(g_micRxChan);
-      i2s_channel_enable(g_micRxChan);
+      // Recover only if this task still owns the same live channel handle.
+      if (micChan == g_micRxChan && micChan) {
+        i2s_channel_disable(micChan);
+        i2s_channel_enable(micChan);
+      }
     } else {
       size_t n = bytesRead / sizeof(int32_t);
       int16_t* dst = (int16_t*)chunk->data;
@@ -793,7 +797,9 @@ void loop() {
       !uploadStreamActive && !stopRequested &&
       millis() - pressStart >= RECORD_HOLD_MS) {
     holdingToRecord = true;
-    recording  = true;
+    // A long-press to record should cancel any queued/active playback.
+    playbackPending = false;
+    stopPlayback    = true;
     chunkIndex = 0;
     struct tm ti;
     if (getLocalTime(&ti)) {
@@ -809,10 +815,13 @@ void loop() {
     // release the I2S DMA before we reconfigure the GPIO routing.
     if (playbackActive) {
       unsigned long t0 = millis();
-      while (playbackActive && millis() - t0 < 300) delay(10);
+      while (playbackActive && millis() - t0 < 800) delay(10);
     }
+    // Reconfigure mic first, then arm recording so audioTask never touches
+    // a channel handle while it is being deleted/recreated.
     micDisable();
     micEnable(true);  // master for the duration of this recording
+    recording  = true;
     Serial.printf("Recording started — id: %s\n", recordingId.c_str());
   }
 
@@ -841,9 +850,10 @@ void loop() {
   }
   prevPressed = isPressed;
 
-  if (playbackPending && !recording && !playbackActive) {
+  if (playbackPending && !recording && !playbackActive && !isPressed && !holdingToRecord) {
     playbackPending = false;
     playbackActive  = true;
+    stopPlayback    = false;
     pollAnsweringMachine();
     if (playbackTask) {
       Serial.println("[PLAYBACK] Notifying playback task to start output.");
