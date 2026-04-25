@@ -98,8 +98,11 @@ async function addDeviceToChannel({
 }) {
   console.log(`adding device to channel with device id: ${deviceId}`);
   if (!deviceId) {
-    console.error("/register called with no device id");
-    return;
+    console.error("/add called with no device id");
+    return {
+      success: false,
+      message: "/add must be followed by a device id",
+    };
   }
   const device = await db.query.devices.findFirst({
     where: (t, { eq }) => eq(t.deviceId, deviceId),
@@ -107,7 +110,10 @@ async function addDeviceToChannel({
 
   if (!device) {
     console.error(`no device found with id: ${deviceId}`);
-    return;
+    return {
+      success: false,
+      message: `No device found with id ${deviceId}`,
+    };
   }
   const existingEntry = await db.query.deviceChannels.findFirst({
     where: (t, { eq, and }) =>
@@ -127,6 +133,7 @@ async function addDeviceToChannel({
     type: CHANNEL_TYPE_TELEGRAM,
     channelId,
   });
+  return { success: true, message: `Added ${deviceId} to this chat!` };
 }
 
 async function removeDeviceFromChannel({
@@ -138,8 +145,11 @@ async function removeDeviceFromChannel({
 }) {
   console.log(`removing device from channel with device id: ${deviceId}`);
   if (!deviceId) {
-    console.error("/register called with no device id");
-    return;
+    console.error("/remove called with no device id");
+    return {
+      success: false,
+      message: "/remove must be followed by a device id",
+    };
   }
   const device = await db.query.devices.findFirst({
     where: (t, { eq }) => eq(t.deviceId, deviceId),
@@ -147,19 +157,10 @@ async function removeDeviceFromChannel({
 
   if (!device) {
     console.error(`no device found with id: ${deviceId}`);
-    return;
-  }
-  const existingEntry = await db.query.deviceChannels.findFirst({
-    where: (t, { eq, and }) =>
-      and(
-        eq(t.channelId, channelId),
-        eq(t.deviceId, deviceId),
-        eq(t.type, CHANNEL_TYPE_TELEGRAM),
-      ),
-  });
-
-  if (!existingEntry) {
-    console.log(`no device associated with channel, device id: ${deviceId}`);
+    return {
+      success: false,
+      message: `No device found with id ${deviceId}`,
+    };
   }
 
   await db
@@ -171,6 +172,7 @@ async function removeDeviceFromChannel({
         eq(deviceChannels.channelId, channelId),
       ),
     );
+  return { success: true, message: `Removed ${deviceId} from this chat!` };
 }
 
 async function onTextMessageReceived({
@@ -184,20 +186,20 @@ async function onTextMessageReceived({
 
   if (command === "/add") {
     const deviceId = args[0];
-    await addDeviceToChannel({ deviceId, channelId });
+    const status = await addDeviceToChannel({ deviceId, channelId });
     await sendMessageToChat({
       chatId: channelId,
-      text: `Added ${deviceId} to this channel!`,
+      text: status.message,
       replyToMessageId: messageId,
     });
   }
 
   if (command === "/remove") {
     const deviceId = args[0];
-    await removeDeviceFromChannel({ deviceId, channelId });
+    const status = await removeDeviceFromChannel({ deviceId, channelId });
     await sendMessageToChat({
       chatId: channelId,
-      text: `Removed ${deviceId} from this channel!`,
+      text: status.message,
       replyToMessageId: messageId,
     });
   }
