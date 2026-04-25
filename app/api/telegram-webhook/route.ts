@@ -127,10 +127,6 @@ async function addDeviceToChannel({
     type: CHANNEL_TYPE_TELEGRAM,
     channelId,
   });
-  await sendMessageToChat({
-    chatId: channelId,
-    text: `Added ${deviceId} to this channel!`,
-  });
 }
 
 async function removeDeviceFromChannel({
@@ -175,11 +171,6 @@ async function removeDeviceFromChannel({
         eq(deviceChannels.channelId, channelId),
       ),
     );
-
-  await sendMessageToChat({
-    chatId: channelId,
-    text: `Removed ${deviceId} from this channel!`,
-  });
 }
 
 async function onTextMessageReceived({
@@ -189,15 +180,26 @@ async function onTextMessageReceived({
 }) {
   const [command, ...args] = message.text.split(" ");
   const channelId = String(message.chat.id);
+  const messageId = String(message.message_id);
 
   if (command === "/add") {
     const deviceId = args[0];
     await addDeviceToChannel({ deviceId, channelId });
+    await sendMessageToChat({
+      chatId: channelId,
+      text: `Added ${deviceId} to this channel!`,
+      replyToMessageId: messageId,
+    });
   }
 
   if (command === "/remove") {
     const deviceId = args[0];
     await removeDeviceFromChannel({ deviceId, channelId });
+    await sendMessageToChat({
+      chatId: channelId,
+      text: `Removed ${deviceId} from this channel!`,
+      replyToMessageId: messageId,
+    });
   }
 }
 

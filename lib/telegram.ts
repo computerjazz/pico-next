@@ -176,9 +176,11 @@ export async function downloadAndConvertVoice({
 export async function sendMessageToChat({
   text,
   chatId,
+  replyToMessageId,
 }: {
   text: string;
   chatId: string;
+  replyToMessageId?: string;
 }) {
   const resp = await fetch(
     `https://api.telegram.org/bot${telegramToken}/sendMessage`,
@@ -188,6 +190,7 @@ export async function sendMessageToChat({
       body: JSON.stringify({
         chat_id: chatId,
         text,
+        ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
       }),
     },
   );
