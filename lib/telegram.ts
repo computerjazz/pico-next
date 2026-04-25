@@ -172,3 +172,26 @@ export async function downloadAndConvertVoice({
 
   return outputMp3Path;
 }
+
+export async function sendMessageToChat({
+  text,
+  chatId,
+}: {
+  text: string;
+  chatId: string;
+}) {
+  const resp = await fetch(
+    `https://api.telegram.org/bot${telegramToken}/sendMessage`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+      }),
+    },
+  );
+
+  const data = await resp.json();
+  return { data };
+}

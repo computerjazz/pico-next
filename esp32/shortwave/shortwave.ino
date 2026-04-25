@@ -735,21 +735,22 @@ void setup() {
   pinMode(I2S_PLAY_WS,   OUTPUT); digitalWrite(I2S_PLAY_WS,   LOW);
   pinMode(I2S_PLAY_DOUT, OUTPUT); digitalWrite(I2S_PLAY_DOUT, LOW);
 
-  // Test tone on boot: hold button for >2 seconds on startup
-  unsigned long bootTestToneStart = millis();
-  bool testToneArmed = false;
-  while (millis() - bootTestToneStart < 2100 && digitalRead(BUTTON_PIN) == BUTTON_ACTIVE_STATE) {
-    if (!testToneArmed) {
-      Serial.println("[TEST] Button held on boot! Will output test tone.");
-      testToneArmed = true;
+  // Clear saved Wi-Fi credentials if button is held for >2 seconds on boot.
+  unsigned long bootHoldStart = millis();
+  bool clearWifiCreds = false;
+  while (millis() - bootHoldStart < 2100 && digitalRead(BUTTON_PIN) == BUTTON_ACTIVE_STATE) {
+    if (!clearWifiCreds) {
+      Serial.println("Button held on boot: Wi-Fi credentials will be cleared.");
+      clearWifiCreds = true;
     }
     delay(10);
   }
-  if (testToneArmed) {
-    digitalWrite(LED_PIN, HIGH);
-    playTestTone();
-    digitalWrite(LED_PIN, LOW);
-    Serial.println("[TEST] Setup continues...");
+  if (clearWifiCreds) {
+    wifiPrefs.begin("wifi", false);
+    wifiPrefs.remove("ssid");
+    wifiPrefs.remove("password");
+    wifiPrefs.end();
+    Serial.println("Saved Wi-Fi credentials cleared.");
   }
 
   connectWifiWithPortal();

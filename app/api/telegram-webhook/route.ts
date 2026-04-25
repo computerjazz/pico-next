@@ -1,6 +1,10 @@
 import { verifyAuth } from "@/lib/auth";
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
-import { downloadAndConvertVoice, getFilePath } from "@/lib/telegram";
+import {
+  downloadAndConvertVoice,
+  getFilePath,
+  sendMessageToChat,
+} from "@/lib/telegram";
 import z from "zod";
 import fs from "fs";
 import { db } from "@/db";
@@ -123,6 +127,10 @@ async function addDeviceToChannel({
     type: CHANNEL_TYPE_TELEGRAM,
     channelId,
   });
+  await sendMessageToChat({
+    chatId: channelId,
+    text: `Added ${deviceId} to this channel!`,
+  });
 }
 
 async function removeDeviceFromChannel({
@@ -167,6 +175,11 @@ async function removeDeviceFromChannel({
         eq(deviceChannels.channelId, channelId),
       ),
     );
+
+  await sendMessageToChat({
+    chatId: channelId,
+    text: `Removed ${deviceId} from this channel!`,
+  });
 }
 
 async function onTextMessageReceived({
@@ -177,7 +190,7 @@ async function onTextMessageReceived({
   const [command, ...args] = message.text.split(" ");
   const channelId = String(message.chat.id);
 
-  if (command === "/register") {
+  if (command === "/add") {
     const deviceId = args[0];
     await addDeviceToChannel({ deviceId, channelId });
   }
