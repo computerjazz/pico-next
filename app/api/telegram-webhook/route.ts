@@ -126,6 +126,10 @@ async function addDeviceToChannel({
 
   if (existingEntry) {
     console.log(`device already added to channel ${deviceId}`);
+    return {
+      success: false,
+      message: `${deviceId} is already in this chat!`,
+    };
   }
 
   await db.insert(deviceChannels).values({
