@@ -4,6 +4,10 @@ import { downloadAndConvertVoice, getFilePath } from "@/lib/telegram";
 import z from "zod";
 import fs from "fs";
 import { db } from "@/db";
+import { deviceChannels } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
+
+const CHANNEL_TYPE_TELEGRAM = "telegram";
 
 const TelegramVoiceMessageSchema = z.object({
   update_id: z.number(),
@@ -31,6 +35,159 @@ const TelegramVoiceMessageSchema = z.object({
   }),
 });
 
+type TelegramVoiceMessage = z.infer<typeof TelegramVoiceMessageSchema>;
+
+const TelegramTextMessageSchema = z.object({
+  update_id: z.number(),
+  message: z.object({
+    message_id: z.number(),
+    from: z.object({
+      id: z.number(),
+      is_bot: z.boolean(),
+      first_name: z.string(),
+      language_code: z.string(),
+    }),
+    chat: z.object({
+      id: z.number(),
+      title: z.string(),
+      type: z.string(),
+    }),
+    date: z.number(),
+    text: z.string(),
+    entities: z.array(z.unknown()),
+  }),
+});
+
+type TelegramTextMessage = z.infer<typeof TelegramTextMessageSchema>;
+
+async function onVoiceMessageReceived({
+  message,
+}: {
+  message: TelegramVoiceMessage["message"];
+}) {
+  const { voice, chat } = message;
+  console.log("successfully parsed telegram voice message", voice, chat);
+
+  const chatId = chat.id;
+
+  const devices = await db.query.deviceChannels.findMany({
+    where: (t, { eq }) => eq(t.channelId, String(chatId)),
+  });
+
+  await Promise.all(
+    devices.map(async (device) => {
+      const voiceMp3 = await downloadAndConvertVoice({
+        fileId: voice.file_id,
+        deviceId: device.deviceId,
+      });
+      console.log("voiceMp3", voiceMp3);
+    }),
+  );
+}
+
+async function addDeviceToChannel({
+  deviceId,
+  channelId,
+}: {
+  deviceId: string;
+  channelId: string;
+}) {
+  console.log(`adding device to channel with device id: ${deviceId}`);
+  if (!deviceId) {
+    console.error("/register called with no device id");
+    return;
+  }
+  const device = await db.query.devices.findFirst({
+    where: (t, { eq }) => eq(t.deviceId, deviceId),
+  });
+
+  if (!device) {
+    console.error(`no device found with id: ${deviceId}`);
+    return;
+  }
+  const existingEntry = await db.query.deviceChannels.findFirst({
+    where: (t, { eq, and }) =>
+      and(
+        eq(t.channelId, channelId),
+        eq(t.deviceId, deviceId),
+        eq(t.type, CHANNEL_TYPE_TELEGRAM),
+      ),
+  });
+
+  if (existingEntry) {
+    console.log(`device already added to channel ${deviceId}`);
+  }
+
+  await db.insert(deviceChannels).values({
+    deviceId,
+    type: CHANNEL_TYPE_TELEGRAM,
+    channelId,
+  });
+}
+
+async function removeDeviceFromChannel({
+  deviceId,
+  channelId,
+}: {
+  deviceId: string;
+  channelId: string;
+}) {
+  console.log(`removing device from channel with device id: ${deviceId}`);
+  if (!deviceId) {
+    console.error("/register called with no device id");
+    return;
+  }
+  const device = await db.query.devices.findFirst({
+    where: (t, { eq }) => eq(t.deviceId, deviceId),
+  });
+
+  if (!device) {
+    console.error(`no device found with id: ${deviceId}`);
+    return;
+  }
+  const existingEntry = await db.query.deviceChannels.findFirst({
+    where: (t, { eq, and }) =>
+      and(
+        eq(t.channelId, channelId),
+        eq(t.deviceId, deviceId),
+        eq(t.type, CHANNEL_TYPE_TELEGRAM),
+      ),
+  });
+
+  if (!existingEntry) {
+    console.log(`no device associated with channel, device id: ${deviceId}`);
+  }
+
+  await db
+    .delete(deviceChannels)
+    .where(
+      and(
+        eq(deviceChannels.deviceId, deviceId),
+        eq(deviceChannels.type, CHANNEL_TYPE_TELEGRAM),
+        eq(deviceChannels.channelId, channelId),
+      ),
+    );
+}
+
+async function onTextMessageReceived({
+  message,
+}: {
+  message: TelegramTextMessage["message"];
+}) {
+  const [command, ...args] = message.text.split(" ");
+  const channelId = String(message.chat.id);
+
+  if (command === "/register") {
+    const deviceId = args[0];
+    await addDeviceToChannel({ deviceId, channelId });
+  }
+
+  if (command === "/remove") {
+    const deviceId = args[0];
+    await removeDeviceFromChannel({ deviceId, channelId });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -38,29 +195,22 @@ export async function POST(req: Request) {
     console.log("telegram-webhook body", body);
     await redis.set(REDIS_KEYS.LATEST_TELEGRAM_MESSAGE, JSON.stringify(body));
     console.log("telegram-webhook: set latest telegram message");
-    const parsed = TelegramVoiceMessageSchema.safeParse(body);
-    console.log("telegram-webhook: parsed", parsed);
+    const voiceMessageParsed = TelegramVoiceMessageSchema.safeParse(body);
+    const textMessageParsed = TelegramTextMessageSchema.safeParse(body);
+    console.log("telegram-webhook: parsed", voiceMessageParsed);
 
-    if (parsed.success) {
-      const { voice, chat } = parsed.data.message;
-      console.log("successfully parsed telegram voice message", voice, chat);
-
-      const chatId = chat.id;
-
-      const devices = await db.query.deviceChannels.findMany({
-        where: (t, { eq }) => eq(t.channelId, String(chatId)),
+    if (voiceMessageParsed.success) {
+      await onVoiceMessageReceived({
+        message: voiceMessageParsed.data.message,
       });
-
-      await Promise.all(
-        devices.map(async (device) => {
-          const voiceMp3 = await downloadAndConvertVoice({
-            fileId: voice.file_id,
-            deviceId: device.deviceId,
-          });
-          console.log("voiceMp3", voiceMp3);
-        }),
-      );
     }
+
+    if (textMessageParsed.success) {
+      await onTextMessageReceived({
+        message: textMessageParsed.data.message,
+      });
+    }
+
     // Here you could save images, trigger your frontend, etc.
     return new Response(null, { status: 200 });
   } catch (err) {

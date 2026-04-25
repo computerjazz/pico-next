@@ -443,6 +443,34 @@ static bool hasUnlistenedMessages() {
   return latestMsgKey.length() > 0 && latestMsgKey != lastListenedMsgKey;
 }
 
+static bool phoneHome() {
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+  if (!http.begin(client, String("https://") + serverHost + "/api/phone-home")) {
+    Serial.println("phoneHome: http begin failed");
+    return false;
+  }
+
+  http.addHeader("Authorization", String("Bearer ") + authToken);
+  http.addHeader("x-device-id", String(DEVICE_ID));
+  http.addHeader("x-device-type", "shortwave");
+  http.addHeader("ngrok-skip-browser-warning", "true");
+
+  int code = http.POST((uint8_t*)nullptr, 0);
+  String body = http.getString();
+  http.end();
+
+  if (code >= 200 && code < 300) {
+    Serial.printf("phoneHome: success (%d)\n", code);
+    return true;
+  }
+
+  Serial.printf("phoneHome: HTTP %d, body: %s\n", code, body.c_str());
+  return false;
+}
+
 // ============================================================
 // Playback
 // ============================================================
@@ -725,12 +753,16 @@ void setup() {
   }
 
   connectWifiWithPortal();
+  phoneHome();
   for (int i = 0; i < 3; i++) {
     digitalWrite(LED_PIN, HIGH);
     delay(70);
     digitalWrite(LED_PIN, LOW);
     delay(70);
   }
+
+
+  
   configTime(0, 0, "pool.ntp.org");
   struct tm ti;
   while (!getLocalTime(&ti)) { delay(500); Serial.println("Waiting NTP..."); }
