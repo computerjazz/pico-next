@@ -2,7 +2,7 @@ import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
-import { clients } from "./lib/wsClients";
+import { clients } from "./lib/wsClients.js";
 
 const app = next({ dev: false });
 const handle = app.getRequestHandler();
