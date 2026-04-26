@@ -50,6 +50,7 @@ const char* portalSsid = "sh0rtwave-setup";
 static DNSServer dnsServer;
 static WebServer portalServer(80);
 static Preferences wifiPrefs;
+static Preferences msgPrefs;
 static bool portalWantsConnect = false;
 static String portalNewSsid;
 static String portalNewPassword;
@@ -336,9 +337,6 @@ static volatile bool stopRequested      = false;
 static volatile bool uploadStreamActive = false;
 static volatile bool stopPlayback       = false;
 
-static String        latestMsgKey       = "";
-static String        lastListenedMsgKey = "";
-static bool          firstPollDone      = false;
 static bool          playbackPending    = false;
 static bool          playbackActive     = false;
 static unsigned long lastPollMs         = 0;
@@ -346,6 +344,29 @@ static unsigned long nextDoubleBlinkMs  = 0;
 static int           doubleBlinkPhase   = 0;
 
 static TaskHandle_t playbackTask = nullptr;
+
+static String getLatestMsgKey() {
+  return msgPrefs.getString("latestKey", "");
+}
+
+static String getLastListenedMsgKey() {
+  return msgPrefs.getString("listenedKey", "");
+}
+
+static void setLatestMsgKey(const String& key) {
+  msgPrefs.putString("latestKey", key);
+}
+
+static void setLastListenedMsgKey(const String& key) {
+  msgPrefs.putString("listenedKey", key);
+}
+
+static void loadMessageStateFromPrefs() {
+  msgPrefs.begin("msgstate", false);
+  Serial.printf("msg state: latest=%s listened=%s\n",
+                getLatestMsgKey().c_str(),
+                getLastListenedMsgKey().c_str());
+}
 
 // ============================================================
 // HTTPS stream helpers (upload)
@@ -427,19 +448,20 @@ static bool pollAnsweringMachine() {
   int code = http.GET();
   String body = http.getString(); http.end();
   if (code == 404) {
-    latestMsgKey = "";
-    if (!firstPollDone) { lastListenedMsgKey = ""; firstPollDone = true; }
+    setLatestMsgKey("");
     return true;
   }
   if (code != 200) { Serial.printf("poll: HTTP %d\n", code); return false; }
   String fn = extractJsonField(body, "fileName");
   String mt = extractJsonField(body, "mtime");
-  latestMsgKey = (fn.length() && mt.length()) ? fn + "|" + mt : "";
-  if (!firstPollDone) { lastListenedMsgKey = latestMsgKey; firstPollDone = true; }
+  String latestMsgKey = (fn.length() && mt.length()) ? fn + "|" + mt : "";
+  setLatestMsgKey(latestMsgKey);
   return true;
 }
 
 static bool hasUnlistenedMessages() {
+  String latestMsgKey = getLatestMsgKey();
+  String lastListenedMsgKey = getLastListenedMsgKey();
   return latestMsgKey.length() > 0 && latestMsgKey != lastListenedMsgKey;
 }
 
@@ -579,7 +601,7 @@ static void playAnsweringMachineAudio() {
   micEnable();  // slave: g_mp3Started is now true
 
   if (ok) {
-    lastListenedMsgKey = latestMsgKey;
+    setLastListenedMsgKey(getLatestMsgKey());
     Serial.println("play: finished");
   }
 }
@@ -754,6 +776,7 @@ void setup() {
   }
 
   connectWifiWithPortal();
+  loadMessageStateFromPrefs();
   phoneHome();
   for (int i = 0; i < 3; i++) {
     digitalWrite(LED_PIN, HIGH);
