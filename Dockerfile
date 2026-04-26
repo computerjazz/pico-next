@@ -5,14 +5,12 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm run build
+RUN npx tsc server.ts --outDir dist --esModuleInterop --module commonjs --skipLibCheck
 
 # Stage 2: production image
 FROM node:20-alpine
 WORKDIR /app
-
-# Install ffmpeg in the runtime image
 RUN apk add --no-cache ffmpeg
-
 COPY --from=builder /app ./
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["node", "dist/server.js"]
