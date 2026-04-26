@@ -2,12 +2,29 @@ import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
-import { clients } from "./lib/wsClients.js";
+import { getRedis } from "@/lib/redis.js";
 
 const app = next({ dev: false });
 const handle = app.getRequestHandler();
 
-app.prepare().then(() => {
+const clients = new Map<string, WebSocket>();
+
+async function main() {
+  const subscriber = await getRedis();
+  console.log("Redis connected");
+
+  await subscriber.subscribe("ws:commands", (message) => {
+    const { targetId, command } = JSON.parse(message);
+    const socket = clients.get(targetId);
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(command);
+    } else {
+      console.warn(`Client ${targetId} not connected`);
+    }
+  });
+
+  await app.prepare();
+
   const server = createServer((req, res) => {
     handle(req, res, parse(req.url!, true));
   });
@@ -56,4 +73,9 @@ app.prepare().then(() => {
   });
 
   server.listen(3000, () => console.log("Ready on port 3000"));
+}
+
+main().catch((err) => {
+  console.error("Fatal error:", err);
+  process.exit(1);
 });
