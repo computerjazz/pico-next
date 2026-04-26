@@ -5,6 +5,8 @@ import { spawn } from "child_process";
 import fs from "fs";
 import { sendVoiceToChat } from "@/lib/telegram";
 import { db } from "@/db";
+import { deviceChannels } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
 
@@ -19,15 +21,12 @@ export async function POST(req: Request) {
     });
     if (errRsp) return errRsp;
 
-    const recordingId = req.headers.get("x-recording-id");
+    const recordingId =
+      req.headers.get("x-recording-id") ?? `new-recording-${Date.now()}`;
     const sampleRate = req.headers.get("x-sample-rate") ?? "44100";
-    const deviceId = req.headers.get("x-device-id");
+    const deviceId = req.headers.get("x-device-id") ?? "unknown";
 
     const minBytes = parseInt(sampleRate) * BYTES_PER_SAMPLE * MIN_SECONDS;
-
-    if (!recordingId) {
-      return new Response("Missing recording ID", { status: 400 });
-    }
 
     console.log(`Recording started: ${recordingId}`);
 
@@ -35,7 +34,7 @@ export async function POST(req: Request) {
       process.cwd(),
       "uploads",
       "sh0rtwave",
-      deviceId ?? "unknown",
+      deviceId,
       "outbound",
     );
     mkdirSync(audioDir, { recursive: true });
@@ -117,6 +116,25 @@ export async function POST(req: Request) {
         chatIds,
       });
       console.log("voice resp", resp);
+      const { remappedChatIds } = resp;
+      if (remappedChatIds.size) {
+        await Promise.all(
+          [...remappedChatIds].map(async ([oldChatId, newChatId]) => {
+            await db
+              .update(deviceChannels)
+              .set({
+                channelId: newChatId,
+              })
+              .where(
+                and(
+                  eq(deviceChannels.deviceId, deviceId),
+                  eq(deviceChannels.channelId, oldChatId),
+                  eq(deviceChannels.type, "telegram"),
+                ),
+              );
+          }),
+        );
+      }
     } catch (err) {
       console.log("Send voice error", err);
     }

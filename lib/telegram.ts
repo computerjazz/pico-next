@@ -5,8 +5,44 @@ import os from "os";
 import path from "path";
 import { execSync, spawn } from "child_process";
 import { getAnsweringMachineDir } from "@/app/api/answering-machine/utils";
+import { z } from "zod";
 
 const telegramToken = process.env.TELEGRAM_TOKEN;
+
+export const TelegramVoiceJsonResponseSchema = z.object({
+  ok: z.boolean(),
+  error_code: z.number(),
+  description: z.string(),
+  parameters: z.object({
+    migrate_to_chat_id: z.number(),
+  }),
+});
+
+export type TelegramVoiceJsonResponse = z.infer<
+  typeof TelegramVoiceJsonResponseSchema
+>;
+
+async function makeVoiceRequest({
+  chatId,
+  outVoicePath,
+}: {
+  chatId: string;
+  outVoicePath: string;
+}) {
+  const form = new FormData();
+  form.append("chat_id", chatId);
+  form.append("voice", fs.createReadStream(outVoicePath));
+
+  const resp = await fetch(
+    `https://api.telegram.org/bot${telegramToken}/sendVoice`,
+    {
+      method: "POST",
+      body: form,
+    },
+  );
+  const respJson = await resp.json();
+  return respJson as Record<string, unknown>;
+}
 
 // send a voice note (OGG/OPUS)
 export async function sendVoiceToChat(
@@ -14,8 +50,6 @@ export async function sendVoiceToChat(
   options?: { fadeOutDuration: number; chatIds: string[] },
 ) {
   console.log("Telegram: sendvoice");
-
-  const form = new FormData();
 
   // Ensure the file extension is .ogg for voice
   const outVoicePath = path.join(
@@ -62,24 +96,28 @@ export async function sendVoiceToChat(
   }
 
   const chatIds = options?.chatIds ?? [];
+  const remappedChatIds = new Map<string, string>();
 
   const responses = await Promise.all(
     chatIds?.map(async (chatId) => {
-      form.append("chat_id", chatId);
-      form.append("voice", fs.createReadStream(outVoicePath));
-
-      const resp = await fetch(
-        `https://api.telegram.org/bot${telegramToken}/sendVoice`,
-        {
-          method: "POST",
-          body: form,
-        },
-      );
-      return resp.json();
+      const resp = await makeVoiceRequest({ chatId, outVoicePath });
+      const parsed = TelegramVoiceJsonResponseSchema.safeParse(resp);
+      if (parsed.success && !parsed.data.ok) {
+        console.log(`chat has been updated, sending to new chat id`);
+        const newChatId = String(parsed.data.parameters.migrate_to_chat_id);
+        // Update the channelId in deviceChannels to the newChatId
+        const newResp = await makeVoiceRequest({
+          chatId: newChatId,
+          outVoicePath,
+        });
+        if ("ok" in newResp && newResp.ok) {
+          remappedChatIds.set(chatId, newChatId);
+        }
+      }
     }),
   );
 
-  return responses;
+  return { responses, remappedChatIds };
 }
 
 // send an audio file (MP3)
