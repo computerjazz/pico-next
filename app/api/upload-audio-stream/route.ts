@@ -7,6 +7,7 @@ import { sendVoiceToChat } from "@/lib/telegram";
 import { db } from "@/db";
 import { deviceChannels } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
+import { CHANNEL_TYPE } from "@/lib/constants";
 
 export const runtime = "nodejs";
 
@@ -106,7 +107,10 @@ export async function POST(req: Request) {
       console.log("sending as voice ", outputMp3Path);
       const channels = await db.query.deviceChannels.findMany({
         where: (t, { eq, and }) =>
-          and(eq(t.deviceId, deviceId ?? ""), eq(t.type, "telegram")),
+          and(
+            eq(t.deviceId, deviceId ?? ""),
+            eq(t.type, CHANNEL_TYPE.TELEGRAM),
+          ),
         columns: { channelId: true },
       });
 

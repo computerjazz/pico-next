@@ -1,3 +1,4 @@
+import { CHANNEL_TYPE } from "@/lib/constants";
 import { pgSchema, uuid, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 // define the schema
@@ -25,6 +26,8 @@ export const deviceChannels = pico.table("device_channels", {
     .notNull()
     .references(() => devices.deviceId),
   channelId: varchar("channel_id", { length: 100 }).notNull(),
-  type: varchar("type", { length: 50 }).notNull().default("telegram"),
+  type: varchar("type", { length: 50 })
+    .notNull()
+    .default(CHANNEL_TYPE.TELEGRAM),
   createdAt: timestamp("created_at").defaultNow(),
 });

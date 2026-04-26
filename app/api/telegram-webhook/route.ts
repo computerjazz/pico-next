@@ -10,8 +10,7 @@ import fs from "fs";
 import { db } from "@/db";
 import { deviceChannels } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
-
-const CHANNEL_TYPE_TELEGRAM = "telegram";
+import { CHANNEL_TYPE } from "@/lib/constants";
 
 const TelegramVoiceMessageSchema = z.object({
   update_id: z.number(),
@@ -120,7 +119,7 @@ async function addDeviceToChannel({
       and(
         eq(t.channelId, channelId),
         eq(t.deviceId, deviceId),
-        eq(t.type, CHANNEL_TYPE_TELEGRAM),
+        eq(t.type, CHANNEL_TYPE.TELEGRAM),
       ),
   });
 
@@ -134,7 +133,7 @@ async function addDeviceToChannel({
 
   await db.insert(deviceChannels).values({
     deviceId,
-    type: CHANNEL_TYPE_TELEGRAM,
+    type: CHANNEL_TYPE.TELEGRAM,
     channelId,
   });
   return { success: true, message: `Added ${deviceId} to this chat!` };
@@ -172,7 +171,7 @@ async function removeDeviceFromChannel({
     .where(
       and(
         eq(deviceChannels.deviceId, deviceId),
-        eq(deviceChannels.type, CHANNEL_TYPE_TELEGRAM),
+        eq(deviceChannels.type, CHANNEL_TYPE.TELEGRAM),
         eq(deviceChannels.channelId, channelId),
       ),
     );
