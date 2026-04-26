@@ -113,6 +113,9 @@ export async function sendVoiceToChat(
         if ("ok" in newResp && newResp.ok) {
           remappedChatIds.set(chatId, newChatId);
         }
+        return newResp;
+      } else {
+        return resp;
       }
     }),
   );
