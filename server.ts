@@ -2,7 +2,7 @@ import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
-import { getRedis } from "@/lib/redis.js";
+import { getRedis } from "./lib/redis.js";
 
 const app = next({ dev: false });
 const handle = app.getRequestHandler();
