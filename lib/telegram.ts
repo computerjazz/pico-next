@@ -192,7 +192,7 @@ export async function downloadAndConvertVoice({
       "-i",
       inputOggPath, // input file is our downloaded OGG
       "-af",
-      // "compand=attacks=0.3:decays=0.8:points=-80/-900|-40/-20|-20/-6|0/0:soft-knee=6:gain=8:volume=0,loudnorm=I=-16:TP=-1.5:LRA=11",
+      "compand=attacks=0.3:decays=0.8:points=-80/-900|-40/-20|-20/-6|0/0:soft-knee=6:gain=8:volume=0,loudnorm=I=-16:TP=-1.5:LRA=11",
       "-acodec",
       "libmp3lame",
       "-ab",
