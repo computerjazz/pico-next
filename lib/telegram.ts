@@ -61,24 +61,39 @@ export async function sendVoiceToChat(
       ".ogg",
   );
 
-  let durationSec = 0;
+  /** Trim tail (e.g. mic/button release click) before dynamics processing. */
+  const tailChopSec = 0.05;
+
+  const durationSec = parseFloat(
+    execSync(
+      `ffprobe -i "${filePath}" -show_entries format=duration -v quiet -of csv="p=0"`,
+    ).toString(),
+  );
+
   // Speech-focused processing for phone playback:
   // band-limit to voice range, compress dynamics, then normalize loudness.
   const speechFilter =
     "highpass=f=120,lowpass=f=4200,acompressor=threshold=-24dB:ratio=3:attack=20:release=250:makeup=6,loudnorm=I=-16:TP=-1.5:LRA=7";
   let finalFilter = speechFilter;
 
+  if (durationSec > tailChopSec) {
+    const trimEnd = durationSec - tailChopSec;
+    finalFilter = `atrim=end=${trimEnd},asetpts=PTS-STARTPTS,${finalFilter}`;
+  }
+
   const fadeDurationSec = options?.fadeOutDurationSec ?? 0;
   const hasFade = fadeDurationSec > 0;
   if (hasFade) {
-    durationSec = parseFloat(
-      execSync(
-        `ffprobe -i "${filePath}" -show_entries format=duration -v quiet -of csv="p=0"`,
-      ).toString(),
+    const effDuration =
+      durationSec > tailChopSec ? durationSec - tailChopSec : durationSec;
+    console.log(
+      "Duration:",
+      durationSec,
+      "effective (after tail chop):",
+      effDuration,
     );
-    console.log("Duration:", durationSec);
-    const fadeStart = durationSec - fadeDurationSec;
-    finalFilter = `${speechFilter},afade=t=out:st=${fadeStart}:d=${fadeDurationSec}`;
+    const fadeStart = effDuration - fadeDurationSec;
+    finalFilter = `${finalFilter},afade=t=out:st=${fadeStart}:d=${fadeDurationSec}`;
   }
   try {
     // ffmpeg: mono, 48kHz sample rate, opus codec, 64k bitrate
