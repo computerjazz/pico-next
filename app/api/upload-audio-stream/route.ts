@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       req.headers.get("x-recording-id") ?? `new-recording-${Date.now()}`;
     const sampleRate = req.headers.get("x-sample-rate") ?? "44100";
     const deviceId = req.headers.get("x-device-id") ?? "unknown";
+    const audioFilename = `${deviceId}-${new Date().toISOString()}-${recordingId}.mp3`;
 
     const minBytes = parseInt(sampleRate) * BYTES_PER_SAMPLE * MIN_SECONDS;
 
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
       "outbound",
     );
     mkdirSync(audioDir, { recursive: true });
-    const outputMp3Path = path.join(audioDir, `${recordingId}.mp3`);
+    const outputMp3Path = path.join(audioDir, audioFilename);
 
     const ffmpegResult = await new Promise<Response>((resolve) => {
       const ffmpeg = spawn("ffmpeg", [
