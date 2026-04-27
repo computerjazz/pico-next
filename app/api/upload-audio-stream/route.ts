@@ -117,7 +117,7 @@ export async function POST(req: Request) {
 
       const chatIds = channels.map((c) => c.channelId);
       const resp = await sendVoiceToChat(outputMp3Path, {
-        fadeOutDuration: 0,
+        fadeOutDurationSec: 0.25,
         chatIds,
       });
       console.log("voice resp", resp);

@@ -47,7 +47,7 @@ async function makeVoiceRequest({
 // send a voice note (OGG/OPUS)
 export async function sendVoiceToChat(
   filePath: string,
-  options?: { fadeOutDuration: number; chatIds: string[] },
+  options?: { fadeOutDurationSec: number; chatIds: string[] },
 ) {
   console.log("Telegram: sendvoice");
 
@@ -68,7 +68,7 @@ export async function sendVoiceToChat(
     "highpass=f=120,lowpass=f=4200,acompressor=threshold=-24dB:ratio=3:attack=20:release=250:makeup=6,loudnorm=I=-16:TP=-1.5:LRA=7";
   let finalFilter = speechFilter;
 
-  const fadeDurationSec = options?.fadeOutDuration ?? 0;
+  const fadeDurationSec = options?.fadeOutDurationSec ?? 0;
   const hasFade = fadeDurationSec > 0;
   if (hasFade) {
     durationSec = parseFloat(
@@ -83,7 +83,23 @@ export async function sendVoiceToChat(
   try {
     // ffmpeg: mono, 48kHz sample rate, opus codec, 64k bitrate
     execSync(
-      `ffmpeg -y -i "${filePath}" -af "${finalFilter}" -ac 1 -ar 48000 -c:a libopus -b:a 64k "${outVoicePath}"`,
+      [
+        "ffmpeg",
+        "-y",
+        "-i",
+        filePath,
+        "-af",
+        finalFilter,
+        "-ac",
+        "1",
+        "-ar",
+        "48000",
+        "-c:a",
+        "libopus",
+        "-b:a",
+        "64k",
+        outVoicePath,
+      ].join(" "),
     );
   } catch (err) {
     throw new Error("Failed to convert to OGG/OPUS for Telegram voice: " + err);
