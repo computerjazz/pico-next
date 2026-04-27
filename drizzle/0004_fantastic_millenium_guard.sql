@@ -1,0 +1,1 @@
+ALTER TABLE "pico_next_db"."toggle_states" RENAME TO "toggles";

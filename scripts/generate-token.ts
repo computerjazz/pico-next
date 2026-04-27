@@ -1,8 +1,13 @@
 import jwt from "jsonwebtoken";
 import "./env";
 
-const token = jwt.sign({ scope: "read:mail" }, process.env.JWT_SECRET!, {
-  expiresIn: "1y",
-});
+const mailToken = jwt.sign({ scope: "read:mail" }, process.env.JWT_SECRET!);
+const toggleToken = jwt.sign(
+  { scope: "read:toggle,write:toggle" },
+  process.env.JWT_SECRET!,
+);
+const wsToken = jwt.sign({ scope: "websocket" }, process.env.JWT_SECRET!);
 
-console.log(token);
+console.log("mail", mailToken);
+console.log("toggle", toggleToken);
+console.log("ws", wsToken);

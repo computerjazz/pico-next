@@ -31,3 +31,10 @@ export const deviceChannels = pico.table("device_channels", {
     .default(CHANNEL_TYPE.TELEGRAM),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const toggleState = pico.table("toggles", {
+  deviceId: varchar("device_id", { length: 100 }).primaryKey(),
+  groupId: varchar("group_id", { length: 100 }),
+  state: varchar("state", { length: 50 }).notNull().default("off"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
