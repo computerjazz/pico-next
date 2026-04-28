@@ -64,6 +64,7 @@ export async function POST(
   await db.insert(toggles).values({
     state,
     groupId,
+    deviceId,
   });
 
   return Response.json({ success: true }, { status: 200 });
