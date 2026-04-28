@@ -596,6 +596,7 @@ static bool phoneHome() {
 
   http.addHeader("Authorization", String("Bearer ") + authToken);
   http.addHeader("x-device-id", String(DEVICE_ID));
+  http.addHeader("x-firmware-version", String(firmwareVersion));
   http.addHeader("x-device-type", "shortwave");
   http.addHeader("ngrok-skip-browser-warning", "true");
 

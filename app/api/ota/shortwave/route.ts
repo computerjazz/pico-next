@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { devices } from "@/db/schema";
 import { verifyAuth } from "@/lib/auth";
+import { eq } from "drizzle-orm";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 
@@ -12,6 +13,7 @@ export async function GET(req: Request) {
   if (maybeResp) return maybeResp;
 
   const currentVersion = req.headers.get("x-firmware-version") ?? "unknown";
+  const deviceId = req.headers.get("x-device-id") ?? "unknown";
   const binDir = path.join(process.cwd(), "public", "shortwave", "bin");
   const entries = await readdir(binDir, { withFileTypes: true }).catch(
     () => [],
@@ -31,9 +33,12 @@ export async function GET(req: Request) {
     ? `/shortwave/bin/${encodeURIComponent(otaVersion)}/shortwave.ino.bin`
     : null;
 
-  await db.update(devices).set({
-    firmwareVersion: currentVersion,
-  });
+  await db
+    .update(devices)
+    .set({
+      firmwareVersion: currentVersion,
+    })
+    .where(eq(devices.deviceId, deviceId));
 
   return Response.json(
     {
