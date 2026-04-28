@@ -8,8 +8,10 @@ export async function GET(req: Request) {
     });
     const deviceId = req.headers.get("x-device-id") ?? "unknown";
     if (maybeResp) return maybeResp;
-    const file = getLatestInboundAudioFilePath({ deviceId });
-
+    const file = await getLatestInboundAudioFilePath({ deviceId });
+    if (!file) {
+      throw new Error("no answering machine file found");
+    }
     return Response.json(file, {
       status: 200,
     });

@@ -1,3 +1,5 @@
+import { db } from "@/db";
+import { RECORDING_SOURCE } from "@/lib/constants";
 import fs, { mkdirSync } from "fs";
 import path from "path";
 
@@ -13,37 +15,28 @@ export function getAnsweringMachineDir({ deviceId }: { deviceId: string }) {
   return answeringMachineDir;
 }
 
-export function getLatestInboundAudioFilePath({
+export async function getLatestInboundAudioFilePath({
   deviceId,
 }: {
   deviceId: string;
 }) {
-  const answeringMachineDir = getAnsweringMachineDir({ deviceId });
-  if (!fs.existsSync(answeringMachineDir)) {
-    throw new Error("Audio dir does not exist");
-  }
-  const files = fs
-    .readdirSync(answeringMachineDir)
-    .filter((f) => f.endsWith(".mp3") || f.endsWith(".wav"))
-    .map((f) => ({
-      name: f,
-      mtime: fs.statSync(path.join(answeringMachineDir, f)).mtime,
-    }))
-    .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+  const recording = await db.query.recordings.findFirst({
+    orderBy: (fields, { desc }) => desc(fields.createdAt),
+    where: (t, { eq, and }) =>
+      and(
+        eq(t.deviceId, deviceId),
+        eq(t.source, RECORDING_SOURCE.ANSWERING_MACHINE),
+      ),
+  });
 
-  const file = files[0];
-  const filePath = file ? path.join(answeringMachineDir, file.name) : null;
-  if (!filePath) {
-    throw new Error("Audio file path does not exist");
+  if (!recording) {
+    return null;
   }
-
-  const ext = path.extname(filePath).toLowerCase();
-  const contentType = ext === ".wav" ? "audio/wav" : "audio/mpeg";
 
   return {
-    filePath,
-    fileName: file.name,
-    mtime: file.mtime,
-    contentType,
+    filePath: recording.filepath,
+    fileName: recording.name,
+    mtime: recording.createdAt,
+    contentType: recording.contentType || undefined,
   };
 }

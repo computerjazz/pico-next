@@ -10,7 +10,7 @@ import fs from "fs";
 import { db } from "@/db";
 import { deviceChannels, recordings } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
-import { CHANNEL_TYPE } from "@/lib/constants";
+import { CHANNEL_TYPE, RECORDING_SOURCE } from "@/lib/constants";
 
 const TelegramVoiceMessageSchema = z.object({
   update_id: z.number(),
@@ -85,7 +85,7 @@ async function onVoiceMessageReceived({
       });
       console.log("voiceMp3", voiceMp3);
       await db.insert(recordings).values({
-        source: "answering-machine",
+        source: RECORDING_SOURCE.ANSWERING_MACHINE,
         deviceId: device.deviceId,
         filepath: voiceMp3,
         name: `${new Date().toISOString}-telegram-recording-${voice.file_id}`,

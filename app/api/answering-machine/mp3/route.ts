@@ -8,16 +8,20 @@ export async function GET(req: Request) {
     const deviceId = req.headers.get("x-device-id") ?? "unknown";
     if (maybeResp) return maybeResp;
 
-    const { filePath, contentType } = getLatestInboundAudioFilePath({
+    const file = await getLatestInboundAudioFilePath({
       deviceId,
     });
+    if (!file) {
+      throw new Error("no file found");
+    }
+    const { filePath, contentType } = file;
     console.log("got latest file", filePath);
     const fileBuffer = fs.readFileSync(filePath);
 
     return new Response(fileBuffer, {
       status: 200,
       headers: {
-        "Content-Type": contentType,
+        "Content-Type": contentType ?? "",
         "Content-Length": fileBuffer.length.toString(),
         // Prevent caching so the ESP32 always gets the freshest file
         "Cache-Control": "no-store",
