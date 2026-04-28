@@ -1,18 +1,16 @@
-import { db } from "@/db";
-import { devices } from "@/db/schema";
 import { verifyAuth } from "@/lib/auth";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 
 export async function GET(req: Request) {
   const maybeResp = await verifyAuth(req, {
-    tag: "ota/shortwave",
+    tag: "ota/toggle",
     method: "GET",
   });
   if (maybeResp) return maybeResp;
 
   const currentVersion = req.headers.get("x-firmware-version") ?? "unknown";
-  const binDir = path.join(process.cwd(), "public", "shortwave", "bin");
+  const binDir = path.join(process.cwd(), "public", "toggle", "bin");
   const entries = await readdir(binDir, { withFileTypes: true }).catch(
     () => [],
   );
@@ -28,16 +26,12 @@ export async function GET(req: Request) {
   const updateAvailable =
     otaVersion !== "unknown" && otaVersion > currentVersion;
   const firmwareUrl = updateAvailable
-    ? `/shortwave/bin/${encodeURIComponent(otaVersion)}/shortwave.ino.bin`
+    ? `/toggle/bin/${encodeURIComponent(otaVersion)}/toggle.ino.bin`
     : null;
-
-  await db.update(devices).set({
-    firmwareVersion: currentVersion,
-  });
 
   return Response.json(
     {
-      deviceType: "shortwave",
+      deviceType: "toggle",
       currentVersion,
       otaVersion,
       updateAvailable,

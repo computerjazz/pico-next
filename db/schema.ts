@@ -18,6 +18,7 @@ export const users = pico.table("users", {
 export const devices = pico.table("devices", {
   deviceId: varchar("device_id", { length: 100 }).primaryKey(),
   type: varchar("type", { length: 50 }).notNull(),
+  firmwareVersion: varchar("firmware_version", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
