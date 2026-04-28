@@ -538,8 +538,8 @@ static bool checkForOtaUpdate() {
 
   String otaVersion = extractJsonField(body, "otaVersion");
   String firmwareUrl = resolveOtaUrl(extractJsonField(body, "firmwareUrl"));
-  if (latestVersion.length() == 0) {
-    Serial.println("ota: metadata missing latestVersion");
+  if (otaVersion.length() == 0) {
+    Serial.println("ota: metadata missing otaVersion");
     return false;
   }
 
@@ -549,11 +549,11 @@ static bool checkForOtaUpdate() {
   }
 
   if (firmwareUrl.length() == 0) {
-    Serial.printf("ota: update %s available but no firmwareUrl\n", latestVersion.c_str());
+    Serial.printf("ota: update %s available but no firmwareUrl\n", otaVersion.c_str());
     return false;
   }
 
-  Serial.printf("ota: updating %s -> %s\n", firmwareVersion, latestVersion.c_str());
+  Serial.printf("ota: updating %s -> %s\n", firmwareVersion, otaVersion.c_str());
   return installOtaFromUrl(firmwareUrl);
 }
 
