@@ -128,6 +128,7 @@ export async function POST(req: Request) {
         filepath: outputMp3Path,
         contentType: "audio/mpeg",
         name: audioFilename,
+        source: "shortwave-device",
       });
 
       const chatIds = channels.map((c) => c.channelId);

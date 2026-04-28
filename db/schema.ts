@@ -40,6 +40,7 @@ export const recordings = pico.table("recordings", {
   deviceId: varchar("device_id", { length: 100 }),
   name: varchar("name", { length: 100 }),
   contentType: varchar("content_type", { length: 25 }),
+  source: varchar("source", { length: 25 }),
 });
 
 // Relations

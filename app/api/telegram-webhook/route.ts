@@ -8,7 +8,7 @@ import {
 import z from "zod";
 import fs from "fs";
 import { db } from "@/db";
-import { deviceChannels } from "@/db/schema";
+import { deviceChannels, recordings } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { CHANNEL_TYPE } from "@/lib/constants";
 
@@ -84,6 +84,12 @@ async function onVoiceMessageReceived({
         deviceId: device.deviceId,
       });
       console.log("voiceMp3", voiceMp3);
+      await db.insert(recordings).values({
+        source: "answering-machine",
+        deviceId: device.deviceId,
+        filepath: voiceMp3,
+        name: `${new Date().toISOString}-telegram-recording-${voice.file_id}`,
+      });
     }),
   );
 }
