@@ -1,18 +1,15 @@
-import { db } from "@/db";
-import { verifyAuth } from "@/lib/auth";
+import { getGroupScore } from "@/lib/toggle-score";
 
 type RouteParams = { id: string };
 
 export async function GET(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<RouteParams> },
 ) {
-  const maybeErr = await verifyAuth(req, { method: "POST", tag: "toggle" });
-  if (maybeErr) return maybeErr;
   const groupId = (await params).id;
-  const group = await db.query.toggles.findMany({
-    where: (t, { eq }) => eq(t.groupId, groupId),
-  });
-
-  return Response.json({ group }, { status: 200 });
+  if (!groupId) {
+    return Response.json({ error: "missing group id" }, { status: 400 });
+  }
+  const score = await getGroupScore(groupId);
+  return Response.json(score, { status: 200 });
 }

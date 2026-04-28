@@ -1,6 +1,8 @@
 import { db } from "@/db";
 import { devices, toggles } from "@/db/schema";
 import { verifyAuth } from "@/lib/auth";
+import { getRedis } from "@/lib/redis";
+import { getGroupScore } from "@/lib/toggle-score";
 import z from "zod";
 
 type RouteParams = { id: string };
@@ -32,7 +34,7 @@ export async function GET(
 }
 
 const ToggleStatePostBodySchema = z.object({
-  state: z.string(),
+  state: z.enum(["on", "off"]),
   groupId: z.string(),
 });
 
@@ -67,5 +69,25 @@ export async function POST(
     deviceId,
   });
 
-  return Response.json({ success: true }, { status: 200 });
+  const score = await getGroupScore(groupId);
+  const redis = await getRedis();
+
+  for (const device of score.devices) {
+    await redis.publish(
+      "ws:commands",
+      JSON.stringify({
+        targetId: device.deviceId,
+        command: JSON.stringify({
+          type: "toggle_state",
+          groupId,
+          phase: score.phase,
+          activeDeviceId: score.activeDeviceId,
+          asOf: score.asOf,
+          devices: score.devices,
+        }),
+      }),
+    );
+  }
+
+  return Response.json({ success: true, score }, { status: 200 });
 }
