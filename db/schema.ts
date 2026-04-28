@@ -1,10 +1,11 @@
 import { CHANNEL_TYPE } from "@/lib/constants";
+import { relations } from "drizzle-orm";
 import { pgSchema, uuid, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
-// define the schema
+// Schema definition
 const pico = pgSchema("pico_next_db");
 
-// define the table inside that schema
+// Tables
 export const users = pico.table("users", {
   id: uuid("id").primaryKey(),
   username: varchar("username", { length: 50 }).notNull(),
@@ -31,6 +32,38 @@ export const deviceChannels = pico.table("device_channels", {
     .default(CHANNEL_TYPE.TELEGRAM),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const recordings = pico.table("recordings", {
+  id: uuid("id").primaryKey().defaultRandom().primaryKey(),
+  createdAt: timestamp("created_at").defaultNow(),
+  filepath: varchar("filepath", { length: 256 }).notNull(),
+  deviceId: varchar("device_id", { length: 100 }),
+  name: varchar("name", { length: 100 }),
+  contentType: varchar("content_type", { length: 25 }),
+});
+
+// Relations
+export const devicesRelations = relations(devices, ({ many }) => {
+  return {
+    deviceChannels: many(deviceChannels),
+  };
+});
+
+export const deviceChannelsRelations = relations(deviceChannels, ({ one }) => {
+  return {
+    device: one(devices, {
+      fields: [deviceChannels.deviceId],
+      references: [devices.deviceId],
+    }),
+  };
+});
+
+export const recordingsRelations = relations(recordings, ({ one }) => ({
+  device: one(devices, {
+    fields: [recordings.deviceId],
+    references: [devices.deviceId],
+  }),
+}));
 
 export const toggles = pico.table("toggles", {
   id: uuid("id").primaryKey().defaultRandom(),

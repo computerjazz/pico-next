@@ -43,6 +43,13 @@
       "when": 1777336027226,
       "tag": "0005_early_kylun",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777391521186,
+      "tag": "0006_broad_diamondback",
+      "breakpoints": true
     }
   ]
 }

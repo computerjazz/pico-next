@@ -5,7 +5,7 @@ import { spawn } from "child_process";
 import fs from "fs";
 import { sendVoiceToChat } from "@/lib/telegram";
 import { db } from "@/db";
-import { deviceChannels } from "@/db/schema";
+import { deviceChannels, recordings } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { CHANNEL_TYPE } from "@/lib/constants";
 
@@ -28,21 +28,22 @@ export async function POST(req: Request) {
     const deviceId = req.headers.get("x-device-id") ?? "unknown";
     const audioFilename = `${deviceId}-${new Date().toISOString()}-${recordingId}.mp3`;
 
-    const minBytes = parseInt(sampleRate) * BYTES_PER_SAMPLE * MIN_SECONDS;
-
     console.log(`Recording started: ${recordingId}`);
 
-    const audioDir = path.join(
-      process.cwd(),
-      "uploads",
-      "sh0rtwave",
-      deviceId,
-      "outbound",
-    );
-    mkdirSync(audioDir, { recursive: true });
-    const outputMp3Path = path.join(audioDir, audioFilename);
-
-    const ffmpegResult = await new Promise<Response>((resolve) => {
+    const ffmpegResult = await new Promise<{
+      errorMsg?: string;
+      outputMp3Path?: string;
+    }>((resolve) => {
+      const minBytes = parseInt(sampleRate) * BYTES_PER_SAMPLE * MIN_SECONDS;
+      const audioDir = path.join(
+        process.cwd(),
+        "uploads",
+        "sh0rtwave",
+        deviceId,
+        "outbound",
+      );
+      mkdirSync(audioDir, { recursive: true });
+      const outputMp3Path = path.join(audioDir, audioFilename);
       const ffmpeg = spawn("ffmpeg", [
         "-f", // input format is:
         "s16le", // ... 16-bit signed little endian PCM audio
@@ -68,18 +69,18 @@ export async function POST(req: Request) {
       ffmpeg.on("close", (code) => {
         if (code === 0) {
           if (bytesReceived < minBytes) {
-            console.log(
-              `Recording too short (${bytesReceived} bytes), discarding`,
-            );
+            const errMsg = `Recording too short (${bytesReceived} bytes), discarding`;
+            console.log(errMsg);
             fs.unlinkSync(outputMp3Path);
-            resolve(Response.json({ ok: true, discarded: true }));
+            resolve({ errorMsg: errMsg });
           } else {
             console.log(`Recording saved: ${outputMp3Path}`);
-            resolve(Response.json({ ok: true }));
+            resolve({ outputMp3Path });
           }
         } else {
-          console.error("ffmpeg error:", ffmpegErr);
-          resolve(new Response("Encoding failed", { status: 500 }));
+          const errMsg = `ffmpegErr: ${ffmpegErr}`;
+          console.error(errMsg);
+          resolve({ errorMsg: errMsg });
         }
       });
 
@@ -105,6 +106,13 @@ export async function POST(req: Request) {
     });
 
     try {
+      const { outputMp3Path, errorMsg } = await ffmpegResult;
+      if (!outputMp3Path) {
+        return Response.json({
+          ok: false,
+          error: errorMsg || "No mp3 output",
+        });
+      }
       console.log("sending as voice ", outputMp3Path);
       const channels = await db.query.deviceChannels.findMany({
         where: (t, { eq, and }) =>
@@ -113,6 +121,13 @@ export async function POST(req: Request) {
             eq(t.type, CHANNEL_TYPE.TELEGRAM),
           ),
         columns: { channelId: true },
+      });
+
+      await db.insert(recordings).values({
+        deviceId,
+        filepath: outputMp3Path,
+        contentType: "audio/mpeg",
+        name: audioFilename,
       });
 
       const chatIds = channels.map((c) => c.channelId);
@@ -143,7 +158,12 @@ export async function POST(req: Request) {
     } catch (err) {
       console.log("Send voice error", err);
     }
-    return ffmpegResult;
+    return Response.json(
+      {
+        ok: true,
+      },
+      { status: 200 },
+    );
   } catch (err) {
     console.error(err);
     return new Response("Upload failed", { status: 500 });
