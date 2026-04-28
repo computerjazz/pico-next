@@ -32,8 +32,9 @@ export const deviceChannels = pico.table("device_channels", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const toggleState = pico.table("toggles", {
-  deviceId: varchar("device_id", { length: 100 }).primaryKey(),
+export const toggles = pico.table("toggles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  deviceId: varchar("device_id", { length: 100 }),
   groupId: varchar("group_id", { length: 100 }),
   state: varchar("state", { length: 50 }).notNull().default("off"),
   updatedAt: timestamp("updated_at").defaultNow(),
