@@ -79,7 +79,7 @@ async function onVoiceMessageReceived({
 
   await Promise.all(
     devices.map(async (device) => {
-      const voiceMp3 = await downloadAndConvertVoice({
+      const { mp3: voiceMp3 } = await downloadAndConvertVoice({
         fileId: voice.file_id,
         deviceId: device.deviceId,
       });
@@ -272,11 +272,13 @@ export async function GET(req: Request) {
     }); // Check whether file already exists
     const fileExists = fs.existsSync(latestVoiceMessagePath);
     console.log("file exists:", fileExists);
-    if (!fileExists)
-      latestVoiceMessagePath = await downloadAndConvertVoice({
+    if (!fileExists) {
+      const { mp3 } = await downloadAndConvertVoice({
         fileId,
         deviceId,
       });
+      latestVoiceMessagePath = mp3;
+    }
   }
 
   return Response.json({

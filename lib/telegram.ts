@@ -242,7 +242,7 @@ export async function downloadAndConvertVoice({
   });
   console.log("wrote mp3 file", outputMp3Path);
 
-  return outputMp3Path;
+  return { mp3: outputMp3Path, ogg: inputOggPath };
 }
 
 export async function sendMessageToChat({

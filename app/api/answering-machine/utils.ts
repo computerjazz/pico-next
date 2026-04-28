@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { RECORDING_SOURCE } from "@/lib/constants";
-import fs, { mkdirSync } from "fs";
+import { mkdirSync } from "fs";
 import path from "path";
 
 export function getAnsweringMachineDir({ deviceId }: { deviceId: string }) {
