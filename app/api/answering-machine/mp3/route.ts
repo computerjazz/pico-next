@@ -28,7 +28,7 @@ export async function GET(req: Request) {
       },
     });
   } catch (err) {
-    console.log("answering-machine/audio", err);
+    console.log("answering-machine/mp3", err);
     return new Response(null, { status: 404 });
   }
 }

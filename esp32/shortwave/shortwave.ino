@@ -10,6 +10,7 @@
 #include <DNSServer.h>
 #include <Preferences.h>
 #include <time.h>
+#include <Update.h>
 #include <ESP32I2SAudio.h>
 #include <BackgroundAudioMP3.h>
 #include "driver/i2s_std.h"
@@ -33,6 +34,7 @@
 // ============================================================
 
 #define POLL_INTERVAL_MS       60000UL
+#define OTA_CHECK_INTERVAL_MS  600000UL
 #define RECORD_HOLD_MS         300UL   // hold longer than this to record; tap shorter for playback
 #define SHORT_PRESS_MIN_MS     40      // debounce: ignore taps shorter than this
 #define DOUBLE_BLINK_PERIOD_MS 5000UL
@@ -46,6 +48,7 @@ const char* serverHost = ENV_SERVER_HOST;
 const int   serverPort = 443;
 const char* authToken  = ENV_AUTH_TOKEN;
 const char* portalSsid = "sh0rtwave-setup";
+const char* firmwareVersion = "shortwave-2026-04-28-1";
 
 static DNSServer dnsServer;
 static WebServer portalServer(80);
@@ -340,6 +343,7 @@ static volatile bool stopPlayback       = false;
 static bool          playbackPending    = false;
 static bool          playbackActive     = false;
 static unsigned long lastPollMs         = 0;
+static unsigned long lastOtaCheckMs     = 0;
 static unsigned long nextDoubleBlinkMs  = 0;
 static int           doubleBlinkPhase   = 0;
 
@@ -436,6 +440,121 @@ static String extractJsonField(const String& json, const char* key) {
   i += pat.length();
   int j = json.indexOf('"', i); if (j < 0) return "";
   return json.substring(i, j);
+}
+
+static String resolveOtaUrl(const String& maybeUrl) {
+  if (maybeUrl.startsWith("https://") || maybeUrl.startsWith("http://")) {
+    return maybeUrl;
+  }
+  if (maybeUrl.startsWith("/")) {
+    return String("https://") + serverHost + maybeUrl;
+  }
+  return "";
+}
+
+static bool installOtaFromUrl(const String& url) {
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+  if (!http.begin(client, url)) {
+    Serial.printf("ota: http begin failed for %s\n", url.c_str());
+    return false;
+  }
+
+  http.addHeader("Authorization", String("Bearer ") + authToken);
+  http.addHeader("x-device-id", String(DEVICE_ID));
+  http.addHeader("x-firmware-version", String(firmwareVersion));
+  http.addHeader("ngrok-skip-browser-warning", "true");
+
+  int code = http.GET();
+  if (code != 200) {
+    Serial.printf("ota: download HTTP %d\n", code);
+    http.end();
+    return false;
+  }
+
+  int contentLength = http.getSize();
+  if (contentLength <= 0) {
+    Serial.printf("ota: invalid content length %d\n", contentLength);
+    http.end();
+    return false;
+  }
+
+  if (!Update.begin((size_t)contentLength)) {
+    Serial.printf("ota: Update.begin failed (err=%u)\n", Update.getError());
+    http.end();
+    return false;
+  }
+
+  WiFiClient* stream = http.getStreamPtr();
+  size_t written = Update.writeStream(*stream);
+  if (written != (size_t)contentLength) {
+    Serial.printf("ota: wrote %u of %d bytes\n", (unsigned)written, contentLength);
+  }
+
+  if (!Update.end()) {
+    Serial.printf("ota: Update.end failed (err=%u)\n", Update.getError());
+    http.end();
+    return false;
+  }
+
+  if (!Update.isFinished()) {
+    Serial.println("ota: update did not finish");
+    http.end();
+    return false;
+  }
+
+  http.end();
+  Serial.println("ota: update installed, restarting");
+  delay(200);
+  ESP.restart();
+  return true;
+}
+
+static bool checkForOtaUpdate() {
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+  if (!http.begin(client, String("https://") + serverHost + "/api/ota/shortwave")) {
+    Serial.println("ota: metadata begin failed");
+    return false;
+  }
+
+  http.addHeader("Authorization", String("Bearer ") + authToken);
+  http.addHeader("x-device-id", String(DEVICE_ID));
+  http.addHeader("x-firmware-version", String(firmwareVersion));
+  http.addHeader("ngrok-skip-browser-warning", "true");
+
+  int code = http.GET();
+  String body = http.getString();
+  http.end();
+
+  if (code != 200) {
+    Serial.printf("ota: metadata HTTP %d\n", code);
+    return false;
+  }
+
+  String otaVersion = extractJsonField(body, "otaVersion");
+  String firmwareUrl = resolveOtaUrl(extractJsonField(body, "firmwareUrl"));
+  if (latestVersion.length() == 0) {
+    Serial.println("ota: metadata missing latestVersion");
+    return false;
+  }
+
+  if (otaVersion == firmwareVersion) {
+    Serial.printf("ota: up to date (%s)\n", firmwareVersion);
+    return true;
+  }
+
+  if (firmwareUrl.length() == 0) {
+    Serial.printf("ota: update %s available but no firmwareUrl\n", latestVersion.c_str());
+    return false;
+  }
+
+  Serial.printf("ota: updating %s -> %s\n", firmwareVersion, latestVersion.c_str());
+  return installOtaFromUrl(firmwareUrl);
 }
 
 static bool pollAnsweringMachine() {
@@ -778,6 +897,7 @@ void setup() {
   connectWifiWithPortal();
   loadMessageStateFromPrefs();
   phoneHome();
+  checkForOtaUpdate();
   for (int i = 0; i < 3; i++) {
     digitalWrite(LED_PIN, HIGH);
     delay(70);
@@ -824,6 +944,11 @@ void loop() {
   if (lastPollMs == 0 || now - lastPollMs >= POLL_INTERVAL_MS) {
     lastPollMs = now;
     pollAnsweringMachine();
+  }
+
+  if (lastOtaCheckMs == 0 || now - lastOtaCheckMs >= OTA_CHECK_INTERVAL_MS) {
+    lastOtaCheckMs = now;
+    checkForOtaUpdate();
   }
 
   if (now - lastVolMs > 150) {
