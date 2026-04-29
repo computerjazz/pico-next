@@ -347,6 +347,7 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
 }
 
 static bool postToggleState(bool isOn) {
+  Serial.printf("Posting toggle state... %d\n", isOn);
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;

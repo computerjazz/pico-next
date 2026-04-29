@@ -3,6 +3,7 @@ import { parse } from "url";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import { getRedis } from "./lib/redis.js";
+import { validateTokenDefault } from "./lib/auth.js";
 
 const app = next({ dev: false });
 const handle = app.getRequestHandler();
@@ -34,10 +35,11 @@ async function main() {
   wss.on("connection", (socket: WebSocket) => {
     let clientId: string | null = null;
 
-    socket.on("message", (data: Buffer) => {
+    socket.on("message", async (data: Buffer) => {
       const msg = JSON.parse(data.toString());
       if (msg.type === "register") {
-        if (msg.token !== process.env.WS_SECRET) {
+        const isValid = await validateTokenDefault(msg.token);
+        if (!isValid) {
           console.warn(`Rejected client: ${msg.id} (bad token)`);
           socket.close();
           return;

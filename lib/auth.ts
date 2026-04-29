@@ -10,7 +10,7 @@ export function extractAuthToken(authHeader?: string | null) {
   return token;
 }
 
-async function defaultValidateToken(token: string) {
+export async function validateTokenDefault(token: string) {
   await jwt.verify(token, process.env.JWT_SECRET!);
   return true;
 }
@@ -20,7 +20,7 @@ export async function verifyAuth(
   {
     tag = "",
     method = "GET",
-    validateToken = defaultValidateToken,
+    validateToken = validateTokenDefault,
   }: {
     tag?: string;
     method?: string;
