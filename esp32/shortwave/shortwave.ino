@@ -19,6 +19,10 @@
 #include "env.h"
 #include <math.h> // for sin()
 
+#ifndef DEVICE_ID_RESET
+#define DEVICE_ID_RESET false
+#endif
+
 // ============================================================
 // Audio / buffering  (generous sizing for ESP32-S3 N16R8 PSRAM)
 // ============================================================
@@ -54,9 +58,31 @@ static DNSServer dnsServer;
 static WebServer portalServer(80);
 static Preferences wifiPrefs;
 static Preferences msgPrefs;
+static Preferences devicePrefs;
 static bool portalWantsConnect = false;
 static String portalNewSsid;
 static String portalNewPassword;
+static String deviceId = "";
+
+static void loadDeviceIdFromPrefs() {
+  devicePrefs.begin("device", false);
+#if DEVICE_ID_RESET
+  deviceId = String(DEVICE_ID);
+  if (deviceId.length() > 0) {
+    devicePrefs.putString("id", deviceId);
+  }
+#else
+  deviceId = devicePrefs.getString("id", "");
+  if (deviceId.length() == 0) {
+    deviceId = String(DEVICE_ID);
+    if (deviceId.length() > 0) {
+      devicePrefs.putString("id", deviceId);
+    }
+  }
+#endif
+  devicePrefs.end();
+  Serial.printf("device id: %s\n", deviceId.c_str());
+}
 
 static bool connectToWifi(const char* ssid, const char* password, unsigned long timeoutMs = 15000UL) {
   WiFi.mode(WIFI_STA);
@@ -103,7 +129,7 @@ static void startWifiPortal() {
       "</style></head>"
       "<body>"
       "<h2>Connect sh0rtwave</h2>"
-      "<div class='device-id'><b>Device ID:</b><br>" + String(DEVICE_ID) + "</div>"
+      "<div class='device-id'><b>Device ID:</b><br>" + deviceId + "</div>"
       "<p style='margin-top:2.1rem;'>"
       "Enter your Wi-Fi credentials to connect your device:"
       "</p>"
@@ -399,7 +425,7 @@ static bool openStream() {
     "x-sample-rate: %d\r\n"
     "x-device-id: %s\r\n"
     "\r\n",
-    serverHost, authToken, recordingId.c_str(), ENV_SAMPLE_RATE, DEVICE_ID);
+    serverHost, authToken, recordingId.c_str(), ENV_SAMPLE_RATE, deviceId.c_str());
   Serial.println("Stream opened");
   return true;
 }
@@ -463,7 +489,7 @@ static bool installOtaFromUrl(const String& url) {
   }
 
   http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("x-device-id", String(DEVICE_ID));
+  http.addHeader("x-device-id", deviceId);
   http.addHeader("x-firmware-version", String(firmwareVersion));
   http.addHeader("ngrok-skip-browser-warning", "true");
 
@@ -523,7 +549,7 @@ static bool checkForOtaUpdate() {
   }
 
   http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("x-device-id", String(DEVICE_ID));
+  http.addHeader("x-device-id", deviceId);
   http.addHeader("x-firmware-version", String(firmwareVersion));
   http.addHeader("ngrok-skip-browser-warning", "true");
 
@@ -562,7 +588,7 @@ static bool pollAnsweringMachine() {
   HTTPClient http;
   if (!http.begin(client, String("https://") + serverHost + "/api/answering-machine")) return false;
   http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("x-device-id", String(DEVICE_ID));
+  http.addHeader("x-device-id", deviceId);
   http.addHeader("ngrok-skip-browser-warning", "true");
   int code = http.GET();
   String body = http.getString(); http.end();
@@ -595,7 +621,7 @@ static bool phoneHome() {
   }
 
   http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("x-device-id", String(DEVICE_ID));
+  http.addHeader("x-device-id", deviceId);
   http.addHeader("x-firmware-version", String(firmwareVersion));
   http.addHeader("x-device-type", "shortwave");
   http.addHeader("ngrok-skip-browser-warning", "true");
@@ -635,7 +661,7 @@ static bool streamAnsweringMachineMp3() {
     delete http; delete client; return false;
   }
   http->addHeader("Authorization", String("Bearer ") + authToken);
-  http->addHeader("x-device-id", String(DEVICE_ID));
+  http->addHeader("x-device-id", deviceId);
   http->addHeader("ngrok-skip-browser-warning", "true");
 
   int code = http->GET();
@@ -895,6 +921,7 @@ void setup() {
     Serial.println("Saved Wi-Fi credentials cleared.");
   }
 
+  loadDeviceIdFromPrefs();
   connectWifiWithPortal();
   loadMessageStateFromPrefs();
   phoneHome();

@@ -8,6 +8,10 @@
 #include <Update.h>
 #include "env.h"
 
+#ifndef DEVICE_ID_RESET
+#define DEVICE_ID_RESET false
+#endif
+
 const char* serverHost = SERVER_HOST;
 const char* authToken = AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
@@ -20,6 +24,7 @@ const char* firmwareVersion = "toggle-2026-04-28-1";
 static DNSServer dnsServer;
 static WebServer portalServer(80);
 static Preferences wifiPrefs;
+static Preferences devicePrefs;
 static WebSocketsClient wsClient;
 
 static bool portalWantsConnect = false;
@@ -33,6 +38,27 @@ static unsigned long lastSwitchDebounceMs = 0;
 static bool lastSwitchReading = false;
 static bool switchState = false;
 static bool wsReady = false;
+static String deviceId = "";
+
+static void loadDeviceIdFromPrefs() {
+  devicePrefs.begin("device", false);
+#if DEVICE_ID_RESET
+  deviceId = String(DEVICE_ID);
+  if (deviceId.length() > 0) {
+    devicePrefs.putString("id", deviceId);
+  }
+#else
+  deviceId = devicePrefs.getString("id", "");
+  if (deviceId.length() == 0) {
+    deviceId = String(DEVICE_ID);
+    if (deviceId.length() > 0) {
+      devicePrefs.putString("id", deviceId);
+    }
+  }
+#endif
+  devicePrefs.end();
+  Serial.printf("device id: %s\n", deviceId.c_str());
+}
 
 static void setRgb(bool red, bool green, bool blue) {
   digitalWrite(LED_R_PIN, red ? HIGH : LOW);
@@ -91,7 +117,7 @@ static void startWifiPortal() {
       "<title>toggle setup</title>"
       "</head><body style='font-family:sans-serif;max-width:420px;margin:2rem auto;'>"
       "<h3>Toggle setup</h3>"
-      "<p><b>Device ID:</b> " + String(DEVICE_ID) + "</p>"
+      "<p><b>Device ID:</b> " + deviceId + "</p>"
       "<form action='/save' method='POST'>"
       "<label>SSID<br><input name='ssid' type='text'></label><br><br>"
       "<label>Password<br><input name='password' type='password'></label><br><br>"
@@ -183,7 +209,7 @@ static bool installOtaFromUrl(const String& url) {
   }
 
   http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("x-device-id", String(DEVICE_ID));
+  http.addHeader("x-device-id", deviceId);
   http.addHeader("x-firmware-version", String(firmwareVersion));
   http.addHeader("ngrok-skip-browser-warning", "true");
 
@@ -243,7 +269,7 @@ static bool checkForOtaUpdate() {
   }
 
   http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("x-device-id", String(DEVICE_ID));
+  http.addHeader("x-device-id", deviceId);
   http.addHeader("x-firmware-version", String(firmwareVersion));
   http.addHeader("ngrok-skip-browser-warning", "true");
 
@@ -290,7 +316,7 @@ static void applyPayloadColor(const String& payload) {
     return;
   }
 
-  const String activeLookup = String("\"activeDeviceId\":\"") + DEVICE_ID + "\"";
+  const String activeLookup = String("\"activeDeviceId\":\"") + deviceId + "\"";
   if (payload.indexOf(activeLookup) >= 0) {
     showBlue();
   } else {
@@ -302,7 +328,7 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
   switch (type) {
     case WStype_CONNECTED: {
       wsReady = true;
-      String msg = String("{\"type\":\"register\",\"id\":\"") + DEVICE_ID + "\",\"token\":\"" + wsToken + "\"}";
+      String msg = String("{\"type\":\"register\",\"id\":\"") + deviceId + "\",\"token\":\"" + wsToken + "\"}";
       wsClient.sendTXT(msg);
       break;
     }
@@ -324,7 +350,7 @@ static bool postToggleState(bool isOn) {
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
-  String url = String("https://") + serverHost + "/api/toggle/device/" + DEVICE_ID;
+  String url = String("https://") + serverHost + "/api/toggle/device/" + deviceId;
   if (!http.begin(client, url)) return false;
   http.addHeader("Authorization", String("Bearer ") + authToken);
   http.addHeader("Content-Type", "application/json");
@@ -358,6 +384,7 @@ void setup() {
   pinMode(LED_B_PIN, OUTPUT);
   setRgb(false, false, false);
 
+  loadDeviceIdFromPrefs();
   connectWifiWithPortal();
   checkForOtaUpdate();
   flashRainbowConnected();
