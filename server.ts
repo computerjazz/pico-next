@@ -17,6 +17,7 @@ async function main() {
   await subscriber.subscribe("ws:commands", (message) => {
     const { targetId, command } = JSON.parse(message);
     const socket = clients.get(targetId);
+    console.log("Sending socket message:", message);
     if (socket?.readyState === WebSocket.OPEN) {
       socket.send(command);
     } else {

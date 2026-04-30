@@ -337,6 +337,7 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
       break;
     case WStype_TEXT: {
       String message = String((char*)payload).substring(0, length);
+      Serial.printf("Received socket message %s\n", message);
       lastWsMessageMs = millis();
       applyPayloadColor(message);
       break;
