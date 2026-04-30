@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchGroupScoreAction } from "@/app/actions/fetchGroupScore";
 import { generateToken } from "@/app/actions/generateToken";
+import { useStableCallback } from "@/app/hooks/useStableCallback";
 
 type PageParams = {
   groupId: string;
@@ -35,20 +36,37 @@ export default function ToggleGroupPage({
 }) {
   const [score, setScore] = useState<GroupScore | null>(null);
 
+  const allIdle = score?.devices.every((d) => d.role === "idle");
+
+  const updateScore = useStableCallback(async function reloadScore() {
+    const { groupId: grpId } = await params;
+    try {
+      const latestScore = await fetchGroupScoreAction(grpId);
+      setScore(latestScore);
+    } catch {
+      // ignore
+    }
+  });
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (!allIdle) {
+      interval = setInterval(() => {
+        updateScore();
+      }, 5000);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [allIdle, updateScore]);
+
   useEffect(() => {
     let ws: WebSocket | null = null;
     let reconnect: NodeJS.Timeout | null = null;
     let stopped = false;
-
-    async function reloadScore() {
-      const { groupId: grpId } = await params;
-      try {
-        const latestScore = await fetchGroupScoreAction(grpId);
-        setScore(latestScore);
-      } catch {
-        // ignore
-      }
-    }
 
     function connectSocket() {
       if (stopped) return;
@@ -67,7 +85,7 @@ export default function ToggleGroupPage({
       };
 
       ws.onmessage = () => {
-        reloadScore();
+        updateScore();
       };
 
       ws.onclose = () => {
@@ -83,14 +101,14 @@ export default function ToggleGroupPage({
 
     connectSocket();
     // load initial score
-    reloadScore();
+    updateScore();
 
     return () => {
       stopped = true;
       if (ws) ws.close();
       if (reconnect) clearTimeout(reconnect);
     };
-  }, [params]);
+  }, [params, updateScore]);
 
   if (!score) {
     return (
