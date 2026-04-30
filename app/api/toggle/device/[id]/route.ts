@@ -42,10 +42,14 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<RouteParams> },
 ) {
-  const maybeErr = await verifyAuth(req, { method: "POST", tag: "toggle" });
+  const [maybeErr, { id: deviceId }, reqJson] = await Promise.all([
+    verifyAuth(req, { method: "POST", tag: "toggle" }),
+    params,
+    req.json(),
+  ]);
+
   if (maybeErr) return maybeErr;
-  const deviceId = (await params).id;
-  const reqJson = await req.json();
+
   const parsed = ToggleStatePostBodySchema.safeParse(reqJson);
   if (!parsed.success) {
     console.log("bad toggle state request!");
@@ -55,7 +59,7 @@ export async function POST(
   const { state, groupId } = parsed.data;
 
   // make sure device exists, add it if needed
-  await db
+  const insertPromise = db
     .insert(devices)
     .values({
       deviceId,
@@ -63,31 +67,40 @@ export async function POST(
     })
     .onConflictDoNothing();
 
-  await db.insert(toggles).values({
+  const togglePromise = db.insert(toggles).values({
     state,
     groupId,
     deviceId,
   });
 
-  const score = await getGroupScore(groupId);
-  const redis = await getRedis();
+  const scorePromise = getGroupScore(groupId);
+  const redisPromise = getRedis();
 
-  for (const device of score.devices) {
-    await redis.publish(
-      "ws:commands",
-      JSON.stringify({
-        targetId: device.deviceId,
-        command: JSON.stringify({
-          type: "toggle_state",
-          groupId,
-          phase: score.phase,
-          activeDeviceId: score.activeDeviceId,
-          asOf: score.asOf,
-          devices: score.devices,
+  const [, , score, redis] = await Promise.all([
+    insertPromise,
+    togglePromise,
+    scorePromise,
+    redisPromise,
+  ]);
+
+  await Promise.all(
+    score.devices.map(async (device) => {
+      return redis.publish(
+        "ws:commands",
+        JSON.stringify({
+          targetId: device.deviceId,
+          command: JSON.stringify({
+            type: "toggle_state",
+            groupId,
+            phase: score.phase,
+            activeDeviceId: score.activeDeviceId,
+            asOf: score.asOf,
+            devices: score.devices,
+          }),
         }),
-      }),
-    );
-  }
+      );
+    }),
+  );
 
   return Response.json({ success: true, score }, { status: 200 });
 }
