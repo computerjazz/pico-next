@@ -440,6 +440,8 @@ void setup() {
   wsClient.beginSSL(serverHost, 443, "/api/ws");
   wsClient.onEvent(wsEvent);
   wsClient.setReconnectInterval(2000);
+  wsClient.enableHeartbeat(15000, 5000, 3); // ping every 15s, 5s timeout, 3 retries
+
 }
 
 void loop() {
@@ -470,5 +472,5 @@ void loop() {
     checkForOtaUpdate();
   }
 
-  delay(5);
+  yield(); // feeds watchdog, yields to background tasks, zero artificial delay
 }

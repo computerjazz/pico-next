@@ -32,9 +32,26 @@ async function main() {
   });
 
   const wss = new WebSocketServer({ noServer: true });
+  const PING_INTERVAL = 30000;
 
   wss.on("connection", (socket: WebSocket) => {
     let clientId: string | null = null;
+    let isAlive = true;
+
+    // Heartbeat
+    const pingTimer = setInterval(() => {
+      if (!isAlive) {
+        console.log(`Ping timeout, closing ${clientId}`);
+        socket.terminate();
+        return;
+      }
+      isAlive = false;
+      socket.ping();
+    }, PING_INTERVAL);
+
+    socket.on("pong", () => {
+      isAlive = true;
+    });
 
     socket.on("message", async (data: Buffer) => {
       const msg = JSON.parse(data.toString());
@@ -54,6 +71,8 @@ async function main() {
     });
 
     socket.on("close", () => {
+      clearInterval(pingTimer);
+
       if (clientId) {
         clients.delete(clientId);
         console.log(`Client disconnected: ${clientId}`);
