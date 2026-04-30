@@ -77,13 +77,14 @@ export async function POST(
   await Promise.all([insertPromise, togglePromise]);
 
   const score = await getGroupScore(groupId);
-
+  const deviceIds = score.devices.map((d) => d.deviceId);
+  const allIds = [...deviceIds, groupId];
   await Promise.all(
-    score.devices.map(async (device) => {
+    allIds.map(async (targetId) => {
       return redis.publish(
         "ws:commands",
         JSON.stringify({
-          targetId: device.deviceId,
+          targetId: targetId,
           command: JSON.stringify({
             type: "toggle_state",
             groupId,

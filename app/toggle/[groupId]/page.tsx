@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-// Import the server action (make sure this file exists as shown above!)
-import { fetchGroupScoreAction } from "@/app/actions/fetchGroupScore"; // path may vary
+import { useEffect, useState } from "react";
+import { fetchGroupScoreAction } from "@/app/actions/fetchGroupScore";
+import { generateToken } from "@/app/actions/generateToken";
 
 type PageParams = {
   groupId: string;
@@ -33,41 +33,17 @@ export default function ToggleGroupPage({
 }: {
   params: Promise<PageParams>;
 }) {
-  const paramsRef = useRef<Promise<PageParams>>(params);
   const [score, setScore] = useState<GroupScore | null>(null);
-  const [groupId, setGroupId] = useState<string | null>(null);
 
-  // Get groupId and load initial data
   useEffect(() => {
-    let cancelled = false;
-    paramsRef.current = params;
-    (async () => {
-      const { groupId } = await params;
-      setGroupId(groupId);
-      try {
-        const initialScore = await fetchGroupScoreAction(groupId);
-        if (!cancelled) setScore(initialScore);
-      } catch {
-        // ignore
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params]);
-
-  // Set up websocket and reload the score on any message
-  useEffect(() => {
-    if (!groupId) return;
-
     let ws: WebSocket | null = null;
     let reconnect: NodeJS.Timeout | null = null;
     let stopped = false;
 
     async function reloadScore() {
+      const { groupId: grpId } = await params;
       try {
-        const latestScore = await fetchGroupScoreAction(groupId as string);
+        const latestScore = await fetchGroupScoreAction(grpId);
         setScore(latestScore);
       } catch {
         // ignore
@@ -82,8 +58,12 @@ export default function ToggleGroupPage({
           "/api/ws",
       );
 
-      ws.onopen = () => {
-        // optionally: ws.send(JSON.stringify({ type: "register-dashboard" }));
+      ws.onopen = async () => {
+        const [token, { groupId: grpId }] = await Promise.all([
+          generateToken({ scope: "websocket" }),
+          params,
+        ]);
+        ws?.send(JSON.stringify({ type: "register", token, id: grpId }));
       };
 
       ws.onmessage = () => {
@@ -102,13 +82,15 @@ export default function ToggleGroupPage({
     }
 
     connectSocket();
+    // load initial score
+    reloadScore();
 
     return () => {
       stopped = true;
       if (ws) ws.close();
       if (reconnect) clearTimeout(reconnect);
     };
-  }, [groupId]);
+  }, [params]);
 
   if (!score) {
     return (
