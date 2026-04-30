@@ -61,9 +61,9 @@ static void loadDeviceIdFromPrefs() {
 }
 
 static void setRgb(bool red, bool green, bool blue) {
-  digitalWrite(LED_R_PIN, red ? HIGH : LOW);
-  digitalWrite(LED_G_PIN, green ? HIGH : LOW);
-  digitalWrite(LED_B_PIN, blue ? HIGH : LOW);
+  digitalWrite(LED_R_PIN, red ? LOW : HIGH);
+  digitalWrite(LED_G_PIN, green ? LOW : HIGH);
+  digitalWrite(LED_B_PIN, blue ? LOW : HIGH);
 }
 
 static void showGreen() { setRgb(false, true, false); }
@@ -312,19 +312,33 @@ static void applyPayloadColor(const String& payload) {
   String phase = payload.substring(phaseStart, phaseEnd);
 
   if (phase == "aligned") {
+    Serial.printf("%s: aligned\n", deviceId);
     showGreen();
     return;
   }
 
   const String activeLookup = String("\"activeDeviceId\":\"") + deviceId + "\"";
   if (payload.indexOf(activeLookup) >= 0) {
+    Serial.printf("%s: active\n", deviceId);
+
     showBlue();
   } else {
+    Serial.printf("%s: challenger\n", deviceId);
+
     showRed();
   }
 }
 
 static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
+  // Print wsEvent safely with explicit length (guard for null/non-string payload)
+  if (payload && length > 0) {
+    Serial.print("wsEvent ");
+    for (size_t i = 0; i < length; ++i) Serial.print((char)payload[i]);
+    Serial.printf(" %d\n", (int)length);
+  } else {
+    Serial.printf("wsEvent <null> %d\n", (int)length);
+  }
+
   switch (type) {
     case WStype_CONNECTED: {
       wsReady = true;
@@ -336,8 +350,12 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
       wsReady = false;
       break;
     case WStype_TEXT: {
-      String message = String((char*)payload).substring(0, length);
-      Serial.printf("Received socket message %s\n", message);
+      String message;
+      if (payload && length > 0) {
+        message.reserve(length + 1);
+        for (size_t i = 0; i < length; ++i) message += (char)payload[i];
+      }
+      Serial.printf("received TEXT message %s\n", message);
       lastWsMessageMs = millis();
       applyPayloadColor(message);
       break;
