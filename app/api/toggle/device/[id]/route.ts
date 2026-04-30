@@ -42,10 +42,11 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<RouteParams> },
 ) {
-  const [maybeErr, { id: deviceId }, reqJson] = await Promise.all([
+  const [maybeErr, { id: deviceId }, reqJson, redis] = await Promise.all([
     verifyAuth(req, { method: "POST", tag: "toggle" }),
     params,
     req.json(),
+    getRedis(),
   ]);
 
   if (maybeErr) return maybeErr;
@@ -73,15 +74,9 @@ export async function POST(
     deviceId,
   });
 
-  const scorePromise = getGroupScore(groupId);
-  const redisPromise = getRedis();
+  await Promise.all([insertPromise, togglePromise]);
 
-  const [, , score, redis] = await Promise.all([
-    insertPromise,
-    togglePromise,
-    scorePromise,
-    redisPromise,
-  ]);
+  const score = await getGroupScore(groupId);
 
   await Promise.all(
     score.devices.map(async (device) => {
