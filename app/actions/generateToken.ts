@@ -1,5 +1,4 @@
 "use server";
-
 import jwt from "jsonwebtoken";
 
 // Just generate any old token the browser wants, for now
