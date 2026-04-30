@@ -8,14 +8,13 @@
 #include <Update.h>
 #include "env.h"
 
-#ifndef DEVICE_ID_RESET
-#define DEVICE_ID_RESET false
+#ifndef FORCE_ID_RESET
+#define FORCE_ID_RESET false
 #endif
 
 const char* serverHost = SERVER_HOST;
 const char* authToken = AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
-const char* groupId = GROUP_ID;
 const char* portalSsid = "toggle-setup";
 const char* firmwareVersion = "toggle-2026-04-28-1";
 
@@ -39,10 +38,13 @@ static bool lastSwitchReading = false;
 static bool switchState = false;
 static bool wsReady = false;
 static String deviceId = "";
+static String groupId = "";
 
-static void loadDeviceIdFromPrefs() {
+
+// Store and load groupId in/from Preferences like deviceId
+static void loadIdsFromPrefs() {
   devicePrefs.begin("device", false);
-#if DEVICE_ID_RESET
+#if FORCE_ID_RESET
   deviceId = String(DEVICE_ID);
   if (deviceId.length() > 0) {
     devicePrefs.putString("id", deviceId);
@@ -56,14 +58,36 @@ static void loadDeviceIdFromPrefs() {
     }
   }
 #endif
+
+  // Group ID storage
+  groupId = devicePrefs.getString("groupId", "");
+  if (groupId.length() == 0) {
+    groupId = String(GROUP_ID);
+    if (groupId.length() > 0) {
+      devicePrefs.putString("groupId", groupId);
+    }
+  }
+
   devicePrefs.end();
   Serial.printf("device id: %s\n", deviceId.c_str());
+  Serial.printf("group id: %s\n", groupId.c_str());
 }
 
+// For common anode: LED is ON when pin is LOW, OFF when pin is HIGH.
+// For common cathode: LED is ON when pin is HIGH, OFF when pin is LOW.
+// We want `setRgb(true, false, false)` to always mean "red on" regardless of LED type.
+
 static void setRgb(bool red, bool green, bool blue) {
-  digitalWrite(LED_R_PIN, red ? LOW : HIGH);
-  digitalWrite(LED_G_PIN, green ? LOW : HIGH);
-  digitalWrite(LED_B_PIN, blue ? LOW : HIGH);
+  writeRgbPin(LED_R_PIN, red);
+  writeRgbPin(LED_G_PIN, green);
+  writeRgbPin(LED_B_PIN, blue);
+}
+
+static void writeRgbPin(uint8_t pin, bool on) {
+  // For common anode, driving pin LOW turns on the LED (active LOW).
+  // For common cathode, driving pin HIGH turns on the LED (active HIGH).
+  // So invert for common anode.
+  digitalWrite(pin, IS_RGB_LED_COMMON_ANODE ? !on : on);
 }
 
 static void showGreen() { setRgb(false, true, false); }
@@ -118,6 +142,7 @@ static void startWifiPortal() {
       "</head><body style='font-family:sans-serif;max-width:420px;margin:2rem auto;'>"
       "<h3>Toggle setup</h3>"
       "<p><b>Device ID:</b> " + deviceId + "</p>"
+      "<p><b>Group ID:</b> " + groupId + "</p>"
       "<form action='/save' method='POST'>"
       "<label>SSID<br><input name='ssid' type='text'></label><br><br>"
       "<label>Password<br><input name='password' type='password'></label><br><br>"
@@ -404,7 +429,7 @@ void setup() {
   pinMode(LED_B_PIN, OUTPUT);
   setRgb(false, false, false);
 
-  loadDeviceIdFromPrefs();
+  loadIdsFromPrefs();
   connectWifiWithPortal();
   checkForOtaUpdate();
   flashRainbowConnected();
