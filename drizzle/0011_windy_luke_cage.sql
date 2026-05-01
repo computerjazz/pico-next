@@ -1,0 +1,1 @@
+ALTER TABLE "pico_next_db"."devices" ADD COLUMN "name" varchar(50);
