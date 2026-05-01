@@ -1,6 +1,5 @@
 import { CHANNEL_TYPE } from "@/lib/constants";
 import { relations } from "drizzle-orm";
-import { timestamptz } from "drizzle-orm/gel-core";
 import { pgSchema, uuid, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 // Schema definition
@@ -12,15 +11,24 @@ export const users = pico.table("users", {
   username: varchar("username", { length: 50 }).notNull(),
   email: varchar("email", { length: 100 }).notNull(),
   passwordHash: text("password_hash").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at", {
+    mode: "date",
+    withTimezone: true,
+  }).defaultNow(),
+  updatedAt: timestamp("updated_at", {
+    mode: "date",
+    withTimezone: true,
+  }).defaultNow(),
 });
 
 export const devices = pico.table("devices", {
   deviceId: varchar("device_id", { length: 100 }).primaryKey(),
   type: varchar("type", { length: 50 }).notNull(),
   firmwareVersion: varchar("firmware_version", { length: 50 }),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", {
+    mode: "date",
+    withTimezone: true,
+  }).defaultNow(),
 });
 
 export const deviceChannels = pico.table("device_channels", {
@@ -32,12 +40,18 @@ export const deviceChannels = pico.table("device_channels", {
   type: varchar("type", { length: 50 })
     .notNull()
     .default(CHANNEL_TYPE.TELEGRAM),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", {
+    mode: "date",
+    withTimezone: true,
+  }).defaultNow(),
 });
 
 export const recordings = pico.table("recordings", {
   id: uuid("id").primaryKey().defaultRandom().primaryKey(),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", {
+    mode: "date",
+    withTimezone: true,
+  }).defaultNow(),
   filepath: varchar("filepath", { length: 256 }).notNull(),
   deviceId: varchar("device_id", { length: 100 }),
   name: varchar("name", { length: 100 }),

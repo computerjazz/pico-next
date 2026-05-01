@@ -71,6 +71,13 @@
       "when": 1777613772468,
       "tag": "0009_soft_carlie_cooper",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777644207529,
+      "tag": "0010_nosy_enchantress",
+      "breakpoints": true
     }
   ]
 }
