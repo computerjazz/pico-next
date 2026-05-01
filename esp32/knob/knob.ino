@@ -1,12 +1,13 @@
 #include <TM1637Display.h>
 
 // Rotary Encoder Pins
-const int encoderCLK = 5; // D1 (for ESP32, use GPIO numbers)
-const int encoderDT = 18; // D2
+const int encoderCLK = 2; 
+const int encoderDT = 1; 
+const int encoderSW = 5;   // Button pin
 
 // TM1637 4-digit Display pins
-const int DISPLAY_CLK = 4; // D3
-const int DISPLAY_DIO = 16; // D4
+const int DISPLAY_CLK = 4; 
+const int DISPLAY_DIO = 3; 
 
 TM1637Display display(DISPLAY_CLK, DISPLAY_DIO);
 
@@ -18,6 +19,12 @@ int lastEncoded = 0;
 int lastClkState;
 unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 2;
+
+// For button debouncing
+int lastButtonState = HIGH;
+unsigned long lastButtonDebounceTime = 0;
+unsigned long buttonDebounceDelay = 20;
+bool buttonWasPressed = false;
 
 // Function to read rotary encoder
 void IRAM_ATTR handleEncoder() {
@@ -36,11 +43,13 @@ void IRAM_ATTR handleEncoder() {
 void setup() {
   pinMode(encoderCLK, INPUT_PULLUP);
   pinMode(encoderDT, INPUT_PULLUP);
+  pinMode(encoderSW, INPUT_PULLUP);  // set knob button pin
 
   display.setBrightness(0x0f);  // Maximum brightness
   display.showNumberDec(0, true);
 
   lastClkState = digitalRead(encoderCLK);
+  lastButtonState = digitalRead(encoderSW);
 
   // Use interrupt for high precision
   attachInterrupt(digitalPinToInterrupt(encoderCLK), handleEncoder, CHANGE);
@@ -48,7 +57,24 @@ void setup() {
 
 void loop() {
   static int lastValue = 0;
-  
+
+  // --- BUTTON DEBOUNCE AND RESET ---
+  int reading = digitalRead(encoderSW);
+  if (reading != lastButtonState) {
+    lastButtonDebounceTime = millis();
+    lastButtonState = reading;
+  }
+
+  if ((millis() - lastButtonDebounceTime) > buttonDebounceDelay) {
+    // Button is active LOW (pressed when LOW)
+    if (lastButtonState == LOW && !buttonWasPressed) {
+      encoderPos = 0;
+      buttonWasPressed = true;
+    } else if (lastButtonState == HIGH && buttonWasPressed) {
+      buttonWasPressed = false;
+    }
+  }
+
   // Clamp value to displayable range
   int value = encoderPos;
   if (value < -999) value = -999;
