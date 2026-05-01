@@ -60,6 +60,17 @@ export const recordings = pico.table("recordings", {
   source: varchar("source", { length: 25 }),
 });
 
+export const toggles = pico.table("toggles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  deviceId: varchar("device_id", { length: 100 }),
+  groupId: varchar("group_id", { length: 100 }),
+  state: varchar("state", { length: 50 }).notNull().default("off"),
+  updatedAt: timestamp("updated_at", {
+    mode: "date",
+    withTimezone: true,
+  }).defaultNow(),
+});
+
 // Relations
 export const devicesRelations = relations(devices, ({ many }) => {
   return {
@@ -83,13 +94,9 @@ export const recordingsRelations = relations(recordings, ({ one }) => ({
   }),
 }));
 
-export const toggles = pico.table("toggles", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  deviceId: varchar("device_id", { length: 100 }),
-  groupId: varchar("group_id", { length: 100 }),
-  state: varchar("state", { length: 50 }).notNull().default("off"),
-  updatedAt: timestamp("updated_at", {
-    mode: "date",
-    withTimezone: true,
-  }).defaultNow(),
-});
+export const togglesRelations = relations(toggles, ({ one }) => ({
+  device: one(devices, {
+    fields: [toggles.deviceId],
+    references: [devices.deviceId],
+  }),
+}));
