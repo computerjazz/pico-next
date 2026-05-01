@@ -49,10 +49,14 @@ async function main() {
         return;
       }
       isAlive = false;
+      console.log(
+        `sending a ping to ${clientId} at ${new Date().toISOString()}`,
+      );
       socket.ping();
     }, PING_INTERVAL);
 
     socket.on("pong", () => {
+      console.log(`got a pong from ${clientId} at ${new Date().toISOString()}`);
       isAlive = true;
     });
 
