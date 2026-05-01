@@ -64,6 +64,13 @@
       "when": 1777410164230,
       "tag": "0008_third_vampiro",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777613772468,
+      "tag": "0009_soft_carlie_cooper",
+      "breakpoints": true
     }
   ]
 }

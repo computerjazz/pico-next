@@ -1,5 +1,6 @@
 import { CHANNEL_TYPE } from "@/lib/constants";
 import { relations } from "drizzle-orm";
+import { timestamptz } from "drizzle-orm/gel-core";
 import { pgSchema, uuid, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 // Schema definition
@@ -72,5 +73,8 @@ export const toggles = pico.table("toggles", {
   deviceId: varchar("device_id", { length: 100 }),
   groupId: varchar("group_id", { length: 100 }),
   state: varchar("state", { length: 50 }).notNull().default("off"),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at", {
+    mode: "date",
+    withTimezone: true,
+  }).defaultNow(),
 });

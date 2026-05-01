@@ -8,11 +8,6 @@ type ToggleEvent = {
   updatedAt: Date;
 };
 
-type DeviceState = {
-  state: string;
-  changedAtMs: number;
-};
-
 export type ToggleDeviceScore = {
   deviceId: string;
   state: string;
@@ -29,75 +24,102 @@ export type ToggleGroupScore = {
   totalEvents: number;
 };
 
-function getActiveDeviceId(states: Map<string, DeviceState>): string | null {
-  if (states.size < 2) return null;
-  const uniqueStates = new Set(Array.from(states.values()).map((v) => v.state));
-  if (uniqueStates.size <= 1) return null;
+function scoreFromEvents(
+  groupId: string,
+  events: ToggleEvent[],
+): ToggleGroupScore {
+  const deviceIds = events.reduce((acc, cur) => {
+    acc.add(cur.deviceId);
+    return acc;
+  }, new Set<string>());
+  const deviceIdsArr = [...deviceIds];
 
-  let winnerId: string | null = null;
-  let winnerMs = -1;
-  for (const [deviceId, value] of states.entries()) {
-    if (value.changedAtMs > winnerMs) {
-      winnerMs = value.changedAtMs;
-      winnerId = deviceId;
-    }
-  }
-  return winnerId;
-}
+  const otherDeviceMap = {
+    [deviceIdsArr[0]]: deviceIdsArr[1],
+    [deviceIdsArr[1]]: deviceIdsArr[0],
+  };
 
-function scoreFromEvents(groupId: string, events: ToggleEvent[]): ToggleGroupScore {
-  const scoresMs = new Map<string, number>();
-  const states = new Map<string, DeviceState>();
+  const result = events.reduce(
+    (acc, cur) => {
+      const { activeDeviceId, devices, prev } = acc;
 
-  let lastEventMs: number | null = null;
-  let activeDeviceId: string | null = null;
+      devices.set(cur.deviceId, {
+        lastSeenState: cur.state,
+        runningMs: devices.get(cur.deviceId)?.runningMs || 0,
+        lastUpdatedAt: cur.updatedAt,
+      });
 
-  for (const event of events) {
-    const nowMs = event.updatedAt.getTime();
-    if (lastEventMs !== null && activeDeviceId) {
-      scoresMs.set(
-        activeDeviceId,
-        (scoresMs.get(activeDeviceId) ?? 0) + (nowMs - lastEventMs),
-      );
-    }
+      const thisDevice = devices.get(cur.deviceId);
 
-    states.set(event.deviceId, {
-      state: event.state,
-      changedAtMs: nowMs,
-    });
-    scoresMs.set(event.deviceId, scoresMs.get(event.deviceId) ?? 0);
+      if (devices.size < 2 || !prev) {
+        return {
+          ...acc,
+          prev: cur,
+        };
+      }
 
-    activeDeviceId = getActiveDeviceId(states);
-    lastEventMs = nowMs;
-  }
-
-  const asOfMs = Date.now();
-  if (lastEventMs !== null && activeDeviceId) {
-    scoresMs.set(
-      activeDeviceId,
-      (scoresMs.get(activeDeviceId) ?? 0) + (asOfMs - lastEventMs),
-    );
-  }
-
-  const devices: ToggleDeviceScore[] = Array.from(states.entries())
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([deviceId, value]) => {
-      const isActive = activeDeviceId === deviceId;
-      const role = activeDeviceId === null ? "idle" : isActive ? "active" : "challenger";
-      return {
-        deviceId,
-        state: value.state,
-        role,
-        points: Math.floor((scoresMs.get(deviceId) ?? 0) / 1000),
-      };
-    });
+      const isIdle =
+        cur.state == devices.get(otherDeviceMap[cur.deviceId])?.lastSeenState;
+      // get diff
+      if (isIdle) {
+        const diffMs = cur.updatedAt.getTime() - prev.updatedAt.getTime();
+        if (activeDeviceId && thisDevice) {
+          // award ms to active device id
+          const updatedMs = thisDevice.runningMs + diffMs;
+          devices.set(cur.deviceId, {
+            ...thisDevice,
+            runningMs: updatedMs,
+          });
+        }
+        return {
+          ...acc,
+          activeDeviceId: null,
+          prev: cur,
+        };
+      } else {
+        return {
+          ...acc,
+          activeDeviceId: cur.deviceId,
+          prev: cur,
+        };
+      }
+    },
+    {
+      prev: null as ToggleEvent | null,
+      activeDeviceId: null as string | null,
+      devices: new Map<
+        string,
+        { lastSeenState: string; runningMs: number; lastUpdatedAt: Date }
+      >(),
+    },
+  );
 
   return {
     groupId,
-    asOf: new Date(asOfMs).toISOString(),
-    phase: activeDeviceId ? "contested" : "aligned",
-    activeDeviceId,
-    devices,
+    asOf: new Date().toISOString(),
+    phase: result.activeDeviceId ? "contested" : "aligned",
+    activeDeviceId: result.activeDeviceId,
+    devices: Object.values([...result.devices]).map(
+      ([deviceId, { lastSeenState, runningMs }]) => {
+        const role =
+          result.activeDeviceId === null
+            ? "idle"
+            : result.activeDeviceId === deviceId
+              ? "active"
+              : "challenger";
+        const prevUpdated = result.prev?.updatedAt ?? new Date();
+        const totalMs =
+          role === "active"
+            ? runningMs + (new Date().getTime() - prevUpdated.getTime())
+            : runningMs;
+        return {
+          deviceId,
+          role,
+          points: Math.floor(totalMs / 1000),
+          state: lastSeenState,
+        };
+      },
+    ),
     totalEvents: events.length,
   };
 }
@@ -113,15 +135,9 @@ export async function getGroupScore(groupId: string) {
     .where(eq(toggles.groupId, groupId))
     .orderBy(asc(toggles.updatedAt));
 
-  const events: ToggleEvent[] = rows
-    .filter((row): row is { deviceId: string; state: string; updatedAt: Date } => {
-      return Boolean(row.deviceId && row.state && row.updatedAt);
-    })
-    .map((row) => ({
-      deviceId: row.deviceId,
-      state: row.state,
-      updatedAt: row.updatedAt,
-    }));
+  const events = rows.filter((row): row is ToggleEvent => {
+    return !!row.deviceId && !!row.state && !!row.updatedAt;
+  });
 
   return scoreFromEvents(groupId, events);
 }
