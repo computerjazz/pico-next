@@ -41,6 +41,7 @@ async function main() {
     let clientId: string | null = null;
     let isAlive = true;
 
+    console.log(`socket connection: ${socket}`);
     // Heartbeat
     const pingTimer = setInterval(() => {
       if (!isAlive) {
@@ -57,6 +58,7 @@ async function main() {
 
     socket.on("message", async (data: Buffer) => {
       const msg = JSON.parse(data.toString());
+      console.log(`socket message ${msg.id}: ${msg}`);
       if (msg.type === "register") {
         const isValid = await validateTokenDefault(msg.token);
         if (!isValid) {
