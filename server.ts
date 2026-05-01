@@ -21,7 +21,10 @@ async function main() {
     if (socket?.readyState === WebSocket.OPEN) {
       socket.send(command);
     } else {
-      console.warn(`Client ${targetId} not connected`);
+      console.warn(
+        `Client ${targetId} not connected ${socket?.readyState}`,
+        socket,
+      );
     }
   });
 
