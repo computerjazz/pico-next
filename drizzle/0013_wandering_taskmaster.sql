@@ -1,0 +1,2 @@
+ALTER TABLE "pico_next_db"."recordings" ALTER COLUMN "filepath" SET DATA TYPE varchar(512);--> statement-breakpoint
+ALTER TABLE "pico_next_db"."recordings" ALTER COLUMN "name" SET DATA TYPE varchar(512);

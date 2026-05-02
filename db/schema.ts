@@ -49,13 +49,13 @@ export const deviceChannels = pico.table("device_channels", {
 
 export const recordings = pico.table("recordings", {
   id: uuid("id").primaryKey().defaultRandom().primaryKey(),
+  deviceId: varchar("device_id", { length: 100 }),
   createdAt: timestamp("created_at", {
     mode: "date",
     withTimezone: true,
   }).defaultNow(),
-  filepath: varchar("filepath", { length: 256 }).notNull(),
-  deviceId: varchar("device_id", { length: 100 }),
-  name: varchar("name", { length: 256 }),
+  filepath: varchar("filepath", { length: 512 }).notNull(),
+  name: varchar("name", { length: 512 }),
   contentType: varchar("content_type", { length: 25 }),
   source: varchar("source", { length: 25 }),
 });
