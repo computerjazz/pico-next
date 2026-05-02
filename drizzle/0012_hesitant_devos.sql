@@ -1,0 +1,1 @@
+ALTER TABLE "pico_next_db"."recordings" ALTER COLUMN "name" SET DATA TYPE varchar(256);

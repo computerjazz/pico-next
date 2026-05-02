@@ -55,7 +55,7 @@ export const recordings = pico.table("recordings", {
   }).defaultNow(),
   filepath: varchar("filepath", { length: 256 }).notNull(),
   deviceId: varchar("device_id", { length: 100 }),
-  name: varchar("name", { length: 100 }),
+  name: varchar("name", { length: 256 }),
   contentType: varchar("content_type", { length: 25 }),
   source: varchar("source", { length: 25 }),
 });
