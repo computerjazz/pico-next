@@ -17,8 +17,8 @@ async function main() {
   await subscriber.subscribe("ws:commands", (message) => {
     const { targetId, command } = JSON.parse(message);
     const socket = clients.get(targetId);
-    console.log("Sending socket message:", message);
     if (socket?.readyState === WebSocket.OPEN) {
+      console.log(`Sending message to target ${targetId}`);
       socket.send(command);
     } else {
       console.warn(
@@ -41,7 +41,7 @@ async function main() {
     let clientId: string | null = null;
     let isAlive = true;
 
-    console.log(`socket connection: ${socket}`);
+    console.log(`socket connection: ${socket.url}`);
     // Heartbeat
     const pingTimer = setInterval(() => {
       if (!isAlive) {
@@ -58,7 +58,7 @@ async function main() {
 
     socket.on("message", async (data: Buffer) => {
       const msg = JSON.parse(data.toString());
-      console.log(`socket message ${msg.id}: ${msg}`);
+      console.log(`socket message ${msg.id}: ${JSON.stringify(msg)}`);
       if (msg.type === "register") {
         const isValid = await validateTokenDefault(msg.token);
         if (!isValid) {
@@ -89,6 +89,7 @@ async function main() {
   });
 
   server.on("upgrade", (req, socket, head) => {
+    console.log("server upgrade", req.url);
     if (req.url === "/api/ws") {
       wss.handleUpgrade(req, socket, head, (ws) => {
         wss.emit("connection", ws, req);
