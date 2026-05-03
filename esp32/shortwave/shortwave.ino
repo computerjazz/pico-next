@@ -754,7 +754,7 @@ static bool getDeviceInfo() {
   client.setInsecure();
 
   HTTPClient http;
-  if (!http.begin(client, String("https://") + serverHost + "/api/shortwave/device/" + deviceId)) {
+  if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId)) {
     Serial.println("getDeviceInfo: http begin failed");
     return false;
   }

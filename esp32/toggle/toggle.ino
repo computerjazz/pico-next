@@ -434,7 +434,7 @@ static bool postToggleState(bool isOn) {
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
-  String url = String("https://") + serverHost + "/api/toggle/device/" + deviceId;
+  String url = String("https://") + serverHost + "/api/device/" + deviceId;
   if (!http.begin(client, url)) return false;
   http.addHeader("Authorization", String("Bearer ") + authToken);
   http.addHeader("Content-Type", "application/json");
