@@ -5,6 +5,7 @@
 
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <WebSocketsClient.h>
 #include <HTTPClient.h>
 #include <WebServer.h>
 #include <DNSServer.h>
@@ -41,7 +42,7 @@
 #define OTA_CHECK_INTERVAL_MS  600000UL
 #define RECORD_HOLD_MS         300UL   // hold longer than this to record; tap shorter for playback
 #define SHORT_PRESS_MIN_MS     40      // debounce: ignore taps shorter than this
-#define DOUBLE_BLINK_PERIOD_MS 5000UL
+#define DOUBLE_BLINK_PERIOD_MS 2000UL
 #define BUTTON_ACTIVE_STATE    HIGH
 
 // ============================================================
@@ -51,6 +52,8 @@
 const char* serverHost = ENV_SERVER_HOST;
 const int   serverPort = 443;
 const char* authToken  = ENV_AUTH_TOKEN;
+const char* wsToken = WS_TOKEN;
+
 const char* portalSsid = "sh0rtwave-setup";
 const char* firmwareVersion = "shortwave-2026-04-28-1";
 
@@ -59,10 +62,15 @@ static WebServer portalServer(80);
 static Preferences wifiPrefs;
 static Preferences msgPrefs;
 static Preferences devicePrefs;
+static WebSocketsClient wsClient;
+
 static bool portalWantsConnect = false;
 static String portalNewSsid;
 static String portalNewPassword;
 static String deviceId = "";
+static float g_gain = 0.1f;  
+static unsigned long lastWsMessageMs    = 0;
+static bool wsReady = false;
 
 static void loadDeviceIdFromPrefs() {
   devicePrefs.begin("device", false);
@@ -82,6 +90,12 @@ static void loadDeviceIdFromPrefs() {
 #endif
   devicePrefs.end();
   Serial.printf("device id: %s\n", deviceId.c_str());
+}
+
+static void loadGainFromPrefs() {
+  devicePrefs.begin("device", false);
+  g_gain = devicePrefs.getFloat("gain", 0.1f);
+  Serial.printf("gain is: %f\n", g_gain);
 }
 
 static bool connectToWifi(const char* ssid, const char* password, unsigned long timeoutMs = 15000UL) {
@@ -216,6 +230,53 @@ static void connectWifiWithPortal() {
   wifiPrefs.end();
 }
 
+static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
+  // Print wsEvent safely with explicit length (guard for null/non-string payload)
+  if (payload && length > 0) {
+    Serial.print("wsEvent ");
+    for (size_t i = 0; i < length; ++i) Serial.print((char)payload[i]);
+    Serial.printf(" %d\n", (int)length);
+  } else {
+    Serial.printf("wsEvent <null> %d\n", (int)length);
+  }
+
+  switch (type) {
+    case WStype_CONNECTED: {
+      Serial.print("received CONNECTED message\n");
+
+      wsReady = true;
+      String msg = String("{\"type\":\"register\",\"id\":\"") + deviceId + "\",\"token\":\"" + wsToken + "\"}";
+      wsClient.sendTXT(msg);
+      break;
+    }
+    case WStype_DISCONNECTED:
+      Serial.print("received DISCONNECTED message");
+
+      wsReady = false;
+      break;
+    case WStype_TEXT: {
+      String message;
+      if (payload && length > 0) {
+        message.reserve(length + 1);
+        for (size_t i = 0; i < length; ++i) message += (char)payload[i];
+      }
+      Serial.printf("received TEXT message %s\n", message);
+      // Use existing extractJsonStringValue helper to extract "volume" and convert to float
+      String volStr = extractJsonNumberValue(message, "volume");
+      if (volStr.length() > 0) {
+        float volume = volStr.toFloat();
+        Serial.printf("[wsEvent] Extracted volume: %f\n", volume);
+        setGain(volume);
+        // Now you can use variable 'volume' as needed
+      }
+      lastWsMessageMs = millis();
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 // ============================================================
 // BackgroundAudio (speaker output, I2S_NUM_0 via library)
 // ============================================================
@@ -223,7 +284,6 @@ static void connectWifiWithPortal() {
 static ESP32I2SAudio           g_i2sOut(I2S_PLAY_SCK, I2S_PLAY_WS, I2S_PLAY_DOUT);
 static BackgroundAudioMP3Class<RawDataBuffer<8 * 1024>> g_mp3(g_i2sOut);
 static bool g_mp3Started = false;
-static float g_gain = 0.1f;  // default: half volume
 
 
 // ============================================================
@@ -375,16 +435,25 @@ static int           doubleBlinkPhase   = 0;
 
 static TaskHandle_t playbackTask = nullptr;
 
+
+static float getGain() {
+  return devicePrefs.getFloat("gain", 0.1f);
+}
+
+static void setGain(const float& val) {
+  devicePrefs.putFloat("gain", val);
+}
+
 static String getLatestMsgKey() {
   return msgPrefs.getString("latestKey", "");
 }
 
-static String getLastListenedMsgKey() {
-  return msgPrefs.getString("listenedKey", "");
-}
-
 static void setLatestMsgKey(const String& key) {
   msgPrefs.putString("latestKey", key);
+}
+
+static String getLastListenedMsgKey() {
+  return msgPrefs.getString("listenedKey", "");
 }
 
 static void setLastListenedMsgKey(const String& key) {
@@ -403,6 +472,45 @@ static void loadMessageStateFromPrefs() {
 // ============================================================
 
 static WiFiClientSecure* streamClient = nullptr;
+
+// This implementation only works to extract string values in the form: "key":"value"
+// (i.e., the value must be a quoted string immediately after the colon).
+// It will not extract numbers, booleans, or null.
+// For example: {"foo":"bar"} works, {"foo":123} or {"foo":true} will not.
+static String extractJsonStringValue(const String& json, const char* key) {
+  String pat = String("\"") + key + "\":\"";
+  int i = json.indexOf(pat);
+  if (i < 0) return "";
+  i += pat.length();
+  int j = json.indexOf('"', i);
+  if (j < 0) return "";
+  return json.substring(i, j);
+}
+
+// Helper to extract a number (int or float as string) from JSON in the form: "key":123
+// Returns "" if not found or invalid
+static String extractJsonNumberValue(const String& json, const char* key) {
+  String pat = String("\"") + key + "\":";
+  int i = json.indexOf(pat);
+  if (i < 0) return "";
+  i += pat.length();
+  // Skip whitespace
+  while (i < (int)json.length() && isspace(json[i])) ++i;
+  if (i >= (int)json.length()) return "";
+
+  int j = i;
+  // Accept optional leading minus
+  if (json[j] == '-') ++j;
+  // Parse number (int/float): [0-9.]+ (stop at non-digit/non-dot)
+  bool foundDigit = false;
+  while (j < (int)json.length() && 
+         ((json[j] >= '0' && json[j] <= '9') || json[j] == '.')) {
+    if (json[j] >= '0' && json[j] <= '9') foundDigit = true;
+    ++j;
+  }
+  if (!foundDigit) return "";
+  return json.substring(i, j);
+}
 
 static bool openStream() {
   if (streamClient) { streamClient->stop(); delete streamClient; }
@@ -459,14 +567,6 @@ static int closeStream() {
 // ============================================================
 // Poll helpers
 // ============================================================
-
-static String extractJsonField(const String& json, const char* key) {
-  String pat = String("\"") + key + "\":\"";
-  int i = json.indexOf(pat); if (i < 0) return "";
-  i += pat.length();
-  int j = json.indexOf('"', i); if (j < 0) return "";
-  return json.substring(i, j);
-}
 
 static String resolveOtaUrl(const String& maybeUrl) {
   if (maybeUrl.startsWith("https://") || maybeUrl.startsWith("http://")) {
@@ -562,8 +662,8 @@ static bool checkForOtaUpdate() {
     return false;
   }
 
-  String otaVersion = extractJsonField(body, "otaVersion");
-  String firmwareUrl = resolveOtaUrl(extractJsonField(body, "firmwareUrl"));
+  String otaVersion = extractJsonStringValue(body, "otaVersion");
+  String firmwareUrl = resolveOtaUrl(extractJsonStringValue(body, "firmwareUrl"));
   if (otaVersion.length() == 0) {
     Serial.println("ota: metadata missing otaVersion");
     return false;
@@ -597,8 +697,8 @@ static bool pollAnsweringMachine() {
     return true;
   }
   if (code != 200) { Serial.printf("poll: HTTP %d\n", code); return false; }
-  String fn = extractJsonField(body, "fileName");
-  String mt = extractJsonField(body, "mtime");
+  String fn = extractJsonStringValue(body, "fileName");
+  String mt = extractJsonStringValue(body, "mtime");
   String latestMsgKey = (fn.length() && mt.length()) ? fn + "|" + mt : "";
   setLatestMsgKey(latestMsgKey);
   return true;
@@ -732,8 +832,12 @@ static void playAnsweringMachineAudio() {
     // the BCLK/WS pins (GPIO 9/46) as I2S master without any conflict.
     g_mp3.begin();
     g_mp3Started = true;
-    g_mp3.setGain(g_gain);
+
   }
+
+  float curGain = getGain();
+  Serial.printf("Playing with gain %f\n", curGain);
+  g_mp3.setGain(curGain);
 
   g_mp3.flush();
 
@@ -922,6 +1026,7 @@ void setup() {
   }
 
   loadDeviceIdFromPrefs();
+  loadGainFromPrefs();
   connectWifiWithPortal();
   loadMessageStateFromPrefs();
   phoneHome();
@@ -958,6 +1063,11 @@ void setup() {
   // Log the I2S output pins at startup for reference
   Serial.println("[INFO] Speaker (I2S_OUT) output is mapped to the following pins:");
   logSpeakerPins();
+  wsClient.beginSSL(serverHost, 443, "/api/ws");
+  wsClient.onEvent(wsEvent);
+  wsClient.setReconnectInterval(2000);
+  wsClient.enableHeartbeat(15000, 5000, 3); // ping every 15s, 5s timeout, 3 retries
+
 }
 
 // ============================================================
@@ -965,6 +1075,7 @@ void setup() {
 // ============================================================
 
 void loop() {
+  wsClient.loop();
   unsigned long now = millis();
   static unsigned long lastVolMs = 0;
 
