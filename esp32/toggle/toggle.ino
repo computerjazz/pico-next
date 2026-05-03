@@ -16,7 +16,7 @@ const char* serverHost = SERVER_HOST;
 const char* authToken = AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 const char* portalSsid = "toggle-setup";
-const char* firmwareVersion = "toggle-2026-04-28-1";
+const char* firmwareVersion = "toggle-2026-05.03.1";
 
 #define OTA_CHECK_INTERVAL_MS 600000UL
 
