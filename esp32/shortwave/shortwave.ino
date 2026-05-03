@@ -1075,12 +1075,29 @@ void setup() {
   phoneHome();
   getDeviceInfo();
   checkForOtaUpdate();
-  for (int i = 0; i < 3; i++) {
-    digitalWrite(LED_PIN, HIGH);
-    delay(70);
-    digitalWrite(LED_PIN, LOW);
-    delay(70);
+  // Smoothly ramp LED brightness up and back down three times, adjusting for perceived (logarithmic) brightness
+  // Uses a gamma correction curve for smoother "apparent" brightness
+  const float gamma = 2.2; // Typical gamma for LEDs
+  const int steps = 48;    // More steps = smoother
+
+  for (int j = 0; j < 3; j++) {
+    // Ramp up perceived brightness
+    for (int step = 0; step <= steps; step++) {
+      float normalized = (float)step / steps;
+      int ledVal = (int)(pow(normalized, gamma) * 255.0f + 0.5f);
+      analogWrite(LED_PIN, ledVal);
+      delay(8);
+    }
+    // Ramp down perceived brightness
+    for (int step = steps; step >= 0; step--) {
+      float normalized = (float)step / steps;
+      int ledVal = (int)(pow(normalized, gamma) * 255.0f + 0.5f);
+      analogWrite(LED_PIN, ledVal);
+      delay(8);
+    }
+    delay(50);
   }
+  analogWrite(LED_PIN, 0); // Ensure LED is off at end
 
 
   
