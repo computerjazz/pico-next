@@ -230,6 +230,17 @@ static void connectWifiWithPortal() {
   wifiPrefs.end();
 }
 
+static void setGainFromConfigJson(const String& json) {
+    String volumeStr = extractJsonStringValue(json, "volume");
+    if (volumeStr.length() > 0) {
+      Serial.printf("Extracted volume: %s\n", volumeStr);
+      float gain = volumeStr.toFloat() / 100.0f;
+      Serial.printf("Setting gain: %f\n", gain);
+
+      setGain(gain);
+    }
+}
+
 static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
   // Print wsEvent safely with explicit length (guard for null/non-string payload)
   if (payload && length > 0) {
@@ -261,12 +272,7 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
         for (size_t i = 0; i < length; ++i) message += (char)payload[i];
       }
       Serial.printf("received TEXT message %s\n", message);
-      String gainStr = extractJsonNumberValue(message, "gain");
-      if (volStr.length() > 0) {
-        float gain = volStr.toFloat();
-        Serial.printf("[wsEvent] Extracted gain: %f\n", gain);
-        setGain(gain);
-      }
+      setGainFromConfigJson(message);
       lastWsMessageMs = millis();
       break;
     }
@@ -726,10 +732,14 @@ static bool phoneHome() {
 
   int code = http.POST((uint8_t*)nullptr, 0);
   String body = http.getString();
+
   http.end();
 
   if (code >= 200 && code < 300) {
     Serial.printf("phoneHome: success (%d)\n", code);
+    Serial.println("Returned JSON body:");
+    Serial.println(body);
+    setGainFromConfigJson(body);
     return true;
   }
 

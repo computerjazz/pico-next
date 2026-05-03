@@ -199,7 +199,7 @@ async function setDeviceVolume({
         targetId: deviceId,
         command: JSON.stringify({
           type: "shortwave_config",
-          gain: volume / 100,
+          volume: String(volume),
         }),
       }),
     );
