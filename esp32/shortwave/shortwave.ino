@@ -38,7 +38,9 @@
 // Timing
 // ============================================================
 
-#define POLL_INTERVAL_MS       60000UL
+#define ANSWERING_MACHINE_POLL_INTERVAL_MS       60000UL
+#define DEVICE_INFO_POLL_INTERVAL_MS  60000UL
+
 #define OTA_CHECK_INTERVAL_MS  600000UL
 #define RECORD_HOLD_MS         300UL   // hold longer than this to record; tap shorter for playback
 #define SHORT_PRESS_MIN_MS     40      // debounce: ignore taps shorter than this
@@ -55,7 +57,7 @@ const char* authToken  = ENV_AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 
 const char* portalSsid = "sh0rtwave-setup";
-const char* firmwareVersion = "shortwave-2026-04-28-1";
+const char* firmwareVersion = "shortwave-2026-05-03.1";
 
 static DNSServer dnsServer;
 static WebServer portalServer(80);
@@ -236,7 +238,6 @@ static void setGainFromConfigJson(const String& json) {
       Serial.printf("Extracted volume: %s\n", volumeStr);
       float gain = volumeStr.toFloat() / 100.0f;
       Serial.printf("Setting gain: %f\n", gain);
-
       setGain(gain);
     }
 }
@@ -434,6 +435,7 @@ static bool          playbackPending    = false;
 static bool          playbackActive     = false;
 static unsigned long lastPollMs         = 0;
 static unsigned long lastOtaCheckMs     = 0;
+static unsigned long lastDeviceInfoCheckMs = 0;
 static unsigned long nextDoubleBlinkMs  = 0;
 static int           doubleBlinkPhase   = 0;
 
@@ -446,6 +448,7 @@ static float getGain() {
 
 static void setGain(const float& val) {
   devicePrefs.putFloat("gain", val);
+  g_mp3.setGain(val);
 }
 
 static String getLatestMsgKey() {
@@ -739,11 +742,43 @@ static bool phoneHome() {
     Serial.printf("phoneHome: success (%d)\n", code);
     Serial.println("Returned JSON body:");
     Serial.println(body);
-    setGainFromConfigJson(body);
     return true;
   }
 
   Serial.printf("phoneHome: HTTP %d, body: %s\n", code, body.c_str());
+  return false;
+}
+
+static bool getDeviceInfo() {
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+  if (!http.begin(client, String("https://") + serverHost + "/api/shortwave/device/" + deviceId)) {
+    Serial.println("getDeviceInfo: http begin failed");
+    return false;
+  }
+
+  http.addHeader("Authorization", String("Bearer ") + authToken);
+  http.addHeader("x-device-id", deviceId);
+  http.addHeader("x-firmware-version", String(firmwareVersion));
+  http.addHeader("x-device-type", "shortwave");
+  http.addHeader("ngrok-skip-browser-warning", "true");
+
+  int code = http.GET();
+  String body = http.getString();
+
+  http.end();
+
+  if (code >= 200 && code < 300) {
+    Serial.printf("getDeviceInfo: success (%d)\n", code);
+    Serial.println("Returned JSON body:");
+    Serial.println(body);
+    setGainFromConfigJson(body);
+    return true;
+  }
+
+  Serial.printf("getDeviceInfo: HTTP %d, body: %s\n", code, body.c_str());
   return false;
 }
 
@@ -1038,6 +1073,7 @@ void setup() {
   connectWifiWithPortal();
   loadMessageStateFromPrefs();
   phoneHome();
+  getDeviceInfo();
   checkForOtaUpdate();
   for (int i = 0; i < 3; i++) {
     digitalWrite(LED_PIN, HIGH);
@@ -1088,7 +1124,7 @@ void loop() {
   static unsigned long lastVolMs = 0;
 
 
-  if (lastPollMs == 0 || now - lastPollMs >= POLL_INTERVAL_MS) {
+  if (lastPollMs == 0 || now - lastPollMs >= ANSWERING_MACHINE_POLL_INTERVAL_MS) {
     lastPollMs = now;
     pollAnsweringMachine();
   }
@@ -1096,6 +1132,11 @@ void loop() {
   if (lastOtaCheckMs == 0 || now - lastOtaCheckMs >= OTA_CHECK_INTERVAL_MS) {
     lastOtaCheckMs = now;
     checkForOtaUpdate();
+  }
+
+  if (lastDeviceInfoCheckMs == 0 || now - lastDeviceInfoCheckMs >= DEVICE_INFO_POLL_INTERVAL_MS) {
+    lastDeviceInfoCheckMs = now;
+    getDeviceInfo();
   }
 
   if (now - lastVolMs > 150) {
