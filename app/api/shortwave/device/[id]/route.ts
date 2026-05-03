@@ -63,7 +63,7 @@ export async function POST(
         targetId: deviceId,
         command: JSON.stringify({
           type: "shortwave_config",
-          volume,
+          gain: volume / 100,
         }),
       }),
     );

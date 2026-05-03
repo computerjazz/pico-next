@@ -21,7 +21,11 @@ export async function POST(req: Request) {
         type: deviceType,
       })
       .onConflictDoNothing();
-    return Response.json({ success: true }, { status: 200 });
+
+    const device = await db.query.devices.findFirst({
+      where: (t, { eq }) => eq(t.deviceId, deviceId),
+    });
+    return Response.json({ success: true, device }, { status: 200 });
   } catch (err) {
     console.error(err);
     return new Response("Phone home failed", { status: 500 });

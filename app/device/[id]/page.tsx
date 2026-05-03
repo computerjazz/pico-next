@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { renameDevice } from "@/app/actions/renameDevice";
 import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
+import { setDeviceVolume } from "@/app/actions/setDeviceVolume";
 
 export default async function DevicePage({
   params,
@@ -23,6 +24,14 @@ export default async function DevicePage({
     const newName = formData.get("name") as string;
     if (!deviceId || typeof newName !== "string") return;
     await renameDevice({ deviceId, name: newName });
+    revalidatePath(`/device/${deviceId}`);
+  }
+
+  async function onSetVolume(formData: FormData) {
+    "use server";
+    const newVolume = formData.get("volume");
+    if (!deviceId || !newVolume) return;
+    await setDeviceVolume({ deviceId, volume: Number(newVolume) });
     revalidatePath(`/device/${deviceId}`);
   }
 
@@ -72,6 +81,27 @@ export default async function DevicePage({
           Rename
         </button>
       </form>
+      {device.type === "shortwave" && (
+        <form action={onSetVolume} className="space-y-2 max-w-xs">
+          <label htmlFor="volume" className="block font-medium text-sm">
+            Set Device Volume
+          </label>
+          <input
+            id="volume"
+            name="volume"
+            type="number"
+            defaultValue={device.volume ?? 25}
+            className="w-full px-2 py-1 border rounded"
+            autoComplete="off"
+          />
+          <button
+            type="submit"
+            className="mt-2 px-4 py-1 bg-blue-500 text-white rounded"
+          >
+            Set Volume
+          </button>
+        </form>
+      )}
     </div>
   );
 }

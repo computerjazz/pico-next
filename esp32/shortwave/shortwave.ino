@@ -261,13 +261,11 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
         for (size_t i = 0; i < length; ++i) message += (char)payload[i];
       }
       Serial.printf("received TEXT message %s\n", message);
-      // Use existing extractJsonStringValue helper to extract "volume" and convert to float
-      String volStr = extractJsonNumberValue(message, "volume");
+      String gainStr = extractJsonNumberValue(message, "gain");
       if (volStr.length() > 0) {
-        float volume = volStr.toFloat();
-        Serial.printf("[wsEvent] Extracted volume: %f\n", volume);
-        setGain(volume);
-        // Now you can use variable 'volume' as needed
+        float gain = volStr.toFloat();
+        Serial.printf("[wsEvent] Extracted gain: %f\n", gain);
+        setGain(gain);
       }
       lastWsMessageMs = millis();
       break;
