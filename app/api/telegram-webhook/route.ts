@@ -88,7 +88,7 @@ async function onVoiceMessageReceived({
         source: RECORDING_SOURCE.ANSWERING_MACHINE,
         deviceId: device.deviceId,
         filepath: voiceMp3,
-        name: `${new Date().toISOString}-telegram-recording-${voice.file_id}`,
+        name: `${new Date().toISOString()}-telegram-recording-${voice.file_id}`,
       });
     }),
   );
@@ -184,6 +184,30 @@ async function removeDeviceFromChannel({
   return { success: true, message: `Removed ${deviceId} from this chat!` };
 }
 
+async function setDeviceVolume({
+  deviceId,
+  volume,
+}: {
+  deviceId: string;
+  volume: number;
+}) {
+  if (volume !== undefined && !isNaN(volume)) {
+    const redis = await getRedis();
+    await redis.publish(
+      "ws:commands",
+      JSON.stringify({
+        targetId: deviceId,
+        command: JSON.stringify({
+          type: "shortwave_config",
+          volume,
+        }),
+      }),
+    );
+    return { success: true, message: `Set volume to ${volume}!` };
+  }
+  return { success: false, message: "Bad volume value!" };
+}
+
 async function onTextMessageReceived({
   message,
 }: {
@@ -206,6 +230,17 @@ async function onTextMessageReceived({
   if (command === "/remove") {
     const deviceId = args[0];
     const status = await removeDeviceFromChannel({ deviceId, channelId });
+    await sendMessageToChat({
+      chatId: channelId,
+      text: status.message,
+      replyToMessageId: messageId,
+    });
+  }
+
+  if (command === "/volume") {
+    const deviceId = args[0];
+    const volume = Number(args[1]);
+    const status = await setDeviceVolume({ deviceId, volume });
     await sendMessageToChat({
       chatId: channelId,
       text: status.message,
