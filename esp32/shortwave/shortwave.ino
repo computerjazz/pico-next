@@ -650,7 +650,7 @@ static bool checkForOtaUpdate() {
   client.setInsecure();
 
   HTTPClient http;
-  if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/ota/shortwave")) {
+  if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/ota")) {
     Serial.println("ota: metadata begin failed");
     return false;
   }
@@ -793,7 +793,9 @@ static void logSpeakerPins() {
 
 static bool streamAnsweringMachineMp3() {
   char url[192];
-  snprintf(url, sizeof(url), "https://%s/api/device/%s/answering-machine/mp3", serverHost, deviceId);
+
+  snprintf(url, sizeof(url), "https://%s/api/device/%s/answering-machine/mp3", serverHost, deviceId.c_str());
+  Serial.printf("Streaming from URL: %s\n", url);
 
   WiFiClientSecure* client = new WiFiClientSecure();
   HTTPClient*       http   = new HTTPClient();
@@ -1042,7 +1044,7 @@ void setup() {
   Serial.begin(115200);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, LOW);
+  analogWrite(LED_PIN, 0);
 
   // Drive speaker I2S pins low before BackgroundAudio claims them.
   // Floating pins on an idle amplifier produce audible noise on boot.
@@ -1220,13 +1222,13 @@ void loop() {
     } else if (dur >= SHORT_PRESS_MIN_MS) {
       Serial.printf("[DEBUG] pending=%d recording=%d active=%d\n", playbackPending, recording, playbackActive);
       // Quick double-blink LED to acknowledge short press
-      digitalWrite(LED_PIN, HIGH);
+      analogWrite(LED_PIN, 255);
       delay(60);
-      digitalWrite(LED_PIN, LOW);
+      analogWrite(LED_PIN, 0);
       delay(60);
-      digitalWrite(LED_PIN, HIGH);
+      analogWrite(LED_PIN, 255);
       delay(60);
-      digitalWrite(LED_PIN, LOW);
+      analogWrite(LED_PIN, 0);
       // Short tap: trigger playback (recording never started)
       Serial.println("[PLAYBACK] Button tap detected: will trigger playback.");
 
@@ -1250,22 +1252,22 @@ void loop() {
 
   // LED
   if (recording) {
-    digitalWrite(LED_PIN, HIGH);
+    analogWrite(LED_PIN, 255);
     doubleBlinkPhase = 0; nextDoubleBlinkMs = 0;
   } else if (playbackActive) {
-    digitalWrite(LED_PIN, LOW);
+    analogWrite(LED_PIN, 0);
   } else if (hasUnlistenedMessages()) {
     if (nextDoubleBlinkMs == 0) nextDoubleBlinkMs = now;
     if (now >= nextDoubleBlinkMs) {
       switch (doubleBlinkPhase) {
-        case 0: digitalWrite(LED_PIN, HIGH); nextDoubleBlinkMs = now + 80;                     doubleBlinkPhase = 1; break;
-        case 1: digitalWrite(LED_PIN, LOW);  nextDoubleBlinkMs = now + 120;                    doubleBlinkPhase = 2; break;
-        case 2: digitalWrite(LED_PIN, HIGH); nextDoubleBlinkMs = now + 80;                     doubleBlinkPhase = 3; break;
-        case 3: digitalWrite(LED_PIN, LOW);  nextDoubleBlinkMs = now + DOUBLE_BLINK_PERIOD_MS; doubleBlinkPhase = 0; break;
+        case 0: analogWrite(LED_PIN, 255); nextDoubleBlinkMs = now + 80;                     doubleBlinkPhase = 1; break;
+        case 1: analogWrite(LED_PIN, 0);  nextDoubleBlinkMs = now + 120;                    doubleBlinkPhase = 2; break;
+        case 2: analogWrite(LED_PIN, 255); nextDoubleBlinkMs = now + 80;                     doubleBlinkPhase = 3; break;
+        case 3: analogWrite(LED_PIN, 0);  nextDoubleBlinkMs = now + DOUBLE_BLINK_PERIOD_MS; doubleBlinkPhase = 0; break;
       }
     }
   } else {
-    digitalWrite(LED_PIN, LOW);
+    analogWrite(LED_PIN, 0);
     doubleBlinkPhase = 0; nextDoubleBlinkMs = 0;
   }
 
