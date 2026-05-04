@@ -4,7 +4,7 @@ import fetch from "node-fetch";
 import os from "os";
 import path from "path";
 import { execSync, spawn } from "child_process";
-import { getAnsweringMachineDir } from "@/app/api/answering-machine/utils";
+import { getAnsweringMachineDir } from "@/app/api/device/[id]/answering-machine/utils";
 import { z } from "zod";
 
 const telegramToken = process.env.TELEGRAM_TOKEN;

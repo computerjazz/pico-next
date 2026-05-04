@@ -1,8 +1,12 @@
 import { verifyAuth } from "@/lib/auth";
 import { db } from "@/db";
 import { devices } from "@/db/schema";
+type RouteParams = { id: string };
 
-export async function POST(req: Request) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<RouteParams> },
+) {
   try {
     const errRsp = await verifyAuth(req, {
       tag: "phone-home",
@@ -10,9 +14,9 @@ export async function POST(req: Request) {
     });
     if (errRsp) return errRsp;
 
-    const deviceId = req.headers.get("x-device-id") ?? "unknown";
     const deviceType = req.headers.get("x-device-type") ?? "unknown";
-    console.log("phone home from: ", deviceId, deviceType);
+
+    const deviceId = (await params).id;
 
     await db
       .insert(devices)
@@ -21,6 +25,8 @@ export async function POST(req: Request) {
         type: deviceType,
       })
       .onConflictDoNothing();
+
+    console.log("phone home from: ", deviceId, deviceType);
 
     const device = await db.query.devices.findFirst({
       where: (t, { eq }) => eq(t.deviceId, deviceId),

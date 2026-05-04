@@ -57,7 +57,7 @@ const char* authToken  = ENV_AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 
 const char* portalSsid = "sh0rtwave-setup";
-const char* firmwareVersion = "shortwave-2026-05-03.1";
+const char* firmwareVersion = "shortwave-2026-05-03.2";
 
 static DNSServer dnsServer;
 static WebServer portalServer(80);
@@ -650,7 +650,7 @@ static bool checkForOtaUpdate() {
   client.setInsecure();
 
   HTTPClient http;
-  if (!http.begin(client, String("https://") + serverHost + "/api/ota/shortwave")) {
+  if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/ota/shortwave")) {
     Serial.println("ota: metadata begin failed");
     return false;
   }
@@ -693,7 +693,7 @@ static bool checkForOtaUpdate() {
 static bool pollAnsweringMachine() {
   WiFiClientSecure client; client.setInsecure();
   HTTPClient http;
-  if (!http.begin(client, String("https://") + serverHost + "/api/answering-machine")) return false;
+  if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/answering-machine")) return false;
   http.addHeader("Authorization", String("Bearer ") + authToken);
   http.addHeader("x-device-id", deviceId);
   http.addHeader("ngrok-skip-browser-warning", "true");
@@ -722,7 +722,7 @@ static bool phoneHome() {
   client.setInsecure();
 
   HTTPClient http;
-  if (!http.begin(client, String("https://") + serverHost + "/api/phone-home")) {
+  if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/phone-home")) {
     Serial.println("phoneHome: http begin failed");
     return false;
   }
@@ -793,7 +793,7 @@ static void logSpeakerPins() {
 
 static bool streamAnsweringMachineMp3() {
   char url[192];
-  snprintf(url, sizeof(url), "https://%s/api/answering-machine/mp3", serverHost);
+  snprintf(url, sizeof(url), "https://%s/api/device/%s/answering-machine/mp3", serverHost, deviceId);
 
   WiFiClientSecure* client = new WiFiClientSecure();
   HTTPClient*       http   = new HTTPClient();

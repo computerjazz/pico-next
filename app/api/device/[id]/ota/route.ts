@@ -5,16 +5,34 @@ import { eq } from "drizzle-orm";
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 
-export async function GET(req: Request) {
+type RouteParams = { id: string };
+
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<RouteParams> },
+) {
   const maybeResp = await verifyAuth(req, {
-    tag: "ota/toggle",
+    tag: "ota/shortwave",
     method: "GET",
   });
   if (maybeResp) return maybeResp;
+  const deviceId = (await params).id;
+
+  const device = await db.query.devices.findFirst({
+    where: (t, { eq }) => eq(t.deviceId, deviceId),
+  });
+
+  if (!device) {
+    return Response.json(
+      {
+        success: false,
+      },
+      { status: 404 },
+    );
+  }
 
   const currentVersion = req.headers.get("x-firmware-version") ?? "unknown";
-  const deviceId = req.headers.get("x-device-id") ?? "unknown";
-  const binDir = path.join(process.cwd(), "public", "toggle", "bin");
+  const binDir = path.join(process.cwd(), "public", device.type, "bin");
   const entries = await readdir(binDir, { withFileTypes: true }).catch(
     () => [],
   );
@@ -30,7 +48,7 @@ export async function GET(req: Request) {
   const updateAvailable =
     otaVersion !== "unknown" && otaVersion > currentVersion;
   const firmwareUrl = updateAvailable
-    ? `/toggle/bin/${encodeURIComponent(otaVersion)}/toggle.ino.bin`
+    ? `/${device.type}/bin/${encodeURIComponent(otaVersion)}/${device.type}.ino.bin`
     : null;
 
   await db
@@ -42,7 +60,7 @@ export async function GET(req: Request) {
 
   return Response.json(
     {
-      deviceType: "toggle",
+      deviceType: device.type,
       currentVersion,
       otaVersion,
       updateAvailable,

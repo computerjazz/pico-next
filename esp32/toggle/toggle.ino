@@ -16,7 +16,7 @@ const char* serverHost = SERVER_HOST;
 const char* authToken = AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 const char* portalSsid = "toggle-setup";
-const char* firmwareVersion = "toggle-2026-05.03.1";
+const char* firmwareVersion = "toggle-2026-05.03.2";
 
 #define OTA_CHECK_INTERVAL_MS 600000UL
 
@@ -327,7 +327,7 @@ static bool checkForOtaUpdate() {
   client.setInsecure();
 
   HTTPClient http;
-  if (!http.begin(client, String("https://") + serverHost + "/api/ota/toggle")) {
+  if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/ota")) {
     Serial.println("ota: metadata begin failed");
     return false;
   }

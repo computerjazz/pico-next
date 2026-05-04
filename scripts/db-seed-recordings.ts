@@ -4,7 +4,7 @@ import { recordings } from "../db/schema";
 import { db } from "../db/index";
 import fs from "fs";
 import path from "path";
-import { getAnsweringMachineDir } from "../app/api/answering-machine/utils";
+import { getAnsweringMachineDir } from "../app/api/device/[id]/answering-machine/utils";
 import { RECORDING_SOURCE } from "../lib/constants";
 
 async function seedDb() {
