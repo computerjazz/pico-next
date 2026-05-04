@@ -86,10 +86,17 @@ async function main() {
       }
 
       if (clientId) {
-        clients.delete(clientId);
-        console.log(
-          `Client disconnected: ${clientId} (code: ${code}, reason: ${reasonStr})`,
-        );
+        // Only delete if this socket is still the registered one
+        if (clients.get(clientId) === socket) {
+          clients.delete(clientId);
+          console.log(
+            `Client disconnected: ${clientId} (code: ${code}, reason: ${reasonStr})`,
+          );
+        } else {
+          console.log(
+            `Stale close for ${clientId} — newer socket already registered, skipping delete`,
+          );
+        }
       } else {
         console.log(
           `Socket closed before registration (code: ${code}, reason: ${reasonStr})`,
