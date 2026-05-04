@@ -7,6 +7,7 @@
 #include <WebSocketsClient.h>
 #include <Update.h>
 #include "env.h"
+#include <ArduinoJson.h>
 
 #ifndef FORCE_ID_RESET
 #define FORCE_ID_RESET false
@@ -346,8 +347,18 @@ static bool checkForOtaUpdate() {
     return false;
   }
 
-  String otaVersion = extractJsonField(body, "otaVersion");
-  String firmwareUrl = resolveOtaUrl(extractJsonField(body, "firmwareUrl"));
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, body);
+
+  if (error) {
+    Serial.print("Parse failed: ");
+    Serial.println(error.c_str());
+    return false;
+  }
+
+
+  String otaVersion = doc["otaVersion"];
+  String firmwareUrl = resolveOtaUrl(doc["firmwareUrl"]);
   if (otaVersion.length() == 0) {
     Serial.println("ota: metadata missing otaVersion");
     return false;
@@ -395,6 +406,7 @@ static void applyPayloadColor(const String& payload) {
 
 static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
   // Print wsEvent safely with explicit length (guard for null/non-string payload)
+  Serial.printf("wsEvent: type %d, ready: %d\n", type, wsReady);
   if (payload && length > 0) {
     Serial.print("wsEvent ");
     for (size_t i = 0; i < length; ++i) Serial.print((char)payload[i]);
@@ -405,12 +417,14 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
 
   switch (type) {
     case WStype_CONNECTED: {
+      Serial.print("CONNECTED\n");
       wsReady = true;
       String msg = String("{\"type\":\"register\",\"id\":\"") + deviceId + "\",\"token\":\"" + wsToken + "\"}";
       wsClient.sendTXT(msg);
       break;
     }
     case WStype_DISCONNECTED:
+      Serial.print("DISCONNECTED\n");
       wsReady = false;
       break;
     case WStype_TEXT: {
@@ -457,6 +471,7 @@ static void pollGroupState() {
     String body = http.getString();
     applyPayloadColor(body);
   }
+  Serial.printf("Polled group state at %s: %d \n", url, code);
   http.end();
 }
 

@@ -74,12 +74,26 @@ async function main() {
       }
     });
 
-    socket.on("close", () => {
+    socket.on("close", (code, reason) => {
       clearInterval(pingTimer);
+
+      let reasonStr = "";
+      if (reason instanceof Buffer) {
+        // Node.js standard: close reason is a Buffer
+        reasonStr = reason.toString();
+      } else if (typeof reason === "string") {
+        reasonStr = reason;
+      }
 
       if (clientId) {
         clients.delete(clientId);
-        console.log(`Client disconnected: ${clientId}`);
+        console.log(
+          `Client disconnected: ${clientId} (code: ${code}, reason: ${reasonStr})`,
+        );
+      } else {
+        console.log(
+          `Socket closed before registration (code: ${code}, reason: ${reasonStr})`,
+        );
       }
     });
 
