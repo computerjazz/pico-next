@@ -19,6 +19,8 @@
 #include "soc/gpio_sig_map.h"
 #include "env.h"
 #include <math.h> // for sin()
+#include <ArduinoJson.h>
+
 
 #ifndef DEVICE_ID_RESET
 #define DEVICE_ID_RESET false
@@ -522,6 +524,7 @@ static String extractJsonNumberValue(const String& json, const char* key) {
 static bool openStream() {
   if (streamClient) { streamClient->stop(); delete streamClient; }
   streamClient = new WiFiClientSecure();
+  printf("openStream: %s\n", serverHost);
   streamClient->setInsecure();
   if (!streamClient->connect(serverHost, serverPort)) {
     Serial.println("openStream: connect failed");
@@ -1126,10 +1129,10 @@ void setup() {
   // Log the I2S output pins at startup for reference
   Serial.println("[INFO] Speaker (I2S_OUT) output is mapped to the following pins:");
   logSpeakerPins();
-  wsClient.beginSSL(serverHost, 443, "/api/ws");
-  wsClient.onEvent(wsEvent);
-  wsClient.setReconnectInterval(2000);
-  wsClient.enableHeartbeat(15000, 5000, 3); // ping every 15s, 5s timeout, 3 retries
+  // wsClient.beginSSL(serverHost, 443, "/api/ws");
+  // wsClient.onEvent(wsEvent);
+  // wsClient.setReconnectInterval(2000);
+  // wsClient.enableHeartbeat(15000, 5000, 3); // ping every 15s, 5s timeout, 3 retries
 
 }
 
@@ -1138,7 +1141,7 @@ void setup() {
 // ============================================================
 
 void loop() {
-  wsClient.loop();
+  // wsClient.loop();
   unsigned long now = millis();
   static unsigned long lastVolMs = 0;
 
