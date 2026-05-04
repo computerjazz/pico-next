@@ -1144,36 +1144,37 @@ void loop() {
   // wsClient.loop();
   unsigned long now = millis();
   static unsigned long lastVolMs = 0;
-
-
-  if (lastPollMs == 0 || now - lastPollMs >= ANSWERING_MACHINE_POLL_INTERVAL_MS) {
-    lastPollMs = now;
-    pollAnsweringMachine();
-  }
-
-  if (lastOtaCheckMs == 0 || now - lastOtaCheckMs >= OTA_CHECK_INTERVAL_MS) {
-    lastOtaCheckMs = now;
-    checkForOtaUpdate();
-  }
-
-  if (lastDeviceInfoCheckMs == 0 || now - lastDeviceInfoCheckMs >= DEVICE_INFO_POLL_INTERVAL_MS) {
-    lastDeviceInfoCheckMs = now;
-    getDeviceInfo();
-  }
-
-  if (now - lastVolMs > 150) {
-    lastVolMs = now;
-    int raw = analogRead(VOLUME_PIN);          // 0–4095 on ESP32-S3
-    g_gain = USE_VOLUME_PIN ? raw / 4095.0f * 2.0f : g_gain;         // 0.0–2.0 (pot center = unity gain)
-    if (g_mp3Started) {
-      g_mp3.setGain(g_gain);
-    }
-  }
-
   static bool          prevPressed     = false;
   static unsigned long pressStart      = 0;
   static bool          holdingToRecord = false;
   bool isPressed = getIsButtonPressed();
+
+  if (!isPressed) {
+    
+    if (lastPollMs == 0 || now - lastPollMs >= ANSWERING_MACHINE_POLL_INTERVAL_MS) {
+      lastPollMs = now;
+      pollAnsweringMachine();
+    }
+  
+    if (lastOtaCheckMs == 0 || now - lastOtaCheckMs >= OTA_CHECK_INTERVAL_MS) {
+      lastOtaCheckMs = now;
+      checkForOtaUpdate();
+    }
+  
+    if (lastDeviceInfoCheckMs == 0 || now - lastDeviceInfoCheckMs >= DEVICE_INFO_POLL_INTERVAL_MS) {
+      lastDeviceInfoCheckMs = now;
+      getDeviceInfo();
+    }
+  
+    if (now - lastVolMs > 150) {
+      lastVolMs = now;
+      int raw = analogRead(VOLUME_PIN);          // 0–4095 on ESP32-S3
+      g_gain = USE_VOLUME_PIN ? raw / 4095.0f * 2.0f : g_gain;         // 0.0–2.0 (pot center = unity gain)
+      if (g_mp3Started) {
+        g_mp3.setGain(g_gain);
+      }
+    }
+  }
 
   if (isPressed && !prevPressed) {
     pressStart      = millis();
