@@ -78,37 +78,77 @@ static void loadIdsFromPrefs() {
 // For common cathode: LED is ON when pin is HIGH, OFF when pin is LOW.
 // We want `setRgb(true, false, false)` to always mean "red on" regardless of LED type.
 
-static void setRgb(bool red, bool green, bool blue) {
+static void setRgb(int red, int green, int blue) {
   writeRgbPin(LED_R_PIN, red);
   writeRgbPin(LED_G_PIN, green);
   writeRgbPin(LED_B_PIN, blue);
 }
 
-static void writeRgbPin(uint8_t pin, bool on) {
+static void writeRgbPin(uint8_t pin, int val) {
   // For common anode, driving pin LOW turns on the LED (active LOW).
   // For common cathode, driving pin HIGH turns on the LED (active HIGH).
   // So invert for common anode.
-  digitalWrite(pin, IS_RGB_LED_COMMON_ANODE ? !on : on);
+  int _val = IS_RGB_LED_COMMON_ANODE ? 255 - val : val;
+  analogWrite(pin, _val);
 }
 
-static void showGreen() { setRgb(false, true, false); }
-static void showBlue() { setRgb(false, false, true); }
-static void showRed() { setRgb(true, false, false); }
+// Crossfades from the current RGB color to the target RGB color
+static void crossfadeTo(int targetR, int targetG, int targetB, int durationMs = 240, int steps = 12) {
+  int currR = 0, currG = 0, currB = 0;
+  
+  // Read current levels via analogWrite cache or shadow (since ESP32 analogWrite is write-only)
+  // We'll maintain a shadow copy for this session, or you can use global variables to store last set values.
+  // For simplicity, let's use static vars here:
+  static int lastR = 0, lastG = 0, lastB = 0;
+  currR = lastR;
+  currG = lastG;
+  currB = lastB;
+
+  for (int i = 1; i <= steps; ++i) {
+    int r = currR + ((targetR - currR) * i) / steps;
+    int g = currG + ((targetG - currG) * i) / steps;
+    int b = currB + ((targetB - currB) * i) / steps;
+    setRgb(r, g, b);
+    delay(durationMs / steps);
+  }
+  // Store the new color
+  lastR = targetR;
+  lastG = targetG;
+  lastB = targetB;
+}
+
+static void showGreen() { crossfadeTo(0, 255, 0); }
+static void showBlue()  { crossfadeTo(0, 0, 255); }
+static void showRed()   { crossfadeTo(255, 0, 0); }
 
 static void flashRainbowConnected() {
-  setRgb(true, false, false);
-  delay(120);
-  setRgb(false, true, false);
-  delay(120);
-  setRgb(false, false, true);
-  delay(120);
-  setRgb(true, true, false);
-  delay(120);
-  setRgb(false, true, true);
-  delay(120);
-  setRgb(true, false, true);
-  delay(120);
-  showGreen();
+  // Sweep smoothly through the color spectrum using HSV->RGB conversion
+  const int steps = 36; // Number of steps in the sweep (10° per step over 360°)
+  const int sat = 255;  // Full saturation
+  const int val = 140;  // Reduced value for visual comfort
+
+  for (int i = 0; i <= steps; ++i) {
+    float hue = (float(i) / steps) * 360.0f;
+    float h = hue / 60.0f;
+    int hi = int(h) % 6;
+    float f = h - hi;
+    int v = val;
+    int p = int(v * (1.0f - float(sat) / 255.0f));
+    int q = int(v * (1.0f - f * float(sat) / 255.0f));
+    int t = int(v * (1.0f - (1.0f - f) * float(sat) / 255.0f));
+    int r, g, b;
+    switch (hi) {
+      case 0: r = v; g = t; b = p; break;
+      case 1: r = q; g = v; b = p; break;
+      case 2: r = p; g = v; b = t; break;
+      case 3: r = p; g = q; b = v; break;
+      case 4: r = t; g = p; b = v; break;
+      case 5: r = v; g = p; b = q; break;
+      default: r = g = b = 0; break;
+    }
+    setRgb(r, g, b);
+    delay(33); // Small delay for smoothness, total sweep ~1.2s
+  }
 }
 
 static bool readSwitch() {
@@ -241,16 +281,6 @@ static void connectWifiWithPortal() {
   }
 
   wifiPrefs.end();
-}
-
-static String extractJsonField(const String& json, const char* key) {
-  String pat = String("\"") + key + "\":\"";
-  int i = json.indexOf(pat);
-  if (i < 0) return "";
-  i += pat.length();
-  int j = json.indexOf('"', i);
-  if (j < 0) return "";
-  return json.substring(i, j);
 }
 
 static String resolveOtaUrl(const String& maybeUrl) {
@@ -481,7 +511,7 @@ void setup() {
   pinMode(LED_R_PIN, OUTPUT);
   pinMode(LED_G_PIN, OUTPUT);
   pinMode(LED_B_PIN, OUTPUT);
-  setRgb(false, false, false);
+  setRgb(0, 0, 0);
 
   loadIdsFromPrefs();
   connectWifiWithPortal();
