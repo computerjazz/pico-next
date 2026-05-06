@@ -236,13 +236,22 @@ static void connectWifiWithPortal() {
 }
 
 static void setGainFromConfigJson(const String& json) {
-    String volumeStr = extractJsonStringValue(json, "volume");
-    if (volumeStr.length() > 0) {
-      Serial.printf("Extracted volume: %s\n", volumeStr);
-      float gain = volumeStr.toFloat() / 100.0f;
-      Serial.printf("Setting gain: %f\n", gain);
-      setGain(gain);
-    }
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, json);
+
+  if (error) {
+    Serial.print("Parse failed: ");
+    Serial.println(error.c_str());
+    return;
+  }
+
+  String volumeStr = doc["volume"];
+  if (volumeStr.length() > 0) {
+    Serial.printf("Extracted volume: %s\n", volumeStr);
+    float gain = volumeStr.toFloat() / 100.0f;
+    Serial.printf("Setting gain: %f\n", gain);
+    setGain(gain);
+  }
 }
 
 static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
@@ -503,45 +512,6 @@ static void loadMessageStateFromPrefs() {
 
 static WiFiClientSecure* streamClient = nullptr;
 
-// This implementation only works to extract string values in the form: "key":"value"
-// (i.e., the value must be a quoted string immediately after the colon).
-// It will not extract numbers, booleans, or null.
-// For example: {"foo":"bar"} works, {"foo":123} or {"foo":true} will not.
-static String extractJsonStringValue(const String& json, const char* key) {
-  String pat = String("\"") + key + "\":\"";
-  int i = json.indexOf(pat);
-  if (i < 0) return "";
-  i += pat.length();
-  int j = json.indexOf('"', i);
-  if (j < 0) return "";
-  return json.substring(i, j);
-}
-
-// Helper to extract a number (int or float as string) from JSON in the form: "key":123
-// Returns "" if not found or invalid
-static String extractJsonNumberValue(const String& json, const char* key) {
-  String pat = String("\"") + key + "\":";
-  int i = json.indexOf(pat);
-  if (i < 0) return "";
-  i += pat.length();
-  // Skip whitespace
-  while (i < (int)json.length() && isspace(json[i])) ++i;
-  if (i >= (int)json.length()) return "";
-
-  int j = i;
-  // Accept optional leading minus
-  if (json[j] == '-') ++j;
-  // Parse number (int/float): [0-9.]+ (stop at non-digit/non-dot)
-  bool foundDigit = false;
-  while (j < (int)json.length() && 
-         ((json[j] >= '0' && json[j] <= '9') || json[j] == '.')) {
-    if (json[j] >= '0' && json[j] <= '9') foundDigit = true;
-    ++j;
-  }
-  if (!foundDigit) return "";
-  return json.substring(i, j);
-}
-
 static bool openStream() {
   if (streamClient) { streamClient->stop(); delete streamClient; }
   streamClient = new WiFiClientSecure();
@@ -693,8 +663,17 @@ static bool checkForOtaUpdate() {
     return false;
   }
 
-  String otaVersion = extractJsonStringValue(body, "otaVersion");
-  String firmwareUrl = resolveOtaUrl(extractJsonStringValue(body, "firmwareUrl"));
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, body);
+
+  if (error) {
+    Serial.print("Parse failed: ");
+    Serial.println(error.c_str());
+    return false;
+  }
+
+  String otaVersion = doc["otaVersion"];
+  String firmwareUrl = resolveOtaUrl(doc["firmwareUrl"]);
   if (otaVersion.length() == 0) {
     Serial.println("ota: metadata missing otaVersion");
     return false;
@@ -728,8 +707,19 @@ static bool pollAnsweringMachine() {
     return true;
   }
   if (code != 200) { Serial.printf("poll: HTTP %d\n", code); return false; }
-  String fn = extractJsonStringValue(body, "fileName");
-  String mt = extractJsonStringValue(body, "mtime");
+
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, body);
+
+  if (error) {
+    Serial.print("Parse failed: ");
+    Serial.println(error.c_str());
+    return false;
+  }
+
+
+  String fn = doc["fileName"];
+  String mt = doc["mtime"];
   String latestMsgKey = (fn.length() && mt.length()) ? fn + "|" + mt : "";
   setLatestMsgKey(latestMsgKey);
   return true;
