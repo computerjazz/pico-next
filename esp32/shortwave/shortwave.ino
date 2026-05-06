@@ -59,7 +59,7 @@ const char* authToken  = ENV_AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 
 const char* portalSsid = "sh0rtwave-setup";
-const char* firmwareVersion = "shortwave-2026-05-03.2";
+const char* firmwareVersion = "shortwave-2026-05-05.1";
 
 static DNSServer dnsServer;
 static WebServer portalServer(80);
