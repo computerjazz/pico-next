@@ -75,6 +75,7 @@ static String deviceId = "";
 static float g_gain = 0.1f;  
 static unsigned long lastWsMessageMs    = 0;
 static bool wsReady = false;
+static bool g_wsRunning = false;
 
 static void loadDeviceIdFromPrefs() {
   devicePrefs.begin("device", false);
@@ -282,6 +283,26 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
     default:
       break;
   }
+}
+
+// Hold only one TLS context at a time. The ESP32-S3 heap can support a single
+// long-lived SSL connection (the WS) plus brief HTTP polls, but two long-lived
+// SSL contexts (WS + recording upload, or WS + MP3 playback stream) fragment
+// the heap and cause subsequent SSL handshakes to fail.
+static void wsResume() {
+  if (g_wsRunning) return;
+  wsClient.beginSSL(serverHost, 443, "/api/ws");
+  g_wsRunning = true;
+}
+
+static void wsPause() {
+  if (!g_wsRunning) return;
+  wsClient.disconnect();
+  g_wsRunning = false;
+  wsReady = false;
+  // Yield so the lwip task can finalize socket close + free the mbedTLS
+  // context before any subsequent SSL connect attempt on the same task.
+  vTaskDelay(pdMS_TO_TICKS(50));
 }
 
 // ============================================================
@@ -1129,10 +1150,10 @@ void setup() {
   // Log the I2S output pins at startup for reference
   Serial.println("[INFO] Speaker (I2S_OUT) output is mapped to the following pins:");
   logSpeakerPins();
-  // wsClient.beginSSL(serverHost, 443, "/api/ws");
-  // wsClient.onEvent(wsEvent);
-  // wsClient.setReconnectInterval(2000);
-  // wsClient.enableHeartbeat(15000, 5000, 3); // ping every 15s, 5s timeout, 3 retries
+  wsClient.onEvent(wsEvent);
+  wsClient.setReconnectInterval(2000);
+  wsClient.enableHeartbeat(15000, 5000, 3); // ping every 15s, 5s timeout, 3 retries
+  wsResume();
 
 }
 
@@ -1141,7 +1162,6 @@ void setup() {
 // ============================================================
 
 void loop() {
-  // wsClient.loop();
   unsigned long now = millis();
   static unsigned long lastVolMs = 0;
   static bool          prevPressed     = false;
@@ -1149,18 +1169,28 @@ void loop() {
   static bool          holdingToRecord = false;
   bool isPressed = getIsButtonPressed();
 
+  bool wsBusy = recording || uploadStreamActive || playbackActive || playbackPending;
+  bool httpDueThisIter = !isPressed && (
+      (lastPollMs == 0           || now - lastPollMs           >= ANSWERING_MACHINE_POLL_INTERVAL_MS) ||
+      (lastOtaCheckMs == 0       || now - lastOtaCheckMs       >= OTA_CHECK_INTERVAL_MS) ||
+      (lastDeviceInfoCheckMs == 0|| now - lastDeviceInfoCheckMs >= DEVICE_INFO_POLL_INTERVAL_MS));
+
+  if (wsBusy || httpDueThisIter) wsPause();
+  else                            wsResume();
+  if (g_wsRunning) wsClient.loop();
+
   if (!isPressed) {
     
     if (lastPollMs == 0 || now - lastPollMs >= ANSWERING_MACHINE_POLL_INTERVAL_MS) {
       lastPollMs = now;
       pollAnsweringMachine();
     }
-  
+
     if (lastOtaCheckMs == 0 || now - lastOtaCheckMs >= OTA_CHECK_INTERVAL_MS) {
       lastOtaCheckMs = now;
       checkForOtaUpdate();
     }
-  
+
     if (lastDeviceInfoCheckMs == 0 || now - lastDeviceInfoCheckMs >= DEVICE_INFO_POLL_INTERVAL_MS) {
       lastDeviceInfoCheckMs = now;
       getDeviceInfo();
@@ -1246,6 +1276,7 @@ void loop() {
     playbackPending = false;
     playbackActive  = true;
     stopPlayback    = false;
+    wsPause();
     pollAnsweringMachine();
     if (playbackTask) {
       Serial.println("[PLAYBACK] Notifying playback task to start output.");
