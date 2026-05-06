@@ -85,10 +85,12 @@ static void setRgb(int red, int green, int blue) {
 }
 
 static void writeRgbPin(uint8_t pin, int val) {
+  static float brightness = 0.1f;
+  int scaledVal = floor(val * brightness);
   // For common anode, driving pin LOW turns on the LED (active LOW).
   // For common cathode, driving pin HIGH turns on the LED (active HIGH).
   // So invert for common anode.
-  int _val = IS_RGB_LED_COMMON_ANODE ? 255 - val : val;
+  int _val = IS_RGB_LED_COMMON_ANODE ? 255 - scaledVal : scaledVal;
   analogWrite(pin, _val);
 }
 
