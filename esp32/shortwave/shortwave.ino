@@ -1186,13 +1186,11 @@ void loop() {
       getDeviceInfo();
     }
   
-    if (now - lastVolMs > 150) {
+    if (now - lastVolMs > 150 && USE_VOLUME_PIN) {
       lastVolMs = now;
       int raw = analogRead(VOLUME_PIN);          // 0–4095 on ESP32-S3
-      g_gain = USE_VOLUME_PIN ? raw / 4095.0f * 2.0f : g_gain;         // 0.0–2.0 (pot center = unity gain)
-      if (g_mp3Started) {
-        g_mp3.setGain(g_gain);
-      }
+      float newGain = USE_VOLUME_PIN ? raw / 4095.0f * 2.0f : getGain();         // 0.0–2.0 (pot center = unity gain)
+      setGain(newGain);
     }
   }
 
