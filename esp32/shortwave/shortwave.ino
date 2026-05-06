@@ -59,7 +59,7 @@ const char* authToken  = ENV_AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 
 const char* portalSsid = "sh0rtwave-setup";
-const char* firmwareVersion = "shortwave-2026-05-05.1";
+const char* firmwareVersion = "shortwave-2026-05-06.1";
 
 static DNSServer dnsServer;
 static WebServer portalServer(80);
@@ -299,13 +299,15 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
 // SSL contexts (WS + recording upload, or WS + MP3 playback stream) fragment
 // the heap and cause subsequent SSL handshakes to fail.
 static void wsResume() {
-  if (g_wsRunning) return;
+  if (g_wsRunning || !ENABLE_WS) return;
+  Serial.print("wsResume()\n");
   wsClient.beginSSL(serverHost, 443, "/api/ws");
   g_wsRunning = true;
 }
 
 static void wsPause() {
   if (!g_wsRunning) return;
+  Serial.print("wsPause()\n");
   wsClient.disconnect();
   g_wsRunning = false;
   wsReady = false;
@@ -1140,11 +1142,13 @@ void setup() {
   // Log the I2S output pins at startup for reference
   Serial.println("[INFO] Speaker (I2S_OUT) output is mapped to the following pins:");
   logSpeakerPins();
-  wsClient.onEvent(wsEvent);
-  wsClient.setReconnectInterval(2000);
-  wsClient.enableHeartbeat(15000, 5000, 3); // ping every 15s, 5s timeout, 3 retries
-  wsResume();
 
+  if (ENABLE_WS) {
+    wsClient.onEvent(wsEvent);
+    wsClient.setReconnectInterval(2000);
+    wsClient.enableHeartbeat(15000, 5000, 3); // ping every 15s, 5s timeout, 3 retries
+    wsResume();
+  }
 }
 
 // ============================================================
@@ -1169,8 +1173,10 @@ void loop() {
   else                            wsResume();
   if (g_wsRunning) wsClient.loop();
 
-  if (!isPressed) {
-    
+  // Skip HTTP polls while another SSL operation is in flight (playback /
+  // recording upload). Holding two TLS contexts simultaneously exhausts heap
+  // and surfaces as `esp-aes: Failed to allocate memory` from mbedTLS.
+  if (!isPressed && !wsBusy) {
     if (lastPollMs == 0 || now - lastPollMs >= ANSWERING_MACHINE_POLL_INTERVAL_MS) {
       lastPollMs = now;
       pollAnsweringMachine();
@@ -1185,13 +1191,13 @@ void loop() {
       lastDeviceInfoCheckMs = now;
       getDeviceInfo();
     }
-  
-    if (now - lastVolMs > 150 && USE_VOLUME_PIN) {
-      lastVolMs = now;
-      int raw = analogRead(VOLUME_PIN);          // 0–4095 on ESP32-S3
-      float newGain = USE_VOLUME_PIN ? raw / 4095.0f * 2.0f : getGain();         // 0.0–2.0 (pot center = unity gain)
-      setGain(newGain);
-    }
+  }
+
+  if (!isPressed && now - lastVolMs > 150 && USE_VOLUME_PIN) {
+    lastVolMs = now;
+    int raw = analogRead(VOLUME_PIN);          // 0–4095 on ESP32-S3
+    float newGain = raw / 4095.0f * 2.0f;       // 0.0–2.0 (pot center = unity gain)
+    setGain(newGain);
   }
 
   if (isPressed && !prevPressed) {
