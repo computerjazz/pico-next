@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { devices } from "@/db/schema";
 import { getRedis } from "@/lib/redis";
 import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 export async function setDeviceVolume({
   deviceId,
@@ -29,6 +30,7 @@ export async function setDeviceVolume({
       }),
     }),
   );
+  revalidatePath(`/device/${deviceId}`);
 
   return { success: true };
 }

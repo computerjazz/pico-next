@@ -1,8 +1,15 @@
 import { db } from "@/db";
-import { renameDevice } from "@/app/actions/renameDevice";
-import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
-import { setDeviceVolume } from "@/app/actions/setDeviceVolume";
+import VolumeInput from "./VolumeInput";
+import DeviceNameInput from "./DeviceNameInput";
+
+function DeviceStatRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span className="font-semibold">{label}</span> {value}
+    </div>
+  );
+}
 
 export default async function DevicePage({
   params,
@@ -19,89 +26,25 @@ export default async function DevicePage({
     notFound();
   }
 
-  async function onRename(formData: FormData) {
-    "use server";
-    const newName = formData.get("name") as string;
-    if (!deviceId || typeof newName !== "string") return;
-    await renameDevice({ deviceId, name: newName });
-    revalidatePath(`/device/${deviceId}`);
-  }
-
-  async function onSetVolume(formData: FormData) {
-    "use server";
-    const newVolume = formData.get("volume");
-    if (!deviceId || !newVolume) return;
-    await setDeviceVolume({ deviceId, volume: Number(newVolume) });
-    revalidatePath(`/device/${deviceId}`);
-  }
-
   return (
     <div className="mx-auto max-w-xl p-6 space-y-8">
       <h1 className="text-2xl font-bold mb-2">
-        Device:{" "}
-        {device.name ?? (
-          <span className="italic text-neutral-500">Unnamed</span>
-        )}
+        <DeviceNameInput device={device} />
       </h1>
       <div className="space-y-2 text-sm">
-        <div>
-          <span className="font-semibold">Device ID:</span> {device.deviceId}
-        </div>
-        <div>
-          <span className="font-semibold">Type:</span> {device.type}
-        </div>
+        <DeviceStatRow label="Device ID:" value={device.deviceId} />
+        <DeviceStatRow label="Type:" value={device.type} />
         {device.firmwareVersion && (
-          <div>
-            <span className="font-semibold">Firmware Version:</span>{" "}
-            {device.firmwareVersion}
-          </div>
-        )}
-        <div>
-          <span className="font-semibold">Created:</span>{" "}
-          {device.createdAt?.toLocaleString?.() ?? "unknown"}
-        </div>
-      </div>
-      <form action={onRename} className="space-y-2 max-w-xs">
-        <label htmlFor="name" className="block font-medium text-sm">
-          Update device name
-        </label>
-        <input
-          id="name"
-          name="name"
-          type="text"
-          defaultValue={device.name ?? ""}
-          className="w-full px-2 py-1 border rounded"
-          maxLength={50}
-          autoComplete="off"
-        />
-        <button
-          type="submit"
-          className="mt-2 px-4 py-1 bg-blue-500 text-white rounded"
-        >
-          Rename
-        </button>
-      </form>
-      {device.type === "shortwave" && (
-        <form action={onSetVolume} className="space-y-2 max-w-xs">
-          <label htmlFor="volume" className="block font-medium text-sm">
-            Set Device Volume
-          </label>
-          <input
-            id="volume"
-            name="volume"
-            type="number"
-            defaultValue={device.volume ?? 25}
-            className="w-full px-2 py-1 border rounded"
-            autoComplete="off"
+          <DeviceStatRow
+            label="Firmware Version:"
+            value={device.firmwareVersion}
           />
-          <button
-            type="submit"
-            className="mt-2 px-4 py-1 bg-blue-500 text-white rounded"
-          >
-            Set Volume
-          </button>
-        </form>
-      )}
+        )}
+        {device.type === "shortwave" && (
+          <DeviceStatRow label="Volume:" value={`${device.volume}%`} />
+        )}
+      </div>
+      {device.type === "shortwave" && <VolumeInput device={device} />}
     </div>
   );
 }

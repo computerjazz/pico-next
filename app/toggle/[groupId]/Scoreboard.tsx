@@ -2,6 +2,7 @@
 import { fetchGroupScoreAction } from "@/app/actions/fetchGroupScore";
 import { generateToken } from "@/app/actions/generateToken";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
+import { Device } from "@/db/schema";
 import { useEffect, useState } from "react";
 
 type DeviceStats = {
@@ -16,14 +17,6 @@ type GroupScore = {
   devices: DeviceStats[];
   asOf: string;
   totalEvents: number;
-};
-
-export type Device = {
-  deviceId: string;
-  createdAt: Date | null;
-  type: string;
-  firmwareVersion: string | null;
-  name: string | null;
 };
 
 function roleClass(role: "idle" | "active" | "challenger") {

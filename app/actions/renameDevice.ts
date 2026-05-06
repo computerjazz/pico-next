@@ -3,6 +3,7 @@
 import { db } from "@/db";
 import { devices } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 export async function renameDevice({
   deviceId,
@@ -17,6 +18,8 @@ export async function renameDevice({
       name,
     })
     .where(eq(devices.deviceId, deviceId));
+
+  revalidatePath(`/device/${deviceId}`);
 
   return { success: true };
 }

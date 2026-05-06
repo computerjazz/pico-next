@@ -1,8 +1,7 @@
 import { useCallback, useLayoutEffect, useRef } from "react";
 
-export function useStableCallback<T extends (...args: unknown[]) => unknown>(
-  cb: T,
-): T {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function useStableCallback<T extends (...args: any[]) => any>(cb: T): T {
   const cbRef = useRef<T>(cb);
 
   useLayoutEffect(() => {

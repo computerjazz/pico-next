@@ -1,5 +1,6 @@
 import { db } from "@/db";
-import Scoreboard, { Device } from "./Scoreboard";
+import Scoreboard from "./Scoreboard";
+import { Device } from "@/db/schema";
 
 type PageParams = {
   groupId: string;

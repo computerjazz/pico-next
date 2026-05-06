@@ -108,3 +108,8 @@ export const togglesRelations = relations(toggles, ({ one }) => ({
     references: [devices.deviceId],
   }),
 }));
+
+export type Device = typeof devices.$inferSelect;
+export type DeviceChannel = typeof deviceChannels.$inferSelect;
+export type Recording = typeof recordings.$inferSelect;
+export type Toggle = typeof toggles.$inferSelect;
