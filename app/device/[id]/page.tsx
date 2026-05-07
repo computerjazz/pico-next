@@ -2,6 +2,9 @@ import { db } from "@/db";
 import { notFound } from "next/navigation";
 import VolumeInput from "./VolumeInput";
 import DeviceNameInput from "./DeviceNameInput";
+import { SignInButton } from "@/app/components/SignInButton";
+import ProfileButton from "@/app/components/ProfileButton";
+import { auth } from "@/auth";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -17,6 +20,7 @@ export default async function DevicePage({
   params: Promise<{ id: string }>;
 }) {
   const deviceId = (await params).id;
+  const session = await auth();
 
   const device = await db.query.devices.findFirst({
     where: (d, { eq }) => eq(d.deviceId, deviceId),
@@ -28,6 +32,10 @@ export default async function DevicePage({
 
   return (
     <div className="mx-auto max-w-xl p-6 space-y-8">
+      <div className="flex justify-end">
+        {session ? <ProfileButton session={session} /> : <SignInButton />}
+      </div>
+
       <h1 className="text-2xl font-bold mb-2">
         <DeviceNameInput device={device} />
       </h1>
