@@ -7,26 +7,104 @@ import {
   timestamp,
   varchar,
   numeric,
+  integer,
+  boolean,
+  primaryKey,
 } from "drizzle-orm/pg-core";
+import { AdapterAccountType } from "next-auth/adapters";
 
 // Schema definition
 const pico = pgSchema("pico_next_db");
 
 // Tables
-export const users = pico.table("users", {
-  id: uuid("id").primaryKey(),
-  username: varchar("username", { length: 50 }).notNull(),
-  email: varchar("email", { length: 100 }).notNull(),
-  passwordHash: text("password_hash").notNull(),
-  createdAt: timestamp("created_at", {
-    mode: "date",
-    withTimezone: true,
-  }).defaultNow(),
-  updatedAt: timestamp("updated_at", {
-    mode: "date",
-    withTimezone: true,
-  }).defaultNow(),
+
+// authjs schema: https://authjs.dev/getting-started/adapters/drizzle
+export const users = pico.table("user", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name"),
+  email: text("email").unique(),
+  emailVerified: timestamp("emailVerified", { mode: "date" }),
+  image: text("image"),
 });
+
+// authjs schema
+export const accounts = pico.table(
+  "account",
+  {
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").$type<AdapterAccountType>().notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("providerAccountId").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (account) => [
+    {
+      compoundKey: primaryKey({
+        columns: [account.provider, account.providerAccountId],
+      }),
+    },
+  ],
+);
+
+// authjs schema
+export const sessions = pico.table("session", {
+  sessionToken: text("sessionToken").primaryKey(),
+  userId: text("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", { mode: "date" }).notNull(),
+});
+
+// authjs schema
+export const verificationTokens = pico.table(
+  "verificationToken",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
+  },
+  (verificationToken) => [
+    {
+      compositePk: primaryKey({
+        columns: [verificationToken.identifier, verificationToken.token],
+      }),
+    },
+  ],
+);
+
+// authjs schema
+export const authenticators = pico.table(
+  "authenticator",
+  {
+    credentialID: text("credentialID").notNull().unique(),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    providerAccountId: text("providerAccountId").notNull(),
+    credentialPublicKey: text("credentialPublicKey").notNull(),
+    counter: integer("counter").notNull(),
+    credentialDeviceType: text("credentialDeviceType").notNull(),
+    credentialBackedUp: boolean("credentialBackedUp").notNull(),
+    transports: text("transports"),
+  },
+  (authenticator) => [
+    {
+      compositePK: primaryKey({
+        columns: [authenticator.userId, authenticator.credentialID],
+      }),
+    },
+  ],
+);
 
 export const devices = pico.table("devices", {
   deviceId: varchar("device_id", { length: 100 }).primaryKey(),
@@ -34,6 +112,7 @@ export const devices = pico.table("devices", {
   volume: numeric("volume"),
   type: varchar("type", { length: 50 }).notNull(),
   firmwareVersion: varchar("firmware_version", { length: 50 }),
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", {
     mode: "date",
     withTimezone: true,
@@ -56,7 +135,7 @@ export const deviceChannels = pico.table("device_channels", {
 });
 
 export const recordings = pico.table("recordings", {
-  id: uuid("id").primaryKey().defaultRandom().primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   deviceId: varchar("device_id", { length: 100 }),
   createdAt: timestamp("created_at", {
     mode: "date",
@@ -80,11 +159,17 @@ export const toggles = pico.table("toggles", {
 });
 
 // Relations
-export const devicesRelations = relations(devices, ({ many }) => {
-  return {
-    deviceChannels: many(deviceChannels),
-  };
-});
+export const devicesRelations = relations(devices, ({ one, many }) => ({
+  user: one(users, {
+    fields: [devices.userId],
+    references: [users.id],
+  }),
+  deviceChannels: many(deviceChannels),
+}));
+
+export const usersRelations = relations(users, ({ many }) => ({
+  devices: many(devices),
+}));
 
 export const deviceChannelsRelations = relations(deviceChannels, ({ one }) => {
   return {
