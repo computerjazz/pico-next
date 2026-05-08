@@ -5,6 +5,7 @@ import DeviceNameInput from "./DeviceNameInput";
 import { auth } from "@/auth";
 import ClaimButton from "./ClaimButton";
 import ProfileSignInButton from "@/app/components/ProfileSignInButton";
+import RecordingItem from "./RecordingItem";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -23,6 +24,10 @@ export default async function DevicePage({
   const session = await auth();
   const device = await db.query.devices.findFirst({
     where: (d, { eq }) => eq(d.deviceId, deviceId),
+  });
+
+  const recordings = await db.query.recordings.findMany({
+    where: (t, { eq }) => eq(t.deviceId, deviceId),
   });
 
   if (!device) {
@@ -59,7 +64,22 @@ export default async function DevicePage({
           )}
         </div>
         {device.type === "shortwave" && (
-          <VolumeInput device={device} disabled={!isDeviceOwner} />
+          <>
+            <VolumeInput device={device} disabled={!isDeviceOwner} />
+
+            {isDeviceOwner && (
+              <>
+                <h3>Recordings</h3>
+                {recordings.map((r) => {
+                  return (
+                    <div key={r.id} className="flex items-center space-x-2">
+                      <RecordingItem recording={r} />
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </>
         )}
       </div>
     </div>
