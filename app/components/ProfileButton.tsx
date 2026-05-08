@@ -42,14 +42,14 @@ function ProfileButton({ session }: { session?: Session }) {
   return (
     <div className="relative" ref={containerRef}>
       <button
-        className="inline-flex flex-row gap-2 items-center bg-gray-800 p-2 rounded outline-1 cursor-pointer select-none"
+        className="bg-gray-800 rounded-full outline-1 cursor-pointer select-none"
         tabIndex={0}
         type="button"
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        {user.image && (
+        {user.image ? (
           <Image
             alt="pfp"
             className="rounded-full"
@@ -57,13 +57,20 @@ function ProfileButton({ session }: { session?: Session }) {
             height="30"
             src={user.image}
           />
+        ) : (
+          <div className="w-6 h-6">
+            <span className="font-bold">
+              {user.name?.[0] || user.email?.[0]}
+            </span>
+          </div>
         )}
-        <span>{user.name}</span>
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-40 bg-white rounded shadow-lg z-50">
+        <div className="absolute right-0 mt-2 w-40 rounded shadow-lg z-50 bg-gray-800 p-2 flex flex-col items-end">
+          <span className="text-sm self-end px-4 font-bold">{user.name}</span>
+
           <button
-            className="w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 rounded"
+            className="w-full text-right px-4 py-2 hover:bg-gray-700 rounded"
             onClick={() => signOut()}
             tabIndex={0}
             type="button"
