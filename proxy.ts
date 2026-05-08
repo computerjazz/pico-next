@@ -18,26 +18,20 @@ export default auth((req) => {
       }
     }
   } else {
-    const loginUrl = new URL("/login", req.url);
-    if (!loginUrl.searchParams.has("redirect") && !isLoginRoute) {
-      // Preserve the full path and query string
-      loginUrl.searchParams.set(
-        "redirect",
-        req.nextUrl.pathname + req.nextUrl.search,
-      );
-      return NextResponse.redirect(loginUrl);
+    if (!isLoginRoute) {
+      const loginUrl = new URL("/login", req.url);
+      if (!loginUrl.searchParams.has("redirect")) {
+        // Preserve the full path and query string
+        loginUrl.searchParams.set(
+          "redirect",
+          req.nextUrl.pathname + req.nextUrl.search,
+        );
+        return NextResponse.redirect(loginUrl);
+      }
     }
   }
 });
 
 export const config = {
-  matcher: [
-    /*
-      Match all request paths except for:
-      - static files (_next, favicon, etc.)
-      - API routes (/api)
-    */
-    "/device/:id*",
-    "/login",
-  ],
+  matcher: ["/device/:id*", "/login"],
 };

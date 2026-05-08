@@ -45,8 +45,8 @@ function VolumeInput({
       />
 
       <div className="flex justify-between text-xs text-neutral-500">
-        <span>0</span>
-        <span>100</span>
+        <span>0%</span>
+        <span>100%</span>
       </div>
     </>
   );

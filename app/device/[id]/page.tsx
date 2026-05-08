@@ -2,8 +2,6 @@ import { db } from "@/db";
 import { notFound } from "next/navigation";
 import VolumeInput from "./VolumeInput";
 import DeviceNameInput from "./DeviceNameInput";
-import { SignInButton } from "@/app/components/SignInButton";
-import ProfileButton from "@/app/components/ProfileButton";
 import { auth } from "@/auth";
 import ClaimButton from "./ClaimButton";
 import ProfileSignInButton from "@/app/components/ProfileSignInButton";
