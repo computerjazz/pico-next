@@ -1,28 +1,18 @@
 "use client";
 
-import { generateToken } from "@/app/actions/generateToken";
+import { getRecording } from "@/app/actions/getRecording";
 import { Recording } from "@/db/schema";
 import { useState } from "react";
 
 export default function RecordingItem({ recording }: { recording: Recording }) {
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<Buffer<ArrayBuffer> | null>(null);
   const [loading, setLoading] = useState(false);
   const { id, createdAt } = recording;
   async function fetchAudio() {
     setLoading(true);
     try {
-      // Fetch auth token/session for header from current user via /api/auth/session if needed
-      // For demo: fetch as-is, assuming the user's session cookie is sent
-      const res = await fetch(`/api/recording/${id}`, {
-        headers: {
-          // Add any required headers if needed, e.g. "Authorization"
-          authorization: await generateToken({ scope: "" }),
-        },
-        credentials: "include", // send cookies
-      });
-      if (!res.ok) throw new Error("Failed to fetch audio");
-      const { filePath } = await res.json();
-      setAudioUrl(filePath);
+      const fileBuffer = await getRecording({ recordingId: id });
+      setAudioUrl(fileBuffer);
     } catch (e) {
       alert("Could not fetch audio");
     }
@@ -32,13 +22,27 @@ export default function RecordingItem({ recording }: { recording: Recording }) {
   return (
     <div>
       {audioUrl ? (
-        <audio controls src={audioUrl} />
+        <audio
+          controls
+          src={
+            // No, <audio> src cannot be a Buffer or ArrayBuffer.
+            // It needs to be a string: either an ObjectURL or a direct URL.
+            // So you should convert Buffer/ArrayBuffer to a Blob, then to an ObjectURL:
+            audioUrl
+              ? URL.createObjectURL(
+                  audioUrl instanceof Blob
+                    ? audioUrl
+                    : new Blob([audioUrl], { type: "audio/mpeg" }),
+                )
+              : undefined
+          }
+        />
       ) : (
         <button onClick={fetchAudio} disabled={loading}>
           {loading ? "Loading..." : "Play Recording"}
         </button>
       )}
-      <span>{recording.createdAt?.toDateString()}</span>
+      <span>{createdAt?.toDateString()}</span>
     </div>
   );
 }
