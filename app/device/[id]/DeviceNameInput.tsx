@@ -3,7 +3,13 @@
 import { Device } from "@/db/schema";
 import { useState, useRef, useLayoutEffect } from "react";
 
-function DeviceNameInput({ device }: { device: Device }) {
+function DeviceNameInput({
+  device,
+  disabled,
+}: {
+  device: Device;
+  disabled?: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(device.name ?? "");
   const [draft, setDraft] = useState(device.name ?? "");
@@ -70,20 +76,23 @@ function DeviceNameInput({ device }: { device: Device }) {
           >
             {name || <span className="italic text-neutral-400">Unnamed</span>}
           </span>
-          <button
-            type="button"
-            aria-label="Edit device name"
-            className="hover:text-blue-500 transition"
-            onClick={startEdit}
-          >
-            {/* Pencil icon */}
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-              <path
-                d="M13.293 2.293a1 1 0 0 1 1.414 0l3 3a1 1 0 0 1 0 1.414l-10 10a1 1 0 0 1-.39.242l-4 1.333a1 1 0 0 1-1.26-1.26l1.333-4a1 1 0 0 1 .242-.39l10-10zM15 4l1 1-9.293 9.293-1.242.414.414-1.242L15 4z"
-                fill="currentColor"
-              />
-            </svg>
-          </button>
+          {!disabled && (
+            <button
+              type="button"
+              disabled={disabled}
+              aria-label="Edit device name"
+              className="hover:text-blue-500 transition"
+              onClick={startEdit}
+            >
+              {/* Pencil icon */}
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                <path
+                  d="M13.293 2.293a1 1 0 0 1 1.414 0l3 3a1 1 0 0 1 0 1.414l-10 10a1 1 0 0 1-.39.242l-4 1.333a1 1 0 0 1-1.26-1.26l1.333-4a1 1 0 0 1 .242-.39l10-10zM15 4l1 1-9.293 9.293-1.242.414.414-1.242L15 4z"
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
+          )}
           {/* Hidden input to support outside form submission */}
           <input type="hidden" name="name" value={name} />
         </>

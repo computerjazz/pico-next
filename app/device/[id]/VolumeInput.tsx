@@ -5,10 +5,17 @@ import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { Device } from "@/db/schema";
 import throttle from "lodash/throttle";
 
-function VolumeInput({ device }: { device: Device }) {
+function VolumeInput({
+  device,
+  disabled,
+}: {
+  device: Device;
+  disabled?: boolean;
+}) {
   const throttledOnChange = useStableCallback(
     throttle(
       async (v: string) => {
+        if (disabled) return;
         await setDeviceVolume({
           deviceId: device.deviceId,
           volume: Number(v),
@@ -20,9 +27,6 @@ function VolumeInput({ device }: { device: Device }) {
   );
   return (
     <>
-      <label htmlFor="volume" className="block font-medium text-sm">
-        Set Device Volume
-      </label>
       <input
         id="volume"
         name="volume"
@@ -31,13 +35,15 @@ function VolumeInput({ device }: { device: Device }) {
         max={100}
         step={1}
         defaultValue={device.volume ?? 25}
-        className="w-full"
+        className="w-full accent-green-400/70"
         autoComplete="off"
+        disabled={disabled}
         onChange={({ target }) => {
           const newV = target.value;
           throttledOnChange(newV);
         }}
       />
+
       <div className="flex justify-between text-xs text-neutral-500">
         <span>0</span>
         <span>100</span>

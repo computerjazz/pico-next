@@ -4,8 +4,34 @@ import { signOut } from "next-auth/react";
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { Session } from "next-auth";
+import { Device } from "@/db/schema";
 
-function ProfileButton({ session }: { session?: Session }) {
+function ProfileMenuItem({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="w-full text-right px-4 py-2 hover:bg-gray-700 rounded"
+      onClick={onClick}
+      tabIndex={0}
+      type="button"
+    >
+      {label}
+    </button>
+  );
+}
+
+function ProfileButton({
+  session,
+  devices,
+}: {
+  session?: Session;
+  devices: Device[];
+}) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -68,15 +94,16 @@ function ProfileButton({ session }: { session?: Session }) {
       {open && (
         <div className="absolute right-0 mt-2 w-40 rounded shadow-lg z-50 bg-gray-800 p-2 flex flex-col items-end">
           <span className="text-sm self-end px-4 font-bold">{user.name}</span>
-
-          <button
-            className="w-full text-right px-4 py-2 hover:bg-gray-700 rounded"
-            onClick={() => signOut()}
-            tabIndex={0}
-            type="button"
-          >
-            Sign out
-          </button>
+          {devices.map((d) => {
+            return (
+              <ProfileMenuItem
+                key={d.deviceId}
+                label={d.name ?? d.deviceId}
+                onClick={() => window.location.assign(`/device/${d.deviceId}`)}
+              />
+            );
+          })}
+          <ProfileMenuItem label="Sign out" onClick={signOut} />
         </div>
       )}
     </div>
