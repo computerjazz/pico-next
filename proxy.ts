@@ -8,9 +8,10 @@ export default auth((req) => {
   const isLoginRoute = req.nextUrl.pathname.startsWith("/login");
   if (req.auth) {
     if (isLoginRoute) {
-      if (req.nextUrl.searchParams.has("redirect")) {
+      const redirectTarget = req.nextUrl.searchParams.get("redirect");
+      if (redirectTarget) {
         // If user is authenticated and on /login?redirect=... , redirect to specified location
-        const redirectTarget = req.nextUrl.searchParams.get("redirect")!;
+        console.log("redirect to ", redirectTarget, req.url);
         return NextResponse.redirect(new URL(redirectTarget, req.url));
       } else {
         // redirect home
