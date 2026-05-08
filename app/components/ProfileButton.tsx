@@ -1,5 +1,5 @@
 "use client";
-
+import React from "react";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
@@ -65,6 +65,13 @@ function ProfileButton({
   const user = session?.user;
   if (!user) return null;
 
+  const devicesGrouped = devices.reduce((acc, cur) => {
+    const existing = acc.get(cur.type) ?? [];
+    existing.push(cur);
+    acc.set(cur.type, existing);
+    return acc;
+  }, new Map<string, Device[]>());
+
   return (
     <div className="relative" ref={containerRef}>
       <button
@@ -92,17 +99,30 @@ function ProfileButton({
         )}
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-40 rounded shadow-lg z-50 bg-gray-800 p-2 flex flex-col items-end">
-          <span className="text-sm self-end px-4 font-bold">{user.name}</span>
-          {devices.map((d) => {
+        <div className="absolute right-0 mt-2 w-60 rounded shadow-lg z-50 bg-gray-800 p-2 flex flex-col items-end">
+          <span className="text-sm self-end px-4 font-bold mt-2 mb-2">
+            {user.name}
+          </span>
+          {[...devicesGrouped.entries()].map(([type, devicesInGroup]) => {
             return (
-              <ProfileMenuItem
-                key={d.deviceId}
-                label={d.name ?? d.deviceId}
-                onClick={() => window.location.assign(`/device/${d.deviceId}`)}
-              />
+              <React.Fragment key={type}>
+                <span className="font-bold mt-2 px-4">{type}</span>
+                {devicesInGroup.map((d) => {
+                  return (
+                    <ProfileMenuItem
+                      key={d.deviceId}
+                      label={d.name ?? d.deviceId}
+                      onClick={() =>
+                        window.location.assign(`/device/${d.deviceId}`)
+                      }
+                    />
+                  );
+                })}
+              </React.Fragment>
             );
           })}
+          <hr className="w-full border-t border-gray-700 my-2" />
+
           <ProfileMenuItem label="Sign out" onClick={signOut} />
         </div>
       )}
