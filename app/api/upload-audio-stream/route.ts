@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { deviceChannels, recordings } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { CHANNEL_TYPE } from "@/lib/constants";
+import { getAudioDuration } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
@@ -123,12 +124,17 @@ export async function POST(req: Request) {
         columns: { channelId: true },
       });
 
+      const { durationMillis } = await getAudioDuration({
+        filepath: outputMp3Path,
+      });
+
       await db.insert(recordings).values({
         deviceId,
         filepath: outputMp3Path,
         contentType: "audio/mpeg",
         name: audioFilename,
         source: "shortwave-device",
+        durationMillis: String(durationMillis),
       });
 
       const chatIds = channels.map((c) => c.channelId);

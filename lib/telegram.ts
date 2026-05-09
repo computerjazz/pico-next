@@ -6,6 +6,7 @@ import path from "path";
 import { execSync, spawn } from "child_process";
 import { getAnsweringMachineDir } from "@/app/api/device/[id]/answering-machine/utils";
 import { z } from "zod";
+import { getAudioDuration } from "./utils";
 
 const telegramToken = process.env.TELEGRAM_TOKEN;
 
@@ -46,7 +47,7 @@ async function makeVoiceRequest({
 
 // send a voice note (OGG/OPUS)
 export async function sendVoiceToChat(
-  filePath: string,
+  filepath: string,
   options?: { fadeOutDurationSec: number; chatIds: string[] },
 ) {
   console.log("Telegram: sendvoice");
@@ -64,17 +65,13 @@ export async function sendVoiceToChat(
   /** Trim tail (e.g. mic/button release click) before dynamics processing. */
   const tailChopSec = 0.05;
 
-  const durationSec = parseFloat(
-    execSync(
-      `ffprobe -i "${filePath}" -show_entries format=duration -v quiet -of csv="p=0"`,
-    ).toString(),
-  );
-
   // Speech-focused processing for phone playback:
   // band-limit to voice range, compress dynamics, then normalize loudness.
   const speechFilter =
     "highpass=f=120,lowpass=f=4200,acompressor=threshold=-24dB:ratio=3:attack=20:release=250:makeup=6,loudnorm=I=-16:TP=-1.5:LRA=7";
   let finalFilter = speechFilter;
+
+  const { durationSec } = getAudioDuration({ filepath });
 
   if (durationSec > tailChopSec) {
     const trimEnd = durationSec - tailChopSec;
@@ -102,7 +99,7 @@ export async function sendVoiceToChat(
         "ffmpeg",
         "-y",
         "-i",
-        filePath,
+        filepath,
         "-af",
         finalFilter,
         "-ac",

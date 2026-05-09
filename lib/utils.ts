@@ -2,6 +2,7 @@ import sharp from "sharp";
 import Tesseract, { createWorker } from "tesseract.js";
 import fs from "fs/promises";
 import path from "path";
+import { execSync } from "child_process";
 
 let workerPromise: Promise<Tesseract.Worker> | undefined = undefined;
 
@@ -184,4 +185,17 @@ export async function preprocessImage(
 
 export function isTruthy<T>(v: T): v is NonNullable<T> {
   return !!v;
+}
+
+export function getAudioDuration({ filepath }: { filepath: string }) {
+  const durationSec = parseFloat(
+    execSync(
+      `ffprobe -i "${filepath}" -show_entries format=duration -v quiet -of csv="p=0"`,
+    ).toString(),
+  );
+
+  return {
+    durationSec,
+    durationMillis: durationSec * 1000,
+  };
 }
