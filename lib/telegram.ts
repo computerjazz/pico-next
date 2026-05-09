@@ -151,7 +151,7 @@ export async function sendVoiceToChat(
     }),
   );
 
-  return { responses, remappedChatIds };
+  return { responses, remappedChatIds, durationSec };
 }
 
 // send an audio file (MP3)

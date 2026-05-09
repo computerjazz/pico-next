@@ -145,6 +145,7 @@ export const recordings = pico.table("recordings", {
   name: varchar("name", { length: 512 }),
   contentType: varchar("content_type", { length: 25 }),
   source: varchar("source", { length: 25 }),
+  durationMillis: varchar("duration_millis", { length: 25 }),
 });
 
 export const toggles = pico.table("toggles", {

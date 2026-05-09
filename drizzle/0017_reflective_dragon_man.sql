@@ -1,0 +1,1 @@
+ALTER TABLE "pico_next_db"."recordings" ADD COLUMN "duration_millis" varchar(25);
