@@ -1,0 +1,2 @@
+ALTER TABLE "pico_next_db"."devices" ADD COLUMN "last_seen_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "pico_next_db"."recordings" ADD COLUMN "deleted_at" timestamp with time zone;

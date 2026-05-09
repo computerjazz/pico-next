@@ -117,6 +117,10 @@ export const devices = pico.table("devices", {
     mode: "date",
     withTimezone: true,
   }).defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", {
+    mode: "date",
+    withTimezone: true,
+  }),
 });
 
 export const deviceChannels = pico.table("device_channels", {
@@ -146,6 +150,10 @@ export const recordings = pico.table("recordings", {
   contentType: varchar("content_type", { length: 25 }),
   source: varchar("source", { length: 25 }),
   durationMillis: varchar("duration_millis", { length: 25 }),
+  deletedAt: timestamp("deleted_at", {
+    mode: "date",
+    withTimezone: true,
+  }),
 });
 
 export const toggles = pico.table("toggles", {

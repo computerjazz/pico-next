@@ -27,7 +27,8 @@ export default async function DevicePage({
   });
 
   const recordings = await db.query.recordings.findMany({
-    where: (t, { eq }) => eq(t.deviceId, deviceId),
+    where: (t, { and, isNull, eq }) =>
+      and(eq(t.deviceId, deviceId), isNull(t.deletedAt)),
   });
 
   if (!device) {
