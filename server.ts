@@ -57,15 +57,15 @@ async function main() {
       isAlive = true;
 
       if (clientId) {
-        await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL}/api/device/${clientId}/phone-home`,
-          {
-            method: "POST",
-            headers: {
-              authorization: `Bearer ${clientToken}`,
-            },
+        const phoneHomeUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/device/${clientId}/phone-home`;
+
+        console.log("fetching", phoneHomeUrl);
+        await fetch(phoneHomeUrl, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${clientToken}`,
           },
-        );
+        });
       }
     });
 
