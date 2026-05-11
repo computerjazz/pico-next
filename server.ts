@@ -4,8 +4,8 @@ import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import { getRedis } from "./lib/redis.js";
 import { validateTokenDefault } from "./lib/auth.js";
-import { db } from "./db/index.js";
-import { devices } from "./db/schema.js";
+// import { db } from "./db/index.js";
+// import { devices } from "./db/schema.js";
 import { eq } from "drizzle-orm";
 
 const app = next({ dev: false });
@@ -57,14 +57,14 @@ async function main() {
 
     socket.on("pong", async () => {
       isAlive = true;
-      if (clientId) {
-        await db
-          .update(devices)
-          .set({
-            lastSeenAt: new Date(),
-          })
-          .where(eq(devices.deviceId, clientId));
-      }
+      // if (clientId) {
+      //   await db
+      //     .update(devices)
+      //     .set({
+      //       lastSeenAt: new Date(),
+      //     })
+      //     .where(eq(devices.deviceId, clientId));
+      // }
     });
 
     socket.on("message", async (data: Buffer) => {

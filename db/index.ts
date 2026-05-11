@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import * as schema from "./schema.js";
+import * as schema from "./schema";
 import dns from "dns/promises";
 const { address } = await dns.lookup(process.env.DATABASE_HOST || "", {
   family: 4,

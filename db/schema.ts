@@ -1,4 +1,4 @@
-import { CHANNEL_TYPE } from "../lib/constants.js";
+import { CHANNEL_TYPE } from "../lib/constants";
 import { relations } from "drizzle-orm";
 import {
   pgSchema,
