@@ -4,9 +4,6 @@ import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import { getRedis } from "./lib/redis.js";
 import { validateTokenDefault } from "./lib/auth.js";
-// import { db } from "./db/index.js";
-// import { devices } from "./db/schema.js";
-import { eq } from "drizzle-orm";
 
 const app = next({ dev: false });
 const handle = app.getRequestHandler();
@@ -42,6 +39,7 @@ async function main() {
 
   wss.on("connection", (socket: WebSocket) => {
     let clientId: string | null = null;
+    let clientToken: string | null = null;
     let isAlive = true;
 
     console.log(`socket connection: ${socket.url}`);
@@ -57,14 +55,18 @@ async function main() {
 
     socket.on("pong", async () => {
       isAlive = true;
-      // if (clientId) {
-      //   await db
-      //     .update(devices)
-      //     .set({
-      //       lastSeenAt: new Date(),
-      //     })
-      //     .where(eq(devices.deviceId, clientId));
-      // }
+
+      if (clientId) {
+        await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL}/api/device/${clientId}/phone-home`,
+          {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${clientToken}`,
+            },
+          },
+        );
+      }
     });
 
     socket.on("message", async (data: Buffer) => {
@@ -78,6 +80,7 @@ async function main() {
           return;
         }
         clientId = msg.id;
+        clientToken = msg.token;
         if (clientId) {
           clients.set(clientId, socket);
           console.log(`Client registered: ${clientId}`);
