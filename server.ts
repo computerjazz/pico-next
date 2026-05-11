@@ -58,17 +58,12 @@ async function main() {
 
       if (clientId) {
         const phoneHomeUrl = `${process.env.API_BASE_URL}/api/device/${clientId}/phone-home`;
-
-        console.log("fetching", phoneHomeUrl);
-        const resp = await fetch(phoneHomeUrl, {
+        await fetch(phoneHomeUrl, {
           method: "POST",
           headers: {
             authorization: `Bearer ${clientToken}`,
           },
         });
-
-        console.log("resp ok:", resp.ok);
-        console.log("respjson", await resp.json());
       }
     });
 
