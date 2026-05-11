@@ -1,6 +1,7 @@
 "use client";
 
 import { getRecording } from "@/app/actions/getRecording";
+import EllipsesCircle from "@/app/components/icons/EllipsesCircle";
 import PauseCircle from "@/app/components/icons/PauseCircle";
 import PlayCircle from "@/app/components/icons/PlayCircle";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
@@ -55,6 +56,7 @@ export default function RecordingItem({ recording }: { recording: Recording }) {
 
   const {
     isPlaying,
+    isLoading,
     audioUrl,
     fetchAudio,
     audioRef,
@@ -80,7 +82,13 @@ export default function RecordingItem({ recording }: { recording: Recording }) {
           }
         }}
       >
-        {isPlaying ? <PauseCircle /> : <PlayCircle />}
+        {isLoading ? (
+          <EllipsesCircle />
+        ) : isPlaying ? (
+          <PauseCircle />
+        ) : (
+          <PlayCircle />
+        )}
       </button>
 
       <span className="flex align-middle justify-center">

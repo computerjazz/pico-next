@@ -1,4 +1,7 @@
-function PlayCircle() {
+import { IconProps } from "./types";
+
+// https://heroicons.com/
+function PlayCircle({ className = "size-6" }: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -6,7 +9,7 @@ function PlayCircle() {
       viewBox="0 0 24 24"
       strokeWidth={1.5}
       stroke="currentColor"
-      className="size-6"
+      className={className}
     >
       <path
         strokeLinecap="round"
