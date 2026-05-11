@@ -6,19 +6,29 @@ import PauseCircle from "@/app/components/icons/PauseCircle";
 import PlayCircle from "@/app/components/icons/PlayCircle";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { Recording } from "@/db/schema";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 function useAudio({ recordingId }: { recordingId: string }) {
-  const [audioUrl, setAudioUrl] = useState<Buffer<ArrayBuffer> | null>(null);
+  const [audioSource, setAudioSource] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+
   const fetchAudio = useStableCallback(async () => {
     if (isLoading) return;
     setIsLoading(true);
     try {
       const fileBuffer = await getRecording({ recordingId });
-      setAudioUrl(fileBuffer);
+      const _audioSrc = URL.createObjectURL(
+        fileBuffer instanceof Blob
+          ? fileBuffer
+          : new Blob([fileBuffer], { type: "audio/mpeg" }),
+      );
+      if (audioRef.current && _audioSrc) {
+        audioRef.current.src = _audioSrc;
+      }
+      setAudioSource(_audioSrc);
+      return _audioSrc;
     } catch (e) {
       alert("Could not fetch audio");
     } finally {
@@ -26,21 +36,10 @@ function useAudio({ recordingId }: { recordingId: string }) {
     }
   });
 
-  const audioSource = useMemo(() => {
-    return audioUrl
-      ? URL.createObjectURL(
-          audioUrl instanceof Blob
-            ? audioUrl
-            : new Blob([audioUrl], { type: "audio/mpeg" }),
-        )
-      : undefined;
-  }, [audioUrl]);
-
   const onPlay = useStableCallback(() => setIsPlaying(true));
   const onPause = useStableCallback(() => setIsPlaying(false));
 
   return {
-    audioUrl,
     isLoading,
     isPlaying,
     audioRef,
@@ -57,7 +56,6 @@ export default function RecordingItem({ recording }: { recording: Recording }) {
   const {
     isPlaying,
     isLoading,
-    audioUrl,
     fetchAudio,
     audioRef,
     audioSource,
@@ -72,7 +70,7 @@ export default function RecordingItem({ recording }: { recording: Recording }) {
       <button
         className="cursor-pointer"
         onClick={async () => {
-          if (!audioUrl) {
+          if (!audioSource) {
             await fetchAudio();
           }
           if (!isPlaying) {
