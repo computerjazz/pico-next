@@ -51,3 +51,4 @@ env.h
 /uploads/
 /esp32/toggle/build
 /esp32/shortwave/build
+/dist
