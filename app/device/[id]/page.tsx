@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import ClaimButton from "./ClaimButton";
 import ProfileSignInButton from "@/app/components/ProfileSignInButton";
 import RecordingItem from "./RecordingItem";
+import { RecordingsList } from "./RecordingsList";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -71,13 +72,7 @@ export default async function DevicePage({
             {isDeviceOwner && (
               <>
                 <h3>Recordings</h3>
-                {recordings.map((r) => {
-                  return (
-                    <div key={r.id} className="flex items-center space-x-2">
-                      <RecordingItem recording={r} />
-                    </div>
-                  );
-                })}
+                <RecordingsList recordings={recordings} />
               </>
             )}
           </>

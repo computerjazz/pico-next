@@ -1,18 +1,25 @@
 "use client";
 
 import { getRecording } from "@/app/actions/getRecording";
+import { useAudioContext } from "@/app/components/AudioProvider";
 import EllipsesCircle from "@/app/components/icons/EllipsesCircle";
 import PauseCircle from "@/app/components/icons/PauseCircle";
 import PlayCircle from "@/app/components/icons/PlayCircle";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { Recording } from "@/db/schema";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function useAudio({ recordingId }: { recordingId: string }) {
   const [audioSource, setAudioSource] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  const { onPlay, onRef } = useAudioContext();
+
+  useEffect(() => {
+    onRef({ id: recordingId, ref: audioRef });
+  }, [onRef, recordingId]);
 
   const fetchAudio = useStableCallback(async () => {
     if (isLoading) return;
@@ -38,8 +45,11 @@ function useAudio({ recordingId }: { recordingId: string }) {
     }
   });
 
-  const onPlay = useStableCallback(() => setIsPlaying(true));
-  const onPause = useStableCallback(() => setIsPlaying(false));
+  const _onPlay = useStableCallback(() => {
+    onPlay();
+    setIsPlaying(true);
+  });
+  const _onPause = useStableCallback(() => setIsPlaying(false));
 
   return {
     isLoading,
@@ -47,8 +57,8 @@ function useAudio({ recordingId }: { recordingId: string }) {
     audioRef,
     audioSource,
     fetchAudio,
-    onPlay,
-    onPause,
+    onPlay: _onPlay,
+    onPause: _onPause,
   };
 }
 
