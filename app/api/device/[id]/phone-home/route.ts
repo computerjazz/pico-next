@@ -19,14 +19,13 @@ export async function POST(
 
     const deviceId = (await params).id;
 
-    // The previous code is not a full upsert: .onConflictDoNothing() just skips insertion if the deviceId exists, so new values are ignored for existing devices.
-    // To upsert (insert or update on conflict), use `.onConflictDoUpdate({ target, set })`:
     if (deviceType) {
       await db
         .insert(devices)
         .values({
           deviceId,
           type: deviceType,
+          lastSeenAt: new Date(),
         })
         .onConflictDoUpdate({
           target: devices.deviceId,

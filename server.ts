@@ -60,12 +60,15 @@ async function main() {
         const phoneHomeUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/device/${clientId}/phone-home`;
 
         console.log("fetching", phoneHomeUrl);
-        await fetch(phoneHomeUrl, {
+        const resp = await fetch(phoneHomeUrl, {
           method: "POST",
           headers: {
             authorization: `Bearer ${clientToken}`,
           },
         });
+
+        console.log("resp ok:", resp.ok);
+        console.log("respjson", await resp.json());
       }
     });
 
