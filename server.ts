@@ -57,7 +57,7 @@ async function main() {
       isAlive = true;
 
       if (clientId) {
-        const phoneHomeUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/device/${clientId}/phone-home`;
+        const phoneHomeUrl = `${process.env.API_BASE_URL}/api/device/${clientId}/phone-home`;
 
         console.log("fetching", phoneHomeUrl);
         const resp = await fetch(phoneHomeUrl, {
