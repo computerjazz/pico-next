@@ -72,13 +72,19 @@ export default function RecordingItem({ recording }: { recording: Recording }) {
       <button
         className="cursor-pointer"
         onClick={async () => {
-          if (!audioSource) {
-            await fetchAudio();
-          }
-          if (!isPlaying) {
-            await audioRef.current?.play();
-          } else {
-            await audioRef.current?.pause();
+          try {
+            if (!audioSource) {
+              await fetchAudio();
+            }
+            if (isPlaying) {
+              audioRef.current?.pause();
+            } else {
+              await audioRef.current?.play();
+            }
+          } catch (err) {
+            if (err instanceof DOMException && err.name !== "AbortError") {
+              console.error(err);
+            }
           }
         }}
       >
@@ -95,12 +101,7 @@ export default function RecordingItem({ recording }: { recording: Recording }) {
         {createdAt?.toDateString()}
       </span>
 
-      <audio
-        ref={audioRef}
-        onPlay={onPlay}
-        onPause={onPause}
-        src={audioSource}
-      />
+      <audio ref={audioRef} onPlay={onPlay} onPause={onPause} />
     </div>
   );
 }
