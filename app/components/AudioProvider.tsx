@@ -7,7 +7,7 @@ type OnRefParams = {
 };
 
 type AudioPlayerContextValue = {
-  onPlay: () => void;
+  onPlay: (params: { id: string }) => void;
   onRef: (params: OnRefParams) => void;
 };
 
@@ -20,8 +20,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     new Map<string, React.RefObject<HTMLAudioElement | null>>(),
   );
 
-  const onPlay = useStableCallback(() => {
-    audioRefs.forEach((ref) => ref.current?.pause());
+  const onPlay = useStableCallback(({ id }: { id: string }) => {
+    [...audioRefs.entries()].forEach(([recordingId, ref]) => {
+      if (recordingId !== id) ref.current?.pause();
+    });
   });
 
   const onRef = useStableCallback(({ id, ref }: OnRefParams) => {

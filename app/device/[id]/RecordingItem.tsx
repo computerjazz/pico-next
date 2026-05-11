@@ -46,7 +46,7 @@ function useAudio({ recordingId }: { recordingId: string }) {
   });
 
   const _onPlay = useStableCallback(() => {
-    onPlay();
+    onPlay({ id: recordingId });
     setIsPlaying(true);
   });
   const _onPause = useStableCallback(() => setIsPlaying(false));
