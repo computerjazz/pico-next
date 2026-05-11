@@ -24,8 +24,10 @@ function useAudio({ recordingId }: { recordingId: string }) {
           ? fileBuffer
           : new Blob([fileBuffer], { type: "audio/mpeg" }),
       );
-      if (audioRef.current && _audioSrc) {
+      if (audioRef.current) {
+        audioRef.current?.pause();
         audioRef.current.src = _audioSrc;
+        audioRef.current.load();
       }
       setAudioSource(_audioSrc);
       return _audioSrc;
@@ -74,9 +76,9 @@ export default function RecordingItem({ recording }: { recording: Recording }) {
             await fetchAudio();
           }
           if (!isPlaying) {
-            audioRef.current?.play();
+            await audioRef.current?.play();
           } else {
-            audioRef.current?.pause();
+            await audioRef.current?.pause();
           }
         }}
       >
