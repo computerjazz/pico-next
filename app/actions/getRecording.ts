@@ -10,7 +10,8 @@ export async function getRecording({ recordingId }: { recordingId: string }) {
     throw new Error("must be logged in to listen to recording");
   }
   const recording = await db.query.recordings.findFirst({
-    where: (r, { eq }) => eq(r.id, recordingId),
+    where: (r, { eq, and, isNull }) =>
+      and(eq(r.id, recordingId), isNull(r.deletedAt)),
     with: {
       device: true,
     },
@@ -24,6 +25,8 @@ export async function getRecording({ recordingId }: { recordingId: string }) {
     throw new Error("Not authorized to access this recording");
   }
 
-  const fileBuffer = fs.readFileSync(recording.filepath);
+  const fileBuffer = fs.readFileSync(
+    recording.filepathProcessed || recording.filepath,
+  );
   return fileBuffer;
 }
