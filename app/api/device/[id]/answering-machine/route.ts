@@ -6,8 +6,8 @@ export async function GET(req: Request) {
     const maybeResp = await verifyAuth(req, {
       tag: "answering-machine/mp3",
     });
-    const deviceId = req.headers.get("x-device-id") ?? "unknown";
     if (maybeResp) return maybeResp;
+    const deviceId = req.headers.get("x-device-id") ?? "unknown";
     const file = await getLatestInboundAudioFilePath({ deviceId });
     if (!file) {
       throw new Error("no answering machine file found");

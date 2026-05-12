@@ -63,7 +63,7 @@ function useAudio({ recordingId }: { recordingId: string }) {
 }
 
 export default function RecordingItem({ recording }: { recording: Recording }) {
-  const { createdAt } = recording;
+  const { createdAt, durationMillis, source } = recording;
 
   const {
     isPlaying,
@@ -109,6 +109,23 @@ export default function RecordingItem({ recording }: { recording: Recording }) {
 
       <span className="flex align-middle justify-center">
         {createdAt?.toDateString()}
+        {source}
+        {recording.id}
+        {durationMillis && (
+          <>
+            <span className="mx-2 text-gray-600">•</span>
+            <span className="text-gray-600">
+              {(() => {
+                const ms = parseInt(durationMillis, 10);
+                if (isNaN(ms)) return null;
+                const totalSeconds = Math.floor(ms / 1000);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+              })()}
+            </span>
+          </>
+        )}
       </span>
 
       <audio ref={audioRef} onPlay={onPlay} onPause={onPause} />
