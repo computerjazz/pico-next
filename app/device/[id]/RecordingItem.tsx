@@ -2,8 +2,6 @@
 
 import { getRecording } from "@/app/actions/getRecording";
 import { useAudioContext } from "@/app/components/AudioProvider";
-import ArrowDownRight from "@/app/components/icons/ArrowDownRight";
-import ArrowUpRight from "@/app/components/icons/ArrowUpRight";
 import EllipsesCircle from "@/app/components/icons/EllipsesCircle";
 import PauseCircle from "@/app/components/icons/PauseCircle";
 import PlayCircle from "@/app/components/icons/PlayCircle";
@@ -64,8 +62,14 @@ function useAudio({ recordingId }: { recordingId: string }) {
   };
 }
 
-export default function RecordingItem({ recording }: { recording: Recording }) {
-  const { createdAt, durationMillis, source } = recording;
+export default function RecordingItem({
+  recording,
+  className,
+}: {
+  recording: Recording;
+  className?: string;
+}) {
+  const { createdAt, durationMillis } = recording;
 
   const {
     isPlaying,
@@ -79,61 +83,61 @@ export default function RecordingItem({ recording }: { recording: Recording }) {
     recordingId: recording.id,
   });
 
-  const isFromDevice = source === "shortwave-device";
-
   return (
-    <div className="flex gap-2 justify-center items-center">
-      {isFromDevice ? (
-        <ArrowUpRight className="size-3 text-green-300" />
-      ) : (
-        <ArrowDownRight className="size-3 text-red-300" />
-      )}
-      <button
-        className="cursor-pointer"
-        onClick={async () => {
-          try {
-            if (!audioSource) {
-              await fetchAudio();
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <div className="flex flex-row gap-2 items-center">
+        <button
+          className="cursor-pointer"
+          onClick={async () => {
+            try {
+              if (!audioSource) {
+                await fetchAudio();
+              }
+              if (isPlaying) {
+                audioRef.current?.pause();
+              } else {
+                await audioRef.current?.play();
+              }
+            } catch (err) {
+              if (err instanceof DOMException && err.name !== "AbortError") {
+                console.error(err);
+              }
             }
-            if (isPlaying) {
-              audioRef.current?.pause();
-            } else {
-              await audioRef.current?.play();
-            }
-          } catch (err) {
-            if (err instanceof DOMException && err.name !== "AbortError") {
-              console.error(err);
-            }
-          }
-        }}
-      >
-        {isLoading ? (
-          <EllipsesCircle />
-        ) : isPlaying ? (
-          <PauseCircle />
-        ) : (
-          <PlayCircle />
-        )}
-      </button>
+          }}
+        >
+          {isLoading ? (
+            <EllipsesCircle />
+          ) : isPlaying ? (
+            <PauseCircle />
+          ) : (
+            <PlayCircle />
+          )}
+        </button>
 
-      <span className="flex align-middle justify-center">
-        {createdAt?.toDateString()}
-        {durationMillis && (
-          <>
-            <span className="mx-2 text-gray-600">•</span>
-            <span className="text-gray-600">
-              {(() => {
-                const ms = parseInt(durationMillis, 10);
-                if (isNaN(ms)) return null;
-                const totalSeconds = Math.floor(ms / 1000);
-                const minutes = Math.floor(totalSeconds / 60);
-                const seconds = totalSeconds % 60;
-                return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-              })()}
-            </span>
-          </>
-        )}
-      </span>
+        <span className="flex align-middle">
+          {createdAt?.toDateString()}
+          {durationMillis && (
+            <>
+              <span className="mx-2 text-gray-600">•</span>
+              <span className="text-gray-600">
+                {(() => {
+                  const ms = parseInt(durationMillis, 10);
+                  if (isNaN(ms)) return null;
+                  const totalSeconds = Math.floor(ms / 1000);
+                  const minutes = Math.floor(totalSeconds / 60);
+                  const seconds = totalSeconds % 60;
+                  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+                })()}
+              </span>
+            </>
+          )}
+        </span>
+      </div>
+      {recording.transcription && (
+        <div className="flex items-center ml-4 py-2 text-sm text-gray-400 max-w-xs break-words">
+          <span>{recording.transcription}</span>
+        </div>
+      )}
 
       <audio ref={audioRef} onPlay={onPlay} onPause={onPause} />
     </div>
