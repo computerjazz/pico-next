@@ -115,7 +115,17 @@ export default function RecordingItem({
         </button>
 
         <span className="flex align-middle">
-          {createdAt?.toDateString()}
+          {createdAt && (
+            <div>
+              <span>{createdAt.toDateString()} </span>
+              <span className="text-gray-600">
+                {createdAt.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
+          )}
           {durationMillis && (
             <>
               <span className="mx-2 text-gray-600">•</span>
