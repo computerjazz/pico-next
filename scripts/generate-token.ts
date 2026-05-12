@@ -7,7 +7,8 @@ const toggleToken = jwt.sign(
   process.env.JWT_SECRET!,
 );
 const wsToken = jwt.sign({ scope: "websocket" }, process.env.JWT_SECRET!);
-
+const serverToken = jwt.sign({ scope: "server" }, process.env.JWT_SECRET!);
 console.log("mail", mailToken);
 console.log("toggle", toggleToken);
 console.log("ws", wsToken);
+console.log("server", serverToken);

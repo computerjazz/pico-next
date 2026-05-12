@@ -133,6 +133,25 @@ async function main() {
   });
 
   server.listen(3000, () => console.log("Ready on port 3000"));
+
+  let isTranscriptionInProgress = false;
+  setInterval(async () => {
+    if (isTranscriptionInProgress) return;
+    try {
+      isTranscriptionInProgress = true;
+      const transcribeNextUrl = `${process.env.API_BASE_URL}/api/recording/transcribe-next`;
+      await fetch(transcribeNextUrl, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${process.env.SERVER_TOKEN}`,
+        },
+      });
+    } catch (err) {
+      console.log("transcribe-next err:", err);
+    } finally {
+      isTranscriptionInProgress = false;
+    }
+  }, 30_000);
 }
 
 main().catch((err) => {

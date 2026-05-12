@@ -1,0 +1,1 @@
+ALTER TABLE "pico_next_db"."recordings" RENAME COLUMN "transcription" TO "transcript";

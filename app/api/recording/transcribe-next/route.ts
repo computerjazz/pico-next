@@ -2,27 +2,23 @@ import { db } from "@/db";
 import { recordings } from "@/db/schema";
 import { verifyAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
-import { transcribeFile } from "../../utils";
+import { transcribeFile } from "../utils";
 
-type RouteParams = { id: string };
-
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<RouteParams> },
-) {
+export async function POST(req: Request) {
   const maybeResp = await verifyAuth(req, {
-    tag: "recording/:id/transcribe",
+    tag: "transcribe-next",
   });
   if (maybeResp) return maybeResp;
 
-  const recordingId = (await params).id;
   const recording = await db.query.recordings.findFirst({
-    where: (t, { eq }) => eq(t.id, recordingId),
+    where: (t, { isNull }) => isNull(t.transcript),
+    orderBy: (t, { asc }) => asc(t.createdAt),
   });
 
   if (!recording) {
     return new Response(null, { status: 404 });
   }
+
   console.log(
     `[transcribe] start recording=${recording.id} filepath=${recording.filepath}`,
   );
@@ -38,7 +34,7 @@ export async function GET(
       .set({
         transcript,
       })
-      .where(eq(recordings.id, recordingId));
+      .where(eq(recordings.id, recording.id));
   }
 
   return Response.json({ transcript, error });

@@ -133,9 +133,9 @@ export default function RecordingItem({
           )}
         </span>
       </div>
-      {recording.transcription && (
+      {recording.transcript && (
         <div className="flex items-center ml-4 py-2 text-sm text-gray-400 max-w-xs break-words">
-          <span>{recording.transcription}</span>
+          <span>{recording.transcript}</span>
         </div>
       )}
 
