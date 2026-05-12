@@ -35,11 +35,11 @@ export async function GET(
   );
   console.log(`tmp ffmpeg file ${tmpWav}`);
 
-  const { stdout } = await execAsync(
+  const { stdout, stderr } = await execAsync(
     `nice -n 19 /whisper/build/bin/whisper-cli -m /whisper/models/ggml-base.en.bin -f ${tmpWav} -nt 2>/dev/null`,
-  );
-
+  ).catch((e) => ({ stdout: e.stdout, stderr: e.stderr }));
+  console.log(`output:`, stdout, stderr);
   await execAsync(`rm ${tmpWav}`);
 
-  return Response.json({ transcript: stdout.trim() });
+  return Response.json({ transcript: stdout.trim(), error: stderr });
 }
