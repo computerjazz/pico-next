@@ -1,7 +1,9 @@
 import { db } from "@/db";
+import { recordings } from "@/db/schema";
 import { verifyAuth } from "@/lib/auth";
 import { exec } from "child_process";
 import { randomUUID } from "crypto";
+import { eq } from "drizzle-orm";
 import { promisify } from "util";
 
 const execAsync = promisify(exec);
@@ -81,6 +83,18 @@ export async function GET(
     console.warn(`[transcribe] cleanup failed: ${e.message}`),
   );
   console.log(`[transcribe] done`);
+
+  const transcription = stdout.trim();
+
+  if (transcription) {
+    console.log("transcription success!!", transcription);
+    await db
+      .update(recordings)
+      .set({
+        transcription,
+      })
+      .where(eq(recordings.id, recordingId));
+  }
 
   return Response.json({ transcript: stdout.trim(), error: stderr });
 }
