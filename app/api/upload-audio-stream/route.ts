@@ -32,19 +32,21 @@ export async function POST(req: Request) {
     const audioProcessedFilename = `${audioBaseFilename}-processed.mp3`;
     console.log(`Recording started: ${recordingId}`);
 
+    const audioDir = path.join(
+      process.cwd(),
+      "uploads",
+      "sh0rtwave",
+      deviceId,
+      "outbound",
+    );
+    mkdirSync(audioDir, { recursive: true });
+
     const ffmpegResult = await new Promise<{
       errorMsg?: string;
       outputMp3Path?: string;
     }>((resolve) => {
       const minBytes = parseInt(sampleRate) * BYTES_PER_SAMPLE * MIN_SECONDS;
-      const audioDir = path.join(
-        process.cwd(),
-        "uploads",
-        "sh0rtwave",
-        deviceId,
-        "outbound",
-      );
-      mkdirSync(audioDir, { recursive: true });
+
       const outputMp3Path = path.join(audioDir, audioFilename);
       const ffmpeg = spawn("ffmpeg", [
         "-f", // input format is:
@@ -120,7 +122,7 @@ export async function POST(req: Request) {
         await Promise.all([
           processAudio({
             filepath: outputMp3Path,
-            outputPath: audioProcessedFilename,
+            outputPath: path.join(audioDir, audioProcessedFilename),
           }),
           getAudioDuration({
             filepath: outputMp3Path,
