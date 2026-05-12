@@ -35,7 +35,7 @@ function VolumeInput({
         max={100}
         step={1}
         defaultValue={device.volume ?? 25}
-        className="w-full accent-green-400/70"
+        className="w-full accent-gray-400"
         autoComplete="off"
         disabled={disabled}
         onChange={({ target }) => {

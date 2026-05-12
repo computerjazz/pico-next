@@ -30,6 +30,7 @@ export default async function DevicePage({
   const recordings = await db.query.recordings.findMany({
     where: (t, { and, isNull, eq }) =>
       and(eq(t.deviceId, deviceId), isNull(t.deletedAt)),
+    orderBy: (t, { asc }) => asc(t.createdAt),
   });
 
   if (!device) {
@@ -71,7 +72,10 @@ export default async function DevicePage({
 
             {isDeviceOwner && (
               <>
-                <h3>Recordings</h3>
+                <DeviceStatRow
+                  label="Recordings:"
+                  value={String(recordings.length)}
+                />
                 <RecordingsList recordings={recordings} />
               </>
             )}
