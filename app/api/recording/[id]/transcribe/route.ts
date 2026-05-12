@@ -24,11 +24,16 @@ export async function GET(
   if (!recording) {
     return new Response(null, { status: 404 });
   }
+  console.log(`transcribing recording: ${recording.id}`);
+
+  const { stdout: whisperlsstdout } = await execAsync("ls /whisper/build/bin/");
+  console.log("found whisper", whisperlsstdout);
 
   const tmpWav = `/tmp/${randomUUID()}.wav`;
   await execAsync(
     `ffmpeg -i ${recording.filepath} -ar 16000 -ac 1 -c:a pcm_s16le ${tmpWav}`,
   );
+  console.log(`tmp ffmpeg file ${tmpWav}`);
 
   const { stdout } = await execAsync(
     `nice -n 19 /whisper/build/bin/whisper-cli -m /whisper/models/ggml-base.en.bin -f ${tmpWav} -nt 2>/dev/null`,
