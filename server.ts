@@ -139,7 +139,7 @@ async function main() {
     if (isTranscriptionInProgress) return;
     try {
       isTranscriptionInProgress = true;
-      const transcribeNextUrl = `${process.env.API_BASE_URL}/api/recording/transcribe-next`;
+      const transcribeNextUrl = `${process.env.API_BASE_URL}/api/recording/process-next`;
       await fetch(transcribeNextUrl, {
         method: "POST",
         headers: {
