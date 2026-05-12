@@ -8,7 +8,7 @@ import { db } from "@/db";
 import { deviceChannels, recordings } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { CHANNEL_TYPE } from "@/lib/constants";
-import { getAudioDuration } from "@/lib/utils";
+import { getAudioDuration, processAudio } from "@/lib/audio";
 
 export const runtime = "nodejs";
 
@@ -27,8 +27,9 @@ export async function POST(req: Request) {
       req.headers.get("x-recording-id") ?? `new-recording-${Date.now()}`;
     const sampleRate = req.headers.get("x-sample-rate") ?? "44100";
     const deviceId = req.headers.get("x-device-id") ?? "unknown";
-    const audioFilename = `${deviceId}-${new Date().toISOString()}-${recordingId}.mp3`;
-
+    const audioBaseFilename = `${deviceId}-${new Date().toISOString()}-${recordingId}`;
+    const audioFilename = `${audioBaseFilename}.mp3`;
+    const audioProcessedFilename = `${audioBaseFilename}-processed.mp3`;
     console.log(`Recording started: ${recordingId}`);
 
     const ffmpegResult = await new Promise<{
@@ -114,7 +115,19 @@ export async function POST(req: Request) {
           error: errorMsg || "No mp3 output",
         });
       }
-      console.log("sending as voice ", outputMp3Path);
+
+      const [{ filepath: outputProcessedPath }, { durationMillis }] =
+        await Promise.all([
+          processAudio({
+            filepath: outputMp3Path,
+            outputPath: audioProcessedFilename,
+          }),
+          getAudioDuration({
+            filepath: outputMp3Path,
+          }),
+        ]);
+
+      console.log("sending as voice ", outputProcessedPath);
       const channels = await db.query.deviceChannels.findMany({
         where: (t, { eq, and }) =>
           and(
@@ -124,13 +137,10 @@ export async function POST(req: Request) {
         columns: { channelId: true },
       });
 
-      const { durationMillis } = await getAudioDuration({
-        filepath: outputMp3Path,
-      });
-
       await db.insert(recordings).values({
         deviceId,
         filepath: outputMp3Path,
+        filepathProcessed: outputProcessedPath,
         contentType: "audio/mpeg",
         name: audioFilename,
         source: "shortwave-device",
@@ -139,7 +149,6 @@ export async function POST(req: Request) {
 
       const chatIds = channels.map((c) => c.channelId);
       const resp = await sendVoiceToChat(outputMp3Path, {
-        fadeOutDurationSec: 0.25,
         chatIds,
       });
       console.log("voice resp", resp);

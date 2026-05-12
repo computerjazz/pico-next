@@ -5,7 +5,6 @@ import DeviceNameInput from "./DeviceNameInput";
 import { auth } from "@/auth";
 import ClaimButton from "./ClaimButton";
 import ProfileSignInButton from "@/app/components/ProfileSignInButton";
-import RecordingItem from "./RecordingItem";
 import { RecordingsList } from "./RecordingsList";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
@@ -30,7 +29,7 @@ export default async function DevicePage({
   const recordings = await db.query.recordings.findMany({
     where: (t, { and, isNull, eq }) =>
       and(eq(t.deviceId, deviceId), isNull(t.deletedAt)),
-    orderBy: (t, { asc }) => asc(t.createdAt),
+    orderBy: (t, { desc }) => desc(t.createdAt),
   });
 
   if (!device) {

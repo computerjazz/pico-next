@@ -6,10 +6,9 @@ import { fetchMessageAttachmentData, htmlFromMessage, Message } from "./gmail";
 import {
   cropBase64ImageQuadrant,
   extractOCRText,
-  getJsonSizeBytes,
-  isTruthy,
   shrinkBase64Image,
-} from "./utils";
+} from "./image";
+import { getJsonSizeBytes, isTruthy } from "./utils";
 
 /** USPS repeats ids like `pra-shipper-name-id`; always scope under a section container. */
 const uspsPackacheSectionSchema = z.enum([

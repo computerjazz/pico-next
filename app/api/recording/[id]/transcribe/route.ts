@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { recordings } from "@/db/schema";
 import { verifyAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
-import { transcribeFile } from "../../utils";
+import { transcribeAudio } from "@/lib/audio";
 
 type RouteParams = { id: string };
 
@@ -27,7 +27,7 @@ export async function GET(
     `[transcribe] start recording=${recording.id} filepath=${recording.filepath}`,
   );
 
-  const { transcript, error } = await transcribeFile({
+  const { transcript, error } = await transcribeAudio({
     filepath: recording.filepath,
   });
 

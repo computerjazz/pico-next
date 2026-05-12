@@ -146,6 +146,7 @@ export const recordings = pico.table("recordings", {
     withTimezone: true,
   }).defaultNow(),
   filepath: varchar("filepath", { length: 512 }).notNull(),
+  filepathProcessed: varchar("filepath_processed", { length: 512 }),
   name: varchar("name", { length: 512 }),
   contentType: varchar("content_type", { length: 25 }),
   source: varchar("source", { length: 25 }),

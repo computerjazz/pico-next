@@ -1,12 +1,11 @@
 import fs from "fs";
 import FormData from "form-data";
 import fetch from "node-fetch";
-import os from "os";
 import path from "path";
-import { execSync, spawn } from "child_process";
+import { spawn } from "child_process";
 import { getAnsweringMachineDir } from "@/app/api/device/[id]/answering-machine/utils";
 import { z } from "zod";
-import { getAudioDuration } from "./utils";
+import { getTmpOggAudioFile } from "./audio";
 
 const telegramToken = process.env.TELEGRAM_TOKEN;
 
@@ -48,75 +47,10 @@ async function makeVoiceRequest({
 // send a voice note (OGG/OPUS)
 export async function sendVoiceToChat(
   filepath: string,
-  options?: { fadeOutDurationSec: number; chatIds: string[] },
+  options?: { chatIds: string[] },
 ) {
   console.log("Telegram: sendvoice");
-
-  // Ensure the file extension is .ogg for voice
-  const outVoicePath = path.join(
-    os.tmpdir(),
-    "tg_voice_" +
-      Date.now() +
-      "_" +
-      Math.random().toString(36).slice(2) +
-      ".ogg",
-  );
-
-  /** Trim tail (e.g. mic/button release click) before dynamics processing. */
-  const tailChopSec = 0.05;
-
-  // Speech-focused processing for phone playback:
-  // band-limit to voice range, compress dynamics, then normalize loudness.
-  const speechFilter =
-    "highpass=f=120,lowpass=f=4200,acompressor=threshold=-24dB:ratio=3:attack=20:release=250:makeup=6,loudnorm=I=-16:TP=-1.5:LRA=7";
-  let finalFilter = speechFilter;
-
-  const { durationSec } = getAudioDuration({ filepath });
-
-  if (durationSec > tailChopSec) {
-    const trimEnd = durationSec - tailChopSec;
-    finalFilter = `atrim=end=${trimEnd},asetpts=PTS-STARTPTS,${finalFilter}`;
-  }
-
-  const fadeDurationSec = options?.fadeOutDurationSec ?? 0;
-  const hasFade = fadeDurationSec > 0;
-  if (hasFade) {
-    const effDuration =
-      durationSec > tailChopSec ? durationSec - tailChopSec : durationSec;
-    console.log(
-      "Duration:",
-      durationSec,
-      "effective (after tail chop):",
-      effDuration,
-    );
-    const fadeStart = effDuration - fadeDurationSec;
-    finalFilter = `${finalFilter},afade=t=out:st=${fadeStart}:d=${fadeDurationSec}`;
-  }
-  try {
-    // ffmpeg: mono, 48kHz sample rate, opus codec, 64k bitrate
-    execSync(
-      [
-        "ffmpeg",
-        "-y",
-        "-i",
-        filepath,
-        "-af",
-        finalFilter,
-        "-ac",
-        "1",
-        "-ar",
-        "48000",
-        "-c:a",
-        "libopus",
-        "-b:a",
-        "64k",
-        outVoicePath,
-      ].join(" "),
-    );
-  } catch (err) {
-    throw new Error("Failed to convert to OGG/OPUS for Telegram voice: " + err);
-  }
-
+  const { filepath: outVoicePath } = await getTmpOggAudioFile({ filepath });
   console.log("Telegram: sending", outVoicePath);
 
   if (!telegramToken) {
@@ -148,7 +82,7 @@ export async function sendVoiceToChat(
     }),
   );
 
-  return { responses, remappedChatIds, durationSec };
+  return { responses, remappedChatIds };
 }
 
 // send an audio file (MP3)
