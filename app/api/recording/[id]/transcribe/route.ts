@@ -67,7 +67,7 @@ export async function GET(
 
   // run whisper
   console.log(`[transcribe] running whisper-cli`);
-  const whisperCmd = `/whisper/build/bin/whisper-cli -m /whisper/models/ggml-base.en.bin -f ${tmpWav} -nt`;
+  const whisperCmd = `/whisper/bin/whisper-cli -m /whisper/models/ggml-base.en.bin -f ${tmpWav} -nt`;
   console.log(`[transcribe] cmd: ${whisperCmd}`);
   const { stdout, stderr } = await execAsync(whisperCmd).catch((e) => ({
     stdout: e.stdout,
