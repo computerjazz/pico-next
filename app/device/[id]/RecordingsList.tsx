@@ -14,7 +14,7 @@ export function RecordingsList({ recordings }: { recordings: Recording[] }) {
             <RecordingItem
               key={r.id}
               recording={r}
-              className={`items-center max-w-md p-4 rounded-md ${isFromShortwave ? "bg-gray-800 self-start" : "bg-gray-900 self-end text-end items-end"}`}
+              className={`items-center max-w-md p-4 rounded-md ${isFromShortwave ? "bg-gray-800 self-start text-start items-start" : "bg-gray-900 self-end text-end items-end"}`}
             />
           );
         })}
