@@ -6,14 +6,19 @@ import path from "path";
 const execAsync = promisify(exec);
 
 export async function getAudioDuration({ filepath }: { filepath: string }) {
-  const result = await execAsync(
+  // Use execAsync and destructure stdout directly for clarity.
+  const { stdout } = await execAsync(
     `ffprobe -i "${filepath}" -show_entries format=duration -v quiet -of csv="p=0"`,
-  ).toString();
-  const durationSec = parseFloat(result);
+  );
 
+  // Trim output and parse as float; guard against parse failure/NaN.
+  const trimmed = stdout.trim();
+  const durationSec = parseFloat(trimmed);
+
+  // If result is NaN, return durationMillis as 0, or handle as needed.
   return {
-    durationSec,
-    durationMillis: durationSec * 1000,
+    durationSec: isNaN(durationSec) ? 0 : durationSec,
+    durationMillis: isNaN(durationSec) ? 0 : durationSec * 1000,
   };
 }
 
