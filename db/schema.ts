@@ -160,10 +160,10 @@ export const recordings = pico.table("recordings", {
 
 export const messages = pico.table("messages", {
   id: uuid("id").primaryKey().defaultRandom(),
-  platform: varchar("platform", { length: 24 }),
+  platform: varchar("platform", { length: 64 }),
   platformMessageId: varchar("platform_message_id", { length: 100 }),
   deviceChannelId: varchar("device_channel_id", { length: 100 }),
-  recordingId: varchar("recording_id", { length: 24 }),
+  recordingId: varchar("recording_id", { length: 64 }),
   createdAt: timestamp("created_at", {
     mode: "date",
     withTimezone: true,

@@ -3,6 +3,7 @@ import { recordings } from "@/db/schema";
 import { verifyAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { transcribeAudio, processAudio, getAudioDuration } from "@/lib/audio";
+import { addTranscriptToVoiceMessage } from "@/lib/telegram";
 
 export async function POST(req: Request) {
   const maybeResp = await verifyAuth(req, {
@@ -45,6 +46,20 @@ export async function POST(req: Request) {
           transcript,
         })
         .where(eq(recordings.id, recording.id));
+
+      const existingMessage = await db.query.messages.findMany({
+        where: (t, { eq }) => eq(t.recordingId, recording.id),
+      });
+      await Promise.allSettled(
+        existingMessage.map(async (msg) => {
+          if (!msg.deviceChannelId || !msg.platformMessageId) return;
+          await addTranscriptToVoiceMessage({
+            chatId: msg.deviceChannelId,
+            messageId: msg.platformMessageId,
+            transcript,
+          });
+        }),
+      );
     }
     actions.push("transcript");
   }

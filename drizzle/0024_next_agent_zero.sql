@@ -1,0 +1,2 @@
+ALTER TABLE "pico_next_db"."messages" ALTER COLUMN "platform" SET DATA TYPE varchar(64);--> statement-breakpoint
+ALTER TABLE "pico_next_db"."messages" ALTER COLUMN "recording_id" SET DATA TYPE varchar(64);

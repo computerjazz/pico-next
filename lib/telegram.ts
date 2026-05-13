@@ -7,7 +7,78 @@ import { getAnsweringMachineDir } from "@/app/api/device/[id]/answering-machine/
 import { z } from "zod";
 import { getTmpOggAudioFile } from "./audio";
 
-const telegramToken = process.env.TELEGRAM_TOKEN;
+function createTelegramBot() {
+  const baseUrl = `https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}`;
+
+  async function sendVoice({ body }: { body: FormData }) {
+    const url = `${baseUrl}/sendVoice`;
+    const resp = await fetch(url, {
+      method: "POST",
+      body,
+    });
+    return resp;
+  }
+
+  async function sendAudio({ body }: { body: FormData }) {
+    const url = `${baseUrl}/sendAudio`;
+    const resp = await fetch(url, {
+      method: "POST",
+      body,
+    });
+    return resp;
+  }
+
+  async function sendMessage({
+    chatId,
+    text,
+    replyToMessageId,
+  }: {
+    chatId: string;
+    text: string;
+    replyToMessageId?: string;
+  }) {
+    const resp = await fetch(`${baseUrl}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
+      }),
+    });
+    return resp;
+  }
+
+  async function updateMessageCaption({
+    chatId,
+    messageId,
+    caption,
+  }: {
+    chatId: string;
+    messageId: string;
+    caption: string;
+  }) {
+    const resp = await fetch(`${baseUrl}/editMessageCaption`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        caption,
+      }),
+    });
+    return resp;
+  }
+
+  return {
+    sendVoice,
+    sendAudio,
+    sendMessage,
+    updateMessageCaption,
+  };
+}
+
+const bot = createTelegramBot();
 
 const TelegramSendVoiceResponseSchema = z.object({
   ok: z.boolean(),
@@ -55,16 +126,26 @@ async function makeVoiceRequest({
   form.append("chat_id", chatId);
   form.append("voice", fs.createReadStream(outVoicePath));
 
-  const resp = await fetch(
-    `https://api.telegram.org/bot${telegramToken}/sendVoice`,
-    {
-      method: "POST",
-      body: form,
-    },
-  );
+  const resp = await bot.sendVoice({ body: form });
   const respJson = await resp.json();
   console.log("sent voice, response:", JSON.stringify(respJson));
   return respJson as Record<string, unknown>;
+}
+
+export async function addTranscriptToVoiceMessage({
+  chatId,
+  messageId,
+  transcript,
+}: {
+  chatId: string;
+  messageId: string;
+  transcript: string;
+}) {
+  return bot.updateMessageCaption({
+    chatId,
+    messageId,
+    caption: transcript,
+  });
 }
 
 // send a voice note (OGG/OPUS)
@@ -75,10 +156,6 @@ export async function sendVoiceToChat(
   console.log("Telegram: sendvoice");
   const { filepath: outVoicePath } = await getTmpOggAudioFile({ filepath });
   console.log("Telegram: sending", outVoicePath);
-
-  if (!telegramToken) {
-    throw new Error(`Missing Telegram token`);
-  }
 
   const chatIds = options.chatIds;
   const remappedChatIds = new Map<string, string>();
@@ -126,21 +203,13 @@ export async function sendVoiceToChat(
 export async function sendAudio(filePath: string, chatId: string) {
   const form = new FormData();
 
-  if (!chatId || !telegramToken) {
-    throw new Error(
-      `Missing Telegram ${!chatId && "chatId"} ${!telegramToken && "token"}`,
-    );
+  if (!chatId) {
+    throw new Error(`Missing Telegram chatId`);
   }
   form.append("chat_id", chatId);
   form.append("audio", fs.createReadStream(filePath));
 
-  const resp = await fetch(
-    `https://api.telegram.org/bot${telegramToken}/sendAudio`,
-    {
-      method: "POST",
-      body: form,
-    },
-  );
+  const resp = await bot.sendAudio({ body: form });
   return resp.json();
 }
 
@@ -222,18 +291,11 @@ export async function sendMessageToChat({
   chatId: string;
   replyToMessageId?: string;
 }) {
-  const resp = await fetch(
-    `https://api.telegram.org/bot${telegramToken}/sendMessage`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
-      }),
-    },
-  );
+  const resp = await bot.sendMessage({
+    text,
+    chatId,
+    replyToMessageId,
+  });
 
   const data = await resp.json();
   return { data };
