@@ -158,6 +158,17 @@ export const recordings = pico.table("recordings", {
   }),
 });
 
+export const messages = pico.table("messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  platform: varchar("platform", { length: 24 }),
+  platformId: varchar("platform_id", { length: 100 }),
+  recordingId: varchar("recording_id", { length: 24 }),
+  createdAt: timestamp("created_at", {
+    mode: "date",
+    withTimezone: true,
+  }).defaultNow(),
+});
+
 export const toggles = pico.table("toggles", {
   id: uuid("id").primaryKey().defaultRandom(),
   deviceId: varchar("device_id", { length: 100 }),
@@ -191,10 +202,18 @@ export const deviceChannelsRelations = relations(deviceChannels, ({ one }) => {
   };
 });
 
-export const recordingsRelations = relations(recordings, ({ one }) => ({
+export const recordingsRelations = relations(recordings, ({ one, many }) => ({
   device: one(devices, {
     fields: [recordings.deviceId],
     references: [devices.deviceId],
+  }),
+  messages: many(messages),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  recording: one(recordings, {
+    fields: [messages.recordingId],
+    references: [recordings.id],
   }),
 }));
 

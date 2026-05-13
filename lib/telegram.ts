@@ -9,7 +9,7 @@ import { getTmpOggAudioFile } from "./audio";
 
 const telegramToken = process.env.TELEGRAM_TOKEN;
 
-export const TelegramVoiceJsonResponseSchema = z.object({
+const TelegramVoiceJsonResponseMigrateToChatSchema = z.object({
   ok: z.boolean(),
   error_code: z.number(),
   description: z.string(),
@@ -17,10 +17,6 @@ export const TelegramVoiceJsonResponseSchema = z.object({
     migrate_to_chat_id: z.number(),
   }),
 });
-
-export type TelegramVoiceJsonResponse = z.infer<
-  typeof TelegramVoiceJsonResponseSchema
->;
 
 async function makeVoiceRequest({
   chatId,
@@ -41,6 +37,7 @@ async function makeVoiceRequest({
     },
   );
   const respJson = await resp.json();
+  console.log("sent voice, response:", JSON.stringify(respJson));
   return respJson as Record<string, unknown>;
 }
 
@@ -63,7 +60,8 @@ export async function sendVoiceToChat(
   const responses = await Promise.all(
     chatIds?.map(async (chatId) => {
       const resp = await makeVoiceRequest({ chatId, outVoicePath });
-      const parsed = TelegramVoiceJsonResponseSchema.safeParse(resp);
+      const parsed =
+        TelegramVoiceJsonResponseMigrateToChatSchema.safeParse(resp);
       if (parsed.success && !parsed.data.ok) {
         console.log(`chat has been updated, sending to new chat id`);
         const newChatId = String(parsed.data.parameters.migrate_to_chat_id);
