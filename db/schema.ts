@@ -161,7 +161,8 @@ export const recordings = pico.table("recordings", {
 export const messages = pico.table("messages", {
   id: uuid("id").primaryKey().defaultRandom(),
   platform: varchar("platform", { length: 24 }),
-  platformId: varchar("platform_id", { length: 100 }),
+  platformMessageId: varchar("platform_message_id", { length: 100 }),
+  deviceChannelId: varchar("device_channel_id", { length: 100 }),
   recordingId: varchar("recording_id", { length: 24 }),
   createdAt: timestamp("created_at", {
     mode: "date",
@@ -193,14 +194,18 @@ export const usersRelations = relations(users, ({ many }) => ({
   devices: many(devices),
 }));
 
-export const deviceChannelsRelations = relations(deviceChannels, ({ one }) => {
-  return {
-    device: one(devices, {
-      fields: [deviceChannels.deviceId],
-      references: [devices.deviceId],
-    }),
-  };
-});
+export const deviceChannelsRelations = relations(
+  deviceChannels,
+  ({ one, many }) => {
+    return {
+      device: one(devices, {
+        fields: [deviceChannels.deviceId],
+        references: [devices.deviceId],
+      }),
+      messages: many(messages),
+    };
+  },
+);
 
 export const recordingsRelations = relations(recordings, ({ one, many }) => ({
   device: one(devices, {
@@ -214,6 +219,10 @@ export const messagesRelations = relations(messages, ({ one }) => ({
   recording: one(recordings, {
     fields: [messages.recordingId],
     references: [recordings.id],
+  }),
+  deviceChannel: one(deviceChannels, {
+    fields: [messages.deviceChannelId],
+    references: [deviceChannels.channelId],
   }),
 }));
 

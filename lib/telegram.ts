@@ -9,6 +9,32 @@ import { getTmpOggAudioFile } from "./audio";
 
 const telegramToken = process.env.TELEGRAM_TOKEN;
 
+const TelegramSendVoiceResponseSchema = z.object({
+  ok: z.boolean(),
+  result: z.object({
+    message_id: z.number(),
+    from: z.object({
+      id: z.number(),
+      is_bot: z.boolean(),
+      first_name: z.string(),
+      username: z.string(),
+    }),
+    chat: z.object({
+      id: z.number(),
+      title: z.string(),
+      type: z.string(),
+    }),
+    date: z.number(),
+    voice: z.object({
+      duration: z.number(),
+      mime_type: z.string(),
+      file_id: z.string(),
+      file_unique_id: z.string(),
+      file_size: z.number(),
+    }),
+  }),
+});
+
 const TelegramVoiceJsonResponseMigrateToChatSchema = z.object({
   ok: z.boolean(),
   error_code: z.number(),
@@ -44,7 +70,7 @@ async function makeVoiceRequest({
 // send a voice note (OGG/OPUS)
 export async function sendVoiceToChat(
   filepath: string,
-  options?: { chatIds: string[] },
+  options: { chatIds: string[] },
 ) {
   console.log("Telegram: sendvoice");
   const { filepath: outVoicePath } = await getTmpOggAudioFile({ filepath });
@@ -54,33 +80,46 @@ export async function sendVoiceToChat(
     throw new Error(`Missing Telegram token`);
   }
 
-  const chatIds = options?.chatIds ?? [];
+  const chatIds = options.chatIds;
   const remappedChatIds = new Map<string, string>();
+  const chatIdToMessageIdMap = new Map<string, string>();
+
+  async function addMessageToChat({
+    chatId,
+    migratedFromChatId,
+  }: {
+    chatId: string;
+    migratedFromChatId?: string;
+  }): Promise<unknown> {
+    const resp = await makeVoiceRequest({ chatId, outVoicePath });
+    const parsed = TelegramSendVoiceResponseSchema.safeParse(resp);
+    const parsedMigrated =
+      TelegramVoiceJsonResponseMigrateToChatSchema.safeParse(resp);
+    if (parsed.success) {
+      if (migratedFromChatId) {
+        remappedChatIds.set(migratedFromChatId, chatId);
+      }
+      chatIdToMessageIdMap.set(chatId, String(parsed.data.result.message_id));
+      return parsed.data;
+    } else if (parsedMigrated.success) {
+      const newChatId = String(
+        parsedMigrated.data.parameters.migrate_to_chat_id,
+      );
+      const newResp = await addMessageToChat({
+        chatId: newChatId,
+      });
+      return newResp;
+    }
+  }
 
   const responses = await Promise.all(
     chatIds?.map(async (chatId) => {
-      const resp = await makeVoiceRequest({ chatId, outVoicePath });
-      const parsed =
-        TelegramVoiceJsonResponseMigrateToChatSchema.safeParse(resp);
-      if (parsed.success && !parsed.data.ok) {
-        console.log(`chat has been updated, sending to new chat id`);
-        const newChatId = String(parsed.data.parameters.migrate_to_chat_id);
-        // Update the channelId in deviceChannels to the newChatId
-        const newResp = await makeVoiceRequest({
-          chatId: newChatId,
-          outVoicePath,
-        });
-        if ("ok" in newResp && newResp.ok) {
-          remappedChatIds.set(chatId, newChatId);
-        }
-        return newResp;
-      } else {
-        return resp;
-      }
+      const resp = await addMessageToChat({ chatId });
+      return resp;
     }),
   );
 
-  return { responses, remappedChatIds };
+  return { responses, remappedChatIds, chatIdToMessageIdMap };
 }
 
 // send an audio file (MP3)

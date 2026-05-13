@@ -5,7 +5,7 @@ import { spawn } from "child_process";
 import fs from "fs";
 import { sendVoiceToChat } from "@/lib/telegram";
 import { db } from "@/db";
-import { deviceChannels, recordings } from "@/db/schema";
+import { deviceChannels, messages, recordings } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { CHANNEL_TYPE } from "@/lib/constants";
 import { getAudioDuration, processAudio } from "@/lib/audio";
@@ -139,22 +139,37 @@ export async function POST(req: Request) {
         columns: { channelId: true },
       });
 
-      await db.insert(recordings).values({
-        deviceId,
-        filepath: outputMp3Path,
-        filepathProcessed: outputProcessedPath,
-        contentType: "audio/mpeg",
-        name: audioFilename,
-        source: "shortwave-device",
-        durationMillis: String(durationMillis),
-      });
+      const [recording] = await db
+        .insert(recordings)
+        .values({
+          deviceId,
+          filepath: outputMp3Path,
+          filepathProcessed: outputProcessedPath,
+          contentType: "audio/mpeg",
+          name: audioFilename,
+          source: "shortwave-device",
+          durationMillis: String(durationMillis),
+        })
+        .returning();
 
       const chatIds = channels.map((c) => c.channelId);
       const resp = await sendVoiceToChat(outputMp3Path, {
         chatIds,
       });
       console.log("voice resp", resp);
-      const { remappedChatIds } = resp;
+      const { remappedChatIds, chatIdToMessageIdMap } = resp;
+
+      await Promise.all(
+        [...chatIdToMessageIdMap].map(async ([chatId, messageId]) => {
+          await db.insert(messages).values({
+            deviceChannelId: chatId,
+            platformMessageId: messageId,
+            recordingId: recording.id,
+            platform: "telegram",
+          });
+        }),
+      );
+
       if (remappedChatIds.size) {
         await Promise.all(
           [...remappedChatIds].map(async ([oldChatId, newChatId]) => {
