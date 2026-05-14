@@ -58,8 +58,8 @@ const int   serverPort = 443;
 const char* authToken  = ENV_AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 
-const char* portalSsid = "sh0rtwave-setup";
-const char* firmwareVersion = "shortwave-2026-05-06.1";
+const char* portalSsid = PORTAL_SSID;
+const char* firmwareVersion = FIRMWARE_VERSION;
 
 static DNSServer dnsServer;
 static WebServer portalServer(80);
