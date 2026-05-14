@@ -35,7 +35,7 @@ function VolumeInput({
         max={100}
         step={1}
         defaultValue={device.volume ?? 25}
-        className="w-full accent-gray-400"
+        className="w-48 accent-gray-400"
         autoComplete="off"
         disabled={disabled}
         onChange={({ target }) => {
@@ -43,11 +43,6 @@ function VolumeInput({
           throttledOnChange(newV);
         }}
       />
-
-      <div className="flex justify-between text-xs text-neutral-500">
-        <span>0%</span>
-        <span>100%</span>
-      </div>
     </>
   );
 }

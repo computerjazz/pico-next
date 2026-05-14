@@ -62,22 +62,21 @@ export default async function DevicePage({
             />
           )}
           {device.type === "shortwave" && (
-            <DeviceStatRow label="Volume:" value={`${device.volume}%`} />
+            <>
+              <div className="flex flex-row gap-4">
+                <DeviceStatRow label="Volume:" value={`${device.volume}%`} />
+                <VolumeInput device={device} disabled={!isDeviceOwner} />
+              </div>
+              <DeviceStatRow
+                label="Recordings:"
+                value={String(recordings.length)}
+              />
+            </>
           )}
         </div>
-        {device.type === "shortwave" && (
+        {device.type === "shortwave" && isDeviceOwner && (
           <>
-            <VolumeInput device={device} disabled={!isDeviceOwner} />
-
-            {isDeviceOwner && (
-              <>
-                <DeviceStatRow
-                  label="Recordings:"
-                  value={String(recordings.length)}
-                />
-                <RecordingsList recordings={recordings} />
-              </>
-            )}
+            <RecordingsList recordings={recordings} />
           </>
         )}
       </div>
