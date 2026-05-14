@@ -9,10 +9,6 @@ import { clearActiveJob, setActiveJob } from "@/lib/job";
 
 export async function POST(req: Request) {
   const jobId = randomUUID();
-  const maybeResp = await verifyAuth(req, {
-    tag: "process-next",
-  });
-  if (maybeResp) return maybeResp;
 
   let _transcript;
   let _error;
@@ -20,7 +16,10 @@ export async function POST(req: Request) {
   const _actions: string[] = [];
 
   try {
-    await setActiveJob(jobId);
+    const maybeResp = await verifyAuth(req, {
+      tag: "process-next",
+    });
+    if (maybeResp) return maybeResp;
 
     const recording = await db.query.recordings.findFirst({
       where: (t, { isNull, or }) =>
@@ -32,8 +31,15 @@ export async function POST(req: Request) {
       orderBy: (t, { asc }) => asc(t.createdAt),
     });
 
-    if (!recording) {
-      return new Response(null, { status: 404 });
+    if (recording) {
+      await setActiveJob(jobId);
+    } else {
+      return Response.json({
+        transcript: _transcript,
+        error: _error,
+        durationMillis: _durationMillis,
+        actions: _actions,
+      });
     }
 
     if (!recording.transcript) {
