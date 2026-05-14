@@ -22,4 +22,5 @@ export const REDIS_KEYS = {
   EMAIL_WEBHOOK_COUNT: "emailWebhookCount",
   LATEST_GMAIL_HISTORY_ID: "latestGmailHistoryId",
   LATEST_TELEGRAM_MESSAGE: "latestTelegramMessage",
+  ACTIVE_JOBS: "activeJobs",
 };

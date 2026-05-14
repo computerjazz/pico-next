@@ -9,6 +9,8 @@ import { deviceChannels, messages, recordings } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { CHANNEL_TYPE } from "@/lib/constants";
 import { getAudioDuration, processAudio } from "@/lib/audio";
+import { clearActiveJob, setActiveJob } from "@/lib/job";
+import { randomUUID } from "crypto";
 
 export const runtime = "nodejs";
 
@@ -16,6 +18,7 @@ const BYTES_PER_SAMPLE = 2; // 16-bit
 const MIN_SECONDS = 1;
 
 export async function POST(req: Request) {
+  const jobKey = randomUUID();
   try {
     const errRsp = await verifyAuth(req, {
       tag: "upload-audio-stream",
@@ -31,6 +34,7 @@ export async function POST(req: Request) {
     const audioFilename = `${audioBaseFilename}.mp3`;
     const audioProcessedFilename = `${audioBaseFilename}-processed.mp3`;
     console.log(`Recording started: ${recordingId}`);
+    await setActiveJob(jobKey);
 
     const audioDir = path.join(
       process.cwd(),
@@ -200,5 +204,7 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error(err);
     return new Response("Upload failed", { status: 500 });
+  } finally {
+    await clearActiveJob(jobKey);
   }
 }

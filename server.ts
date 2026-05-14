@@ -4,6 +4,7 @@ import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import { getRedis } from "./lib/redis.js";
 import { validateTokenDefault } from "./lib/auth.js";
+import { cleanupActiveJobs, getIsAnyJobActive } from "./lib/job.js";
 
 const app = next({ dev: false });
 const handle = app.getRequestHandler();
@@ -11,10 +12,10 @@ const handle = app.getRequestHandler();
 const clients = new Map<string, WebSocket>();
 
 async function main() {
-  const subscriber = await getRedis();
+  const redis = await getRedis();
   console.log("Redis connected");
 
-  await subscriber.subscribe("ws:commands", (message) => {
+  await redis.subscribe("ws:commands", (message) => {
     const { targetId, command } = JSON.parse(message);
     const socket = clients.get(targetId);
     if (socket?.readyState === WebSocket.OPEN) {
@@ -134,11 +135,11 @@ async function main() {
 
   server.listen(3000, () => console.log("Ready on port 3000"));
 
-  let isProcessingInProgress = false;
   setInterval(async () => {
-    if (isProcessingInProgress) return;
+    const isJobActive = await getIsAnyJobActive();
+    // Don't do expensive server work if there's already an expensive job in flight
+    if (isJobActive) return;
     try {
-      isProcessingInProgress = true;
       const processNextUrl = `${process.env.API_BASE_URL}/api/recording/process-next`;
       await fetch(processNextUrl, {
         method: "POST",
@@ -149,7 +150,7 @@ async function main() {
     } catch (err) {
       console.log("transcribe-next err:", err);
     } finally {
-      isProcessingInProgress = false;
+      await cleanupActiveJobs();
     }
   }, 30_000);
 }
