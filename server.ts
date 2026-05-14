@@ -2,7 +2,7 @@ import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
-import { getRedis } from "./lib/redis";
+import { getRedisSubscriber } from "./lib/redis";
 import { validateTokenDefault } from "./lib/auth";
 import { cleanupActiveJobs, getIsAnyJobActive } from "./lib/job";
 
@@ -12,10 +12,10 @@ const handle = app.getRequestHandler();
 const clients = new Map<string, WebSocket>();
 
 async function main() {
-  const redis = await getRedis();
+  const redisSubscriber = await getRedisSubscriber();
   console.log("Redis connected");
 
-  await redis.subscribe("ws:commands", (message) => {
+  await redisSubscriber.subscribe("ws:commands", (message) => {
     const { targetId, command } = JSON.parse(message);
     const socket = clients.get(targetId);
     if (socket?.readyState === WebSocket.OPEN) {

@@ -1,4 +1,4 @@
-import { createClient } from "redis";
+import { createClient, RedisClientType } from "redis";
 
 const client = createClient({
   url: `redis://:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
@@ -14,6 +14,16 @@ export async function getRedis() {
     isConnected = true;
   }
   return client;
+}
+
+let subscriberClient: RedisClientType | null = null;
+
+export async function getRedisSubscriber() {
+  if (!subscriberClient) {
+    subscriberClient = (await getRedis()).duplicate();
+    await subscriberClient.connect();
+  }
+  return subscriberClient;
 }
 
 export const REDIS_KEYS = {
