@@ -5,7 +5,7 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm run build
-RUN npx tsc server.ts --outDir dist --esModuleInterop --module esnext --moduleResolution bundler --skipLibCheck --target es2017
+RUN npx tsc --project tsconfig.server.json
 
 # Stage 2: production image
 FROM node:20-alpine

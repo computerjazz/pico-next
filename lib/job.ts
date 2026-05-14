@@ -10,9 +10,9 @@ type ActiveJobsRecord = z.infer<typeof ActiveJobsSchema>;
 
 async function getActiveJobs() {
   const redis = await getRedis();
-  const curRecordings = ActiveJobsSchema.safeParse(
-    JSON.parse((await redis.get(REDIS_KEYS.ACTIVE_JOBS)) ?? "{}"),
-  );
+  const jobsStr = await redis.get(REDIS_KEYS.ACTIVE_JOBS);
+  const jobs = JSON.parse(jobsStr || "{}");
+  const curRecordings = ActiveJobsSchema.safeParse(jobs);
   return curRecordings.data ?? {};
 }
 
