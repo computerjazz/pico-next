@@ -2,9 +2,9 @@ import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
-import { getRedis } from "./lib/redis.js";
-import { validateTokenDefault } from "./lib/auth.js";
-import { cleanupActiveJobs, getIsAnyJobActive } from "./lib/job.js";
+import { getRedis } from "./lib/redis";
+import { validateTokenDefault } from "./lib/auth";
+import { cleanupActiveJobs, getIsAnyJobActive } from "./lib/job";
 
 const app = next({ dev: false });
 const handle = app.getRequestHandler();
