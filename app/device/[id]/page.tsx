@@ -6,6 +6,8 @@ import { auth } from "@/auth";
 import ClaimButton from "./ClaimButton";
 import ProfileSignInButton from "@/app/components/ProfileSignInButton";
 import { RecordingsList } from "./RecordingsList";
+import { devices, recordings } from "@/db/schema";
+import { eq, isNull, and, desc } from "drizzle-orm";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -26,11 +28,20 @@ export default async function DevicePage({
     where: (d, { eq }) => eq(d.deviceId, deviceId),
   });
 
-  const recordings = await db.query.recordings.findMany({
-    where: (t, { and, isNull, eq }) =>
-      and(eq(t.deviceId, deviceId), isNull(t.deletedAt)),
-    orderBy: (t, { desc }) => desc(t.createdAt),
-  });
+  const _recordingItems = await db
+    .select({ recordings })
+    .from(recordings)
+    .innerJoin(devices, eq(recordings.deviceId, devices.deviceId))
+    .where(
+      and(
+        eq(recordings.deviceId, deviceId),
+        eq(devices.userId, session?.user?.id ?? "__NO_USER__"),
+        isNull(recordings.deletedAt),
+      ),
+    )
+    .orderBy(desc(recordings.createdAt));
+
+  const recordingItems = _recordingItems.map((ri) => ri.recordings);
 
   if (!device) {
     notFound();
@@ -69,15 +80,13 @@ export default async function DevicePage({
               </div>
               <DeviceStatRow
                 label="Recordings:"
-                value={String(recordings.length)}
+                value={String(recordingItems.length)}
               />
             </>
           )}
         </div>
         {device.type === "shortwave" && isDeviceOwner && (
-          <>
-            <RecordingsList recordings={recordings} />
-          </>
+          <RecordingsList recordings={recordingItems} />
         )}
       </div>
     </div>
