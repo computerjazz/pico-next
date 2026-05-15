@@ -1,11 +1,15 @@
 import fs from "fs";
 import FormData from "form-data";
 import fetch from "node-fetch";
-import path from "path";
-import { spawn } from "child_process";
-import { getAnsweringMachineDir } from "@/app/api/device/[id]/answering-machine/utils";
+import { getAnsweringMachineFilepath } from "@/app/api/device/[id]/answering-machine/utils";
 import { z } from "zod";
-import { getTmpOggAudioFile } from "./audio";
+import { convertAudioToMp3, getTmpOggAudioFile } from "./audio";
+
+const FilePathSchema = z.object({
+  result: z.object({
+    file_path: z.string(),
+  }),
+});
 
 function createTelegramBot() {
   const baseUrl = `https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}`;
@@ -70,11 +74,29 @@ function createTelegramBot() {
     return resp;
   }
 
+  async function getFilePath({ fileId }: { fileId: string }) {
+    const fileUrl = `${baseUrl}/getFile?file_id=${fileId}`;
+    const getFileRes = await fetch(fileUrl);
+    const fileDataJson = await getFileRes.json();
+    const parsed = FilePathSchema.safeParse(fileDataJson);
+    const filePath = parsed.data?.result.file_path;
+    return filePath || "";
+  }
+
+  async function getFile({ filepath }: { filepath: string }) {
+    const oggRes = await fetch(`${baseUrl}/${filepath}`);
+    const arrayBuffer = await oggRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    return buffer;
+  }
+
   return {
     sendVoice,
     sendAudio,
     sendMessage,
     updateMessageCaption,
+    getFilePath,
+    getFile,
   };
 }
 
@@ -213,18 +235,6 @@ export async function sendAudio(filePath: string, chatId: string) {
   return resp.json();
 }
 
-export function getFilePath({
-  fileId,
-  ext = "mp3",
-  deviceId,
-}: {
-  fileId: string;
-  ext?: string;
-  deviceId: string;
-}) {
-  return path.join(getAnsweringMachineDir({ deviceId }), `${fileId}.${ext}`);
-}
-
 export async function downloadAndConvertVoice({
   fileId,
   deviceId,
@@ -232,52 +242,28 @@ export async function downloadAndConvertVoice({
   fileId: string;
   deviceId: string;
 }) {
-  const token = process.env.TELEGRAM_TOKEN;
   console.log("downloading voice");
-  // --- Step 1: get file path from Telegram ---
-  const fileUrl = `https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`;
-  const getFileRes = await fetch(fileUrl);
-  const fileData = (await getFileRes.json()) as {
-    result: { file_path: string };
-  };
-  const filePath = fileData.result.file_path;
+  const filepath = await bot.getFilePath({ fileId });
+  const buffer = await bot.getFile({ filepath });
 
-  // --- Step 2: download OGG file to disk ---
-  const oggRes = await fetch(
-    `https://api.telegram.org/file/bot${token}/${filePath}`,
-  );
-  const arrayBuffer = await oggRes.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  const inputOggPath = getFilePath({ fileId, ext: "ogg", deviceId });
+  const inputOggPath = getAnsweringMachineFilepath({
+    fileId,
+    ext: "ogg",
+    deviceId,
+  });
 
   fs.writeFileSync(inputOggPath, buffer);
   console.log("wrote ogg file", inputOggPath);
-  // --- Step 3: convert OGG -> MP3 using ffmpeg ---
-  const outputMp3Path = getFilePath({ fileId, ext: "mp3", deviceId });
-  await new Promise((resolve, reject) => {
-    const ffmpeg = spawn("ffmpeg", [
-      "-i",
-      inputOggPath, // input file is our downloaded OGG
-      "-af",
-      "compand=attacks=0.3:decays=0.8:points=-80/-900|-40/-20|-20/-6|0/0:soft-knee=6:gain=8:volume=0,loudnorm=I=-16:TP=-1.5:LRA=11",
-      "-acodec",
-      "libmp3lame",
-      "-ab",
-      "128k",
-      "-y",
-      outputMp3Path,
-    ]);
-
-    ffmpeg.stdout.on("data", (data) => console.log(data.toString()));
-    ffmpeg.stderr.on("data", (data) => console.log(data.toString()));
-
-    ffmpeg.on("close", (code) => {
-      if (code === 0) resolve(true);
-      else reject(new Error(`ffmpeg exited with code ${code}`));
-    });
+  const outputMp3Path = getAnsweringMachineFilepath({
+    fileId,
+    ext: "mp3",
+    deviceId,
   });
-  console.log("wrote mp3 file", outputMp3Path);
+
+  await convertAudioToMp3({
+    inputFilepath: inputOggPath,
+    outputFilepath: outputMp3Path,
+  });
 
   return { mp3: outputMp3Path, ogg: inputOggPath };
 }

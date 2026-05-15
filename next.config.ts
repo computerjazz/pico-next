@@ -6,9 +6,12 @@ const nextConfig: NextConfig = {
   },
   // productionBrowserSourceMaps: true,
   serverExternalPackages: ["tesseract.js"],
-  // experimental: {
-  //   serverSourceMaps: true,
-  // },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "50mb",
+    },
+    // serverSourceMaps: true,
+  },
   images: {
     remotePatterns: [
       {

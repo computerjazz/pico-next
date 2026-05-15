@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { promisify } from "util";
-import { exec } from "child_process";
+import { exec, spawn } from "child_process";
 import os from "os";
 import path from "path";
 const execAsync = promisify(exec);
@@ -81,6 +81,37 @@ export async function transcribeAudio({ filepath }: { filepath: string }) {
     transcript: stdout.trim(),
     error: stderr,
   };
+}
+
+export async function convertAudioToMp3({
+  inputFilepath,
+  outputFilepath,
+}: {
+  inputFilepath: string;
+  outputFilepath: string;
+}) {
+  await new Promise((resolve, reject) => {
+    const ffmpeg = spawn("ffmpeg", [
+      "-i",
+      inputFilepath,
+      "-acodec",
+      "libmp3lame",
+      "-ab",
+      "128k",
+      "-y",
+      outputFilepath,
+    ]);
+
+    ffmpeg.stdout.on("data", (data) => console.log(data.toString()));
+    ffmpeg.stderr.on("data", (data) => console.log(data.toString()));
+
+    ffmpeg.on("close", (code) => {
+      if (code === 0) resolve(true);
+      else reject(new Error(`ffmpeg exited with code ${code}`));
+    });
+  });
+  console.log("wrote audio file", outputFilepath);
+  return { outputFilepath };
 }
 
 export async function processAudio({

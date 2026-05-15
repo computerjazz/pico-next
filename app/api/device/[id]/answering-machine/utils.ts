@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { RECORDING_SOURCE } from "@/lib/constants";
+import { isNull } from "drizzle-orm";
 import { mkdirSync } from "fs";
 import path from "path";
 
@@ -15,6 +16,18 @@ export function getAnsweringMachineDir({ deviceId }: { deviceId: string }) {
   return answeringMachineDir;
 }
 
+export function getAnsweringMachineFilepath({
+  fileId,
+  ext = "mp3",
+  deviceId,
+}: {
+  fileId: string;
+  ext?: string;
+  deviceId: string;
+}) {
+  return path.join(getAnsweringMachineDir({ deviceId }), `${fileId}.${ext}`);
+}
+
 export async function getLatestInboundAudioFilePath({
   deviceId,
 }: {
@@ -26,6 +39,7 @@ export async function getLatestInboundAudioFilePath({
       and(
         eq(t.deviceId, deviceId),
         eq(t.source, RECORDING_SOURCE.ANSWERING_MACHINE),
+        isNull(t.deletedAt),
       ),
   });
 

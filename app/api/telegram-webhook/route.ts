@@ -1,16 +1,13 @@
 import { verifyAuth } from "@/lib/auth";
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
-import {
-  downloadAndConvertVoice,
-  getFilePath,
-  sendMessageToChat,
-} from "@/lib/telegram";
+import { downloadAndConvertVoice, sendMessageToChat } from "@/lib/telegram";
 import z from "zod";
 import fs from "fs";
 import { db } from "@/db";
 import { deviceChannels, recordings } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { CHANNEL_TYPE, RECORDING_SOURCE } from "@/lib/constants";
+import { getAnsweringMachineFilepath } from "../device/[id]/answering-machine/utils";
 
 const TelegramVoiceMessageSchema = z.object({
   update_id: z.number(),
@@ -301,7 +298,7 @@ export async function GET(req: Request) {
   console.log("parsed:", parsed);
   if (parsed.success) {
     const fileId = parsed.data.message.voice.file_id;
-    latestVoiceMessagePath = getFilePath({
+    latestVoiceMessagePath = getAnsweringMachineFilepath({
       fileId,
       deviceId,
     }); // Check whether file already exists

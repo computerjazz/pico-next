@@ -8,6 +8,7 @@ import ProfileSignInButton from "@/app/components/ProfileSignInButton";
 import { RecordingsList } from "./RecordingsList";
 import { devices, recordings } from "@/db/schema";
 import { eq, isNull, and, desc } from "drizzle-orm";
+import RecordingButton from "./RecordingButton";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -86,7 +87,12 @@ export default async function DevicePage({
           )}
         </div>
         {device.type === "shortwave" && isDeviceOwner && (
-          <RecordingsList recordings={recordingItems} />
+          <>
+            <div className="fixed bottom-2 right-4">
+              <RecordingButton deviceId={deviceId} />
+            </div>
+            <RecordingsList recordings={recordingItems} />
+          </>
         )}
       </div>
     </div>
