@@ -16,7 +16,7 @@ export default function GameOfTextPage() {
       {/* jQuery CDN */}
       <Script
         src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"
-        strategy="afterInteractive"
+        strategy="beforeInteractive"
       />
 
       {/* Local legacy scripts, loaded after jQuery */}
