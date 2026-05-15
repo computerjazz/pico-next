@@ -144,34 +144,37 @@ export default function RecordingItem({
           </span>
         </div>
         <div
-          className={`flex flex-row gap-2 justify-start self-start flex-1 items-start text-start ml-4 py-2 text-sm max-w-xs wrap-break-words ${isDevice ? "text-accent-foreground" : "text-muted-foreground"}`}
+          className={`flex flex-1 flex-row gap-2 justify-start self-start ml-4 py-2 text-sm max-w-xs wrap-break-words ${isDevice ? "text-accent-foreground" : "text-muted-foreground"}`}
         >
-          <button
-            className="cursor-pointer"
-            onClick={async () => {
-              try {
-                if (!audioSource) {
-                  await fetchAudio();
+          <div>
+            <button
+              className="cursor-pointer"
+              onClick={async () => {
+                try {
+                  if (!audioSource) {
+                    await fetchAudio();
+                  }
+                  if (isPlaying) {
+                    audioRef.current?.pause();
+                  } else {
+                    await audioRef.current?.play();
+                  }
+                } catch (err) {
+                  if (
+                    err instanceof DOMException &&
+                    err.name !== "AbortError"
+                  ) {
+                    console.error(err);
+                  }
                 }
-                if (isPlaying) {
-                  audioRef.current?.pause();
-                } else {
-                  await audioRef.current?.play();
-                }
-              } catch (err) {
-                if (err instanceof DOMException && err.name !== "AbortError") {
-                  console.error(err);
-                }
-              }
-            }}
-          >
-            <PlayPauseIcon className="size-10" />
-          </button>
-          {recording.transcript && (
-            <div>
-              <span>{recording.transcript}</span>
-            </div>
-          )}
+              }}
+            >
+              <PlayPauseIcon className="size-10" />
+            </button>
+          </div>
+          <div className="flex flex-1 items-center text-start">
+            <span>{recording.transcript}</span>
+          </div>
         </div>
 
         <audio ref={audioRef} onPlay={onPlay} onPause={onPause} />
