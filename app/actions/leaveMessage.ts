@@ -10,6 +10,7 @@ import path from "path";
 import os from "os";
 import fs from "fs";
 import { auth } from "@/auth";
+import { revalidatePath } from "next/cache";
 
 export async function leaveMessage({
   deviceId,
@@ -75,6 +76,7 @@ export async function leaveMessage({
       durationMillis: String(durationMillis),
     });
   }
+  revalidatePath("/device");
 
   return { ok: true, name: filename };
 }
