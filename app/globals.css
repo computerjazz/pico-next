@@ -1,26 +1,56 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f1ea;
+  --foreground: #1a1714;
+  --accent: #e04420;
+  --accent-foreground: #f4f1ea;
+  --muted: #ebe6db;
+  --muted-foreground: #6b6357;
+  --border: #ddd6c8;
+  --surface: #fffdf8;
+  --muted-surface: #f7f5ee;
+  /* accent-surface is a desaturated version of accent */
+  --accent-surface: color-mix(in srgb, var(--accent) 65%, white 35%);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-surface: var(--surface);
+  --color-muted-surface: var(--muted-surface);
+  --color-accent-surface: var(--accent-surface);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #070b24;;
-    --foreground: #ededed;
-  }
+:root.dark {
+  --background: #14110f;
+  --foreground: #ede8de;
+  --accent: #ff5a30;
+  --accent-foreground: #14110f;
+  --muted: #1f1b18;
+  --muted-foreground: #8a8478;
+  --border: #2a2521;
+  --surface: #23201b;
+  --muted-surface: #181613;
+  /* accent-surface is a desaturated version of accent in dark mode */
+  --accent-surface: color-mix(in srgb, var(--accent) 35%, white 65%);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: monospace;
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-feature-settings: "ss01", "cv01";
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
 }

@@ -63,10 +63,10 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
       <button
         onPointerDown={startRecording}
         onPointerUp={stopRecording}
-        className={`${isRecording ? "bg-red-400" : "bg-gray-400"} border-0 outline-0 rounded-full cursor-pointer w-24 h-24`}
+        className={`${isRecording ? "bg-accent" : "bg-muted-foreground"} border-0 outline-0 rounded-full cursor-pointer w-24 h-24`}
         aria-label="Record"
       >
-        <div className="pointer-none:*:">
+        <div className="pointer-none:*: text-accent-foreground">
           <span>Leave a message</span>
         </div>
       </button>

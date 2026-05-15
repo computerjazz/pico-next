@@ -103,12 +103,12 @@ export default function RecordingItem({
         </button>
       </div>
       <motion.div
-        className={`flex flex-col gap-2 items-center p-4 rounded-md ${isDevice ? "bg-gray-800" : "bg-gray-900"} z-10`}
+        className={`flex flex-col gap-2 items-center p-4 rounded-md ${isDevice ? "bg-accent-surface" : "bg-muted-surface"} z-10`}
         drag="x"
         dragConstraints={{ right: 0, left: -100 }}
         dragElastic={0.05}
       >
-        <div className="flex flex-row gap-2 items-center">
+        <div className="flex flex-row gap-2 items-center text-foreground">
           <button
             className="cursor-pointer"
             onClick={async () => {
@@ -141,7 +141,7 @@ export default function RecordingItem({
             {createdAt && (
               <div>
                 <span>{createdAt.toDateString()} </span>
-                <span className="text-gray-600">
+                <span className="text-muted-foreground">
                   {createdAt.toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
@@ -151,8 +151,8 @@ export default function RecordingItem({
             )}
             {durationMillis && (
               <>
-                <span className="mx-2 text-gray-600">•</span>
-                <span className="text-gray-600">
+                <span className="mx-2 text-muted-foreground">•</span>
+                <span className="text-muted-foreground">
                   {(() => {
                     const ms = parseInt(durationMillis, 10);
                     if (isNaN(ms)) return null;
@@ -167,7 +167,9 @@ export default function RecordingItem({
           </span>
         </div>
         {recording.transcript && (
-          <div className="flex items-center ml-4 py-2 text-sm text-gray-400 max-w-xs break-words">
+          <div
+            className={`justify-start self-start flex flex-1 items-start text-start ml-4 py-2 text-sm max-w-xs wrap-break-words ${isDevice ? "text-accent-foreground" : "text-muted-foreground"}`}
+          >
             <span>{recording.transcript}</span>
           </div>
         )}

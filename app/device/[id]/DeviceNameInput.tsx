@@ -72,9 +72,9 @@ function DeviceNameInput({
           <span
             ref={spanRef}
             title={name || "Unnamed"}
-            style={{ display: "inline-block" }}
+            className="inline-block text-accent"
           >
-            {name || <span className="italic text-neutral-400">Unnamed</span>}
+            {name || <span className="italic">Unnamed</span>}
           </span>
           {!disabled && (
             <button

@@ -15,7 +15,7 @@ function ProfileMenuItem({
 }) {
   return (
     <button
-      className="w-full text-right px-4 py-2 hover:bg-gray-700 rounded"
+      className="w-full text-right px-4 py-2 hover:bg-accent rounded"
       onClick={onClick}
       tabIndex={0}
       type="button"
@@ -33,7 +33,17 @@ function ProfileButton({
   devices: Device[];
 }) {
   const [open, setOpen] = useState(false);
+  const [isDark, setIsDark] = useState(
+    document.documentElement.classList.contains("dark"),
+  );
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+  };
 
   // Listen for clicks outside the container to close the dropdown
   useEffect(() => {
@@ -99,7 +109,7 @@ function ProfileButton({
         )}
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-60 rounded shadow-lg z-50 bg-gray-800 p-2 flex flex-col items-end">
+        <div className="absolute right-0 mt-2 w-60 rounded shadow-lg z-50 bg-surface p-2 flex flex-col items-end">
           <span className="text-sm self-end px-4 font-bold mt-2 mb-2">
             {user.name}
           </span>
@@ -123,6 +133,10 @@ function ProfileButton({
           })}
           <hr className="w-full border-t border-gray-700 my-2" />
 
+          <ProfileMenuItem
+            label={isDark ? "Light mode" : "Dark mode"}
+            onClick={toggleTheme}
+          />
           <ProfileMenuItem label="Sign out" onClick={signOut} />
         </div>
       )}
