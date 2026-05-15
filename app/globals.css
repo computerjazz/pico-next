@@ -32,15 +32,14 @@
 :root.dark {
   --background: #14110f;
   --foreground: #ede8de;
-  --accent: #ff5a30;
-  --accent-foreground: #14110f;
+  --accent: #e04420;
+  --accent-foreground: #f4f1ea;  
   --muted: #1f1b18;
   --muted-foreground: #8a8478;
   --border: #2a2521;
   --surface: #23201b;
   --muted-surface: #181613;
-  /* accent-surface is a desaturated version of accent in dark mode */
-  --accent-surface: color-mix(in srgb, var(--accent) 35%, white 65%);
+  --accent-surface: color-mix(in srgb, var(--accent) 80%, white 20%);
 }
 
 body {
