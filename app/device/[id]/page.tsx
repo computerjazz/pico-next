@@ -13,7 +13,10 @@ import RecordingButton from "./RecordingButton";
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="font-semibold">{label}</span> {value}
+      <span className="font-semibold text-muted-foreground text-xs">
+        {label}
+      </span>{" "}
+      {value}
     </div>
   );
 }

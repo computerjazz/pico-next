@@ -81,7 +81,7 @@ function DeviceNameInput({
               type="button"
               disabled={disabled}
               aria-label="Edit device name"
-              className="hover:text-blue-500 transition"
+              className="hover:text-blue-500 text-muted-foreground transition cursor-pointer"
               onClick={startEdit}
             >
               {/* Pencil icon */}

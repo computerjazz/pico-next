@@ -93,6 +93,11 @@ export default function RecordingItem({
     }
   }
 
+  const PlayPauseIcon = isLoading
+    ? EllipsesCircle
+    : isPlaying
+      ? PauseCircle
+      : PlayCircle;
   return (
     <div
       className={`flex relative max-w-md ${isDevice ? "self-start text-start items-start" : "self-end text-end items-end"}`}
@@ -103,45 +108,17 @@ export default function RecordingItem({
         </button>
       </div>
       <motion.div
-        className={`flex flex-col gap-2 items-center p-4 rounded-md ${isDevice ? "bg-accent-surface" : "bg-muted-surface"} z-10`}
+        className={`flex flex-col gap-2 p-4 rounded-md ${isDevice ? "bg-accent-surface" : "bg-muted-surface"} z-10`}
         drag="x"
         dragConstraints={{ right: 0, left: -100 }}
         dragElastic={0.05}
       >
-        <div className="flex flex-row gap-2 items-center text-foreground">
-          <button
-            className="cursor-pointer"
-            onClick={async () => {
-              try {
-                if (!audioSource) {
-                  await fetchAudio();
-                }
-                if (isPlaying) {
-                  audioRef.current?.pause();
-                } else {
-                  await audioRef.current?.play();
-                }
-              } catch (err) {
-                if (err instanceof DOMException && err.name !== "AbortError") {
-                  console.error(err);
-                }
-              }
-            }}
-          >
-            {isLoading ? (
-              <EllipsesCircle />
-            ) : isPlaying ? (
-              <PauseCircle />
-            ) : (
-              <PlayCircle />
-            )}
-          </button>
-
+        <div className="flex flex-row gap-2 text-muted-foreground text-xs">
           <span className="flex align-middle">
             {createdAt && (
               <div>
                 <span>{createdAt.toDateString()} </span>
-                <span className="text-muted-foreground">
+                <span>
                   {createdAt.toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
@@ -166,13 +143,36 @@ export default function RecordingItem({
             )}
           </span>
         </div>
-        {recording.transcript && (
-          <div
-            className={`justify-start self-start flex flex-1 items-start text-start ml-4 py-2 text-sm max-w-xs wrap-break-words ${isDevice ? "text-accent-foreground" : "text-muted-foreground"}`}
+        <div
+          className={`flex flex-row gap-2 justify-start self-start flex-1 items-start text-start ml-4 py-2 text-sm max-w-xs wrap-break-words ${isDevice ? "text-accent-foreground" : "text-muted-foreground"}`}
+        >
+          <button
+            className="cursor-pointer"
+            onClick={async () => {
+              try {
+                if (!audioSource) {
+                  await fetchAudio();
+                }
+                if (isPlaying) {
+                  audioRef.current?.pause();
+                } else {
+                  await audioRef.current?.play();
+                }
+              } catch (err) {
+                if (err instanceof DOMException && err.name !== "AbortError") {
+                  console.error(err);
+                }
+              }
+            }}
           >
-            <span>{recording.transcript}</span>
-          </div>
-        )}
+            <PlayPauseIcon className="size-10" />
+          </button>
+          {recording.transcript && (
+            <div>
+              <span>{recording.transcript}</span>
+            </div>
+          )}
+        </div>
 
         <audio ref={audioRef} onPlay={onPlay} onPause={onPause} />
       </motion.div>
