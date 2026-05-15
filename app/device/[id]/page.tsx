@@ -88,7 +88,7 @@ export default async function DevicePage({
         </div>
         {device.type === "shortwave" && isDeviceOwner && (
           <>
-            <div className="fixed bottom-2 right-4">
+            <div className="fixed bottom-2 right-4 z-50">
               <RecordingButton deviceId={deviceId} />
             </div>
             <RecordingsList recordings={recordingItems} />

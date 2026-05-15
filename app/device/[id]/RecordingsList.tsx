@@ -9,14 +9,7 @@ export function RecordingsList({ recordings }: { recordings: Recording[] }) {
     <AudioProvider>
       <div className="flex flex-col flex-1 gap-2">
         {recordings.map((r) => {
-          const isFromShortwave = r.source === "shortwave-device";
-          return (
-            <RecordingItem
-              key={r.id}
-              recording={r}
-              className={`items-center max-w-md p-4 rounded-md ${isFromShortwave ? "bg-gray-800 self-start text-start items-start" : "bg-gray-900 self-end text-end items-end"}`}
-            />
-          );
+          return <RecordingItem key={r.id} recording={r} />;
         })}
       </div>
     </AudioProvider>

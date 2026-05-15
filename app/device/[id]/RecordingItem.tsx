@@ -8,6 +8,9 @@ import PlayCircle from "@/app/components/icons/PlayCircle";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { Recording } from "@/db/schema";
 import { useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
+import Trash from "@/app/components/icons/Trash";
+import { deleteRecording } from "@/app/actions/deleteRecording";
 
 function useAudio({ recordingId }: { recordingId: string }) {
   const [audioSource, setAudioSource] = useState<string | undefined>(undefined);
@@ -64,7 +67,6 @@ function useAudio({ recordingId }: { recordingId: string }) {
 
 export default function RecordingItem({
   recording,
-  className,
 }: {
   recording: Recording;
   className?: string;
@@ -83,73 +85,95 @@ export default function RecordingItem({
     recordingId: recording.id,
   });
 
+  const isDevice = recording.source === "shortwave-device";
+
+  async function onDeletePress() {
+    if (window.confirm("Are you sure you want to delete this recording?")) {
+      await deleteRecording({ recordingId: recording.id });
+    }
+  }
+
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      <div className="flex flex-row gap-2 items-center">
-        <button
-          className="cursor-pointer"
-          onClick={async () => {
-            try {
-              if (!audioSource) {
-                await fetchAudio();
-              }
-              if (isPlaying) {
-                audioRef.current?.pause();
-              } else {
-                await audioRef.current?.play();
-              }
-            } catch (err) {
-              if (err instanceof DOMException && err.name !== "AbortError") {
-                console.error(err);
-              }
-            }
-          }}
-        >
-          {isLoading ? (
-            <EllipsesCircle />
-          ) : isPlaying ? (
-            <PauseCircle />
-          ) : (
-            <PlayCircle />
-          )}
+    <div
+      className={`flex relative max-w-md ${isDevice ? "self-start text-start items-start" : "self-end text-end items-end"}`}
+    >
+      <div className="absolute z-0 flex align-middle top-0 bottom-0 left-0 right-0 items-center justify-end p-2">
+        <button className="cursor-pointer" onClick={onDeletePress}>
+          <Trash />
         </button>
-
-        <span className="flex align-middle">
-          {createdAt && (
-            <div>
-              <span>{createdAt.toDateString()} </span>
-              <span className="text-gray-600">
-                {createdAt.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-            </div>
-          )}
-          {durationMillis && (
-            <>
-              <span className="mx-2 text-gray-600">•</span>
-              <span className="text-gray-600">
-                {(() => {
-                  const ms = parseInt(durationMillis, 10);
-                  if (isNaN(ms)) return null;
-                  const totalSeconds = Math.floor(ms / 1000);
-                  const minutes = Math.floor(totalSeconds / 60);
-                  const seconds = totalSeconds % 60;
-                  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-                })()}
-              </span>
-            </>
-          )}
-        </span>
       </div>
-      {recording.transcript && (
-        <div className="flex items-center ml-4 py-2 text-sm text-gray-400 max-w-xs break-words">
-          <span>{recording.transcript}</span>
-        </div>
-      )}
+      <motion.div
+        className={`flex flex-col gap-2 items-center p-4 rounded-md ${isDevice ? "bg-gray-800" : "bg-gray-900"} z-10`}
+        drag="x"
+        dragConstraints={{ right: 0, left: -100 }}
+        dragElastic={0.05}
+      >
+        <div className="flex flex-row gap-2 items-center">
+          <button
+            className="cursor-pointer"
+            onClick={async () => {
+              try {
+                if (!audioSource) {
+                  await fetchAudio();
+                }
+                if (isPlaying) {
+                  audioRef.current?.pause();
+                } else {
+                  await audioRef.current?.play();
+                }
+              } catch (err) {
+                if (err instanceof DOMException && err.name !== "AbortError") {
+                  console.error(err);
+                }
+              }
+            }}
+          >
+            {isLoading ? (
+              <EllipsesCircle />
+            ) : isPlaying ? (
+              <PauseCircle />
+            ) : (
+              <PlayCircle />
+            )}
+          </button>
 
-      <audio ref={audioRef} onPlay={onPlay} onPause={onPause} />
+          <span className="flex align-middle">
+            {createdAt && (
+              <div>
+                <span>{createdAt.toDateString()} </span>
+                <span className="text-gray-600">
+                  {createdAt.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+            )}
+            {durationMillis && (
+              <>
+                <span className="mx-2 text-gray-600">•</span>
+                <span className="text-gray-600">
+                  {(() => {
+                    const ms = parseInt(durationMillis, 10);
+                    if (isNaN(ms)) return null;
+                    const totalSeconds = Math.floor(ms / 1000);
+                    const minutes = Math.floor(totalSeconds / 60);
+                    const seconds = totalSeconds % 60;
+                    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+                  })()}
+                </span>
+              </>
+            )}
+          </span>
+        </div>
+        {recording.transcript && (
+          <div className="flex items-center ml-4 py-2 text-sm text-gray-400 max-w-xs break-words">
+            <span>{recording.transcript}</span>
+          </div>
+        )}
+
+        <audio ref={audioRef} onPlay={onPlay} onPause={onPause} />
+      </motion.div>
     </div>
   );
 }
