@@ -14,7 +14,7 @@ async function ClaimButton({ device }: { device: Device }) {
     >
       <button
         type="submit"
-        className="inline-flex items-center px-3 py-1 rounded-full bg-gray-800 text-gray-400 text-sm font-medium hover:bg-blue-200 transition cursor-pointer border-2"
+        className="text-xs inline-flex items-center px-3 py-1 rounded-full bg-accent-surface text-accent-foreground font-medium hover:bg-accent transition cursor-pointer border-2"
       >
         Claim
       </button>

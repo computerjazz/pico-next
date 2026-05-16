@@ -57,10 +57,13 @@ export default async function DevicePage({
   const isDeviceOwner = sessionUserId && deviceUserId === sessionUserId;
 
   return (
-    <div>
+    <div className="h-screen overflow-hidden">
       <div className="p-4 flex flex-row justify-between">
         <div className="flex flex-col justify-center">
-          <DeviceNameInput device={device} disabled={!isDeviceOwner} />
+          <div className="flex flex-row gap-4">
+            <DeviceNameInput device={device} disabled={!isDeviceOwner} />
+            <ClaimButton device={device} />
+          </div>
 
           <div className="space-y-2 text-sm mt-4">
             <DeviceStatRow label="Device ID:" value={device.deviceId} />
@@ -72,16 +75,10 @@ export default async function DevicePage({
               />
             )}
             {device.type === "shortwave" && (
-              <>
-                <div className="flex flex-row gap-4">
-                  <DeviceStatRow label="Volume:" value={`${device.volume}%`} />
-                  <VolumeInput device={device} disabled={!isDeviceOwner} />
-                </div>
-                <DeviceStatRow
-                  label="Recordings:"
-                  value={String(recordingItems.length)}
-                />
-              </>
+              <div className="flex flex-row gap-4">
+                <DeviceStatRow label="Volume:" value={`${device.volume}%`} />
+                <VolumeInput device={device} disabled={!isDeviceOwner} />
+              </div>
             )}
           </div>
         </div>
@@ -89,18 +86,17 @@ export default async function DevicePage({
           <ProfileSignInButton />
         </div>
       </div>
-
-      <div className="mx-auto max-w-xl p-4">
-        <h1 className="text-2xl font-bold mb-2">
-          <ClaimButton device={device} />
-        </h1>
+      <div className="mx-auto max-w-xl p-4 flex flex-col flex-1 min-h-0 overflow-y-scroll h-screen">
+        <h1 className="text-2xl font-bold mb-2"></h1>
 
         {device.type === "shortwave" && isDeviceOwner && (
           <>
             <div className="fixed bottom-2 right-4 z-50">
               <RecordingButton deviceId={deviceId} />
             </div>
-            <RecordingsList recordings={recordingItems} />
+            <div>
+              <RecordingsList recordings={recordingItems} />
+            </div>
           </>
         )}
       </div>
