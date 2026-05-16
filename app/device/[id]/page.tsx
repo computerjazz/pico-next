@@ -57,7 +57,7 @@ export default async function DevicePage({
   const isDeviceOwner = sessionUserId && deviceUserId === sessionUserId;
 
   return (
-    <div className="h-screen overflow-hidden">
+    <div className="flex flex-col h-screen">
       <div className="p-4 flex flex-row justify-between">
         <div className="flex flex-col justify-center">
           <div className="flex flex-row gap-4">
@@ -86,7 +86,7 @@ export default async function DevicePage({
           <ProfileSignInButton />
         </div>
       </div>
-      <div className="mx-auto max-w-xl p-4 flex flex-col flex-1 min-h-0 overflow-y-scroll h-screen">
+      <div className="mx-auto max-w-xl p-4 flex flex-col flex-1 min-h-0 overflow-y-scroll">
         <h1 className="text-2xl font-bold mb-2"></h1>
 
         {device.type === "shortwave" && isDeviceOwner && (
