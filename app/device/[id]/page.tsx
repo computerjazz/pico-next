@@ -7,7 +7,7 @@ import ClaimButton from "./ClaimButton";
 import ProfileSignInButton from "@/app/components/ProfileSignInButton";
 import { RecordingsList } from "./RecordingsList";
 import { devices, recordings } from "@/db/schema";
-import { eq, isNull, and, desc } from "drizzle-orm";
+import { eq, isNull, and, asc } from "drizzle-orm";
 import RecordingButton from "./RecordingButton";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
@@ -44,7 +44,7 @@ export default async function DevicePage({
         isNull(recordings.deletedAt),
       ),
     )
-    .orderBy(desc(recordings.createdAt));
+    .orderBy(asc(recordings.createdAt));
 
   const recordingItems = _recordingItems.map((ri) => ri.recordings);
 
@@ -58,38 +58,43 @@ export default async function DevicePage({
 
   return (
     <div>
-      <div className="p-4">
-        <div className="flex justify-end">
+      <div className="p-4 flex flex-row justify-between">
+        <div className="flex flex-col justify-center">
+          <DeviceNameInput device={device} disabled={!isDeviceOwner} />
+
+          <div className="space-y-2 text-sm mt-4">
+            <DeviceStatRow label="Device ID:" value={device.deviceId} />
+            <DeviceStatRow label="Type:" value={device.type} />
+            {device.firmwareVersion && (
+              <DeviceStatRow
+                label="Firmware Version:"
+                value={device.firmwareVersion}
+              />
+            )}
+            {device.type === "shortwave" && (
+              <>
+                <div className="flex flex-row gap-4">
+                  <DeviceStatRow label="Volume:" value={`${device.volume}%`} />
+                  <VolumeInput device={device} disabled={!isDeviceOwner} />
+                </div>
+                <DeviceStatRow
+                  label="Recordings:"
+                  value={String(recordingItems.length)}
+                />
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex justify-end items-top">
           <ProfileSignInButton />
         </div>
       </div>
-      <div className="mx-auto max-w-xl p-6 space-y-8">
+
+      <div className="mx-auto max-w-xl p-4">
         <h1 className="text-2xl font-bold mb-2">
           <ClaimButton device={device} />
-          <DeviceNameInput device={device} disabled={!isDeviceOwner} />
         </h1>
-        <div className="space-y-2 text-sm">
-          <DeviceStatRow label="Device ID:" value={device.deviceId} />
-          <DeviceStatRow label="Type:" value={device.type} />
-          {device.firmwareVersion && (
-            <DeviceStatRow
-              label="Firmware Version:"
-              value={device.firmwareVersion}
-            />
-          )}
-          {device.type === "shortwave" && (
-            <>
-              <div className="flex flex-row gap-4">
-                <DeviceStatRow label="Volume:" value={`${device.volume}%`} />
-                <VolumeInput device={device} disabled={!isDeviceOwner} />
-              </div>
-              <DeviceStatRow
-                label="Recordings:"
-                value={String(recordingItems.length)}
-              />
-            </>
-          )}
-        </div>
+
         {device.type === "shortwave" && isDeviceOwner && (
           <>
             <div className="fixed bottom-2 right-4 z-50">
