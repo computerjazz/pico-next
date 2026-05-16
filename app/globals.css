@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-:root {
+:root,
+html[data-theme="light"] {
   --background: #f4f1ea;
   --foreground: #1a1714;
   --accent: #e04420;
@@ -29,7 +30,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
-:root.dark {
+html[data-theme="dark"] {
   --background: #14110f;
   --foreground: #ede8de;
   --accent: #e04420;

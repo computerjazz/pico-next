@@ -28,6 +28,7 @@ export default async function DevicePage({
 }) {
   const deviceId = (await params).id;
   const session = await auth();
+
   const device = await db.query.devices.findFirst({
     where: (d, { eq }) => eq(d.deviceId, deviceId),
   });

@@ -1,11 +1,13 @@
 "use client";
-import React, { useLayoutEffect } from "react";
+import React, { useReducer } from "react";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { Session } from "next-auth";
 import { Device } from "@/db/schema";
-import { useLocalStorage } from "usehooks-ts";
+import { setTheme } from "../actions/theme";
+import Moon from "./icons/Moon";
+import Sun from "./icons/Sun";
 
 function ProfileMenuItem({
   label,
@@ -29,21 +31,23 @@ function ProfileMenuItem({
 function ProfileButton({
   session,
   devices,
+  theme,
 }: {
   session?: Session;
   devices: Device[];
+  theme?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [isDark, setIsDark] = useLocalStorage<boolean>("theme-dark", false);
   const containerRef = useRef<HTMLDivElement>(null);
+  console.log("theme!!", theme);
+  const [isDark, setIsDark] = useState(theme === "dark");
 
-  useLayoutEffect(() => {
-    document.documentElement.classList.toggle("dark", isDark);
+  useEffect(() => {
+    setTheme(isDark ? "dark" : "light");
   }, [isDark]);
 
-  const toggleTheme = () => {
-    const next = !isDark;
-    setIsDark(next);
+  const toggleTheme = async () => {
+    setIsDark((prev) => !prev);
   };
 
   // Listen for clicks outside the container to close the dropdown
@@ -134,21 +138,42 @@ function ProfileButton({
           })}
           <hr className="w-full border-t border-gray-700 my-2" />
 
-          <div className="w-full flex justify-end">
-            <button
-              type="button"
-              aria-pressed={isDark}
-              className="w-full text-left"
-              onClick={toggleTheme}
-            >
-              <ProfileMenuItem
-                label={isDark ? "Light mode" : "Dark mode"}
-                onClick={toggleTheme}
-              />
+          <div className="w-full flex justify-end gap-2 px-4 mt-4">
+            <button onClick={() => setIsDark(false)} className="cursor-pointer">
+              <Sun />
+            </button>
+            <div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isDark}
+                  onChange={toggleTheme}
+                  className="sr-only peer"
+                  aria-checked={isDark}
+                />
+                <div className="w-11 h-6 bg-accent-foreground peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-muted-foreground rounded-full peer dark:bg-accent-foreground transition-colors peer-checked:bg-muted-foreground"></div>
+                <div
+                  className={`absolute left-0 top-0 w-6 h-6 rounded-full bg-white border border-gray-300 transition-transform duration-300 transform ${
+                    isDark ? "translate-x-5" : ""
+                  }`}
+                ></div>
+              </label>
+            </div>
+            <button onClick={() => setIsDark(true)} className="cursor-pointer">
+              <Moon />
             </button>
           </div>
 
-          <ProfileMenuItem label="Sign out" onClick={signOut} />
+          <ProfileMenuItem
+            label="Sign out"
+            onClick={() => {
+              if (!window.confirm("Are you sure you want to sign out?")) {
+                return;
+              }
+
+              signOut();
+            }}
+          />
         </div>
       )}
     </div>
