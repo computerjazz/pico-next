@@ -108,12 +108,12 @@ export default function RecordingItem({
         </button>
       </div>
       <motion.div
-        className={`flex flex-col gap-2 p-4 rounded-md ${isDevice ? "bg-accent-surface" : "bg-muted-surface"} z-10`}
+        className={`flex flex-col gap-2 p-4 rounded-md ${isDevice ? "bg-accent-surface text-accent-foreground" : "bg-muted-surface text-muted-foreground"} z-10 `}
         drag="x"
         dragConstraints={{ right: 0, left: -100 }}
         dragElastic={0.05}
       >
-        <div className="flex flex-row gap-2 text-muted-foreground text-xs">
+        <div className="flex flex-row gap-2 text-xs font-bold opacity-70">
           <span className="flex align-middle">
             {createdAt && (
               <div>
@@ -128,8 +128,8 @@ export default function RecordingItem({
             )}
             {durationMillis && (
               <>
-                <span className="mx-2 text-muted-foreground">•</span>
-                <span className="text-muted-foreground">
+                <span className="mx-2">•</span>
+                <span>
                   {(() => {
                     const ms = parseInt(durationMillis, 10);
                     if (isNaN(ms)) return null;
@@ -144,7 +144,7 @@ export default function RecordingItem({
           </span>
         </div>
         <div
-          className={`flex flex-1 flex-row gap-2 justify-start self-start ml-4 py-2 text-sm max-w-xs wrap-break-words ${isDevice ? "text-accent-foreground" : "text-muted-foreground"}`}
+          className={`flex flex-1 flex-row gap-2 justify-start self-start ml-4 py-2 text-sm max-w-xs wrap-break-words`}
         >
           <div>
             <button

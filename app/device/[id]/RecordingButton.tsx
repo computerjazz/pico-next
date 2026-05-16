@@ -1,6 +1,7 @@
 "use client";
 import { leaveMessage } from "@/app/actions/leaveMessage";
 import { useRef, useState } from "react";
+import { motion } from "motion/react";
 
 function RecordingButton({ deviceId }: { deviceId: string }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -59,7 +60,7 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <motion.div className="flex flex-col items-center gap-2 transition-transform duration-150 hover:scale-105">
       <button
         onPointerDown={startRecording}
         onPointerUp={stopRecording}
@@ -70,7 +71,7 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
           <span>Leave a message</span>
         </div>
       </button>
-    </div>
+    </motion.div>
   );
 }
 

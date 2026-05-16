@@ -1,10 +1,11 @@
 "use client";
-import React from "react";
+import React, { useLayoutEffect } from "react";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { Session } from "next-auth";
 import { Device } from "@/db/schema";
+import { useLocalStorage } from "usehooks-ts";
 
 function ProfileMenuItem({
   label,
@@ -15,7 +16,7 @@ function ProfileMenuItem({
 }) {
   return (
     <button
-      className="w-full text-right px-4 py-2 hover:bg-accent rounded"
+      className="w-full text-right px-4 py-2 hover:bg-accent-surface rounded"
       onClick={onClick}
       tabIndex={0}
       type="button"
@@ -33,16 +34,16 @@ function ProfileButton({
   devices: Device[];
 }) {
   const [open, setOpen] = useState(false);
-  const [isDark, setIsDark] = useState(
-    document.documentElement.classList.contains("dark"),
-  );
+  const [isDark, setIsDark] = useLocalStorage<boolean>("theme-dark", false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle("dark", isDark);
+  }, [isDark]);
 
   const toggleTheme = () => {
     const next = !isDark;
     setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("theme", next ? "dark" : "light");
   };
 
   // Listen for clicks outside the container to close the dropdown
@@ -133,10 +134,20 @@ function ProfileButton({
           })}
           <hr className="w-full border-t border-gray-700 my-2" />
 
-          <ProfileMenuItem
-            label={isDark ? "Light mode" : "Dark mode"}
-            onClick={toggleTheme}
-          />
+          <div className="w-full flex justify-end">
+            <button
+              type="button"
+              aria-pressed={isDark}
+              className="w-full text-left"
+              onClick={toggleTheme}
+            >
+              <ProfileMenuItem
+                label={isDark ? "Light mode" : "Dark mode"}
+                onClick={toggleTheme}
+              />
+            </button>
+          </div>
+
           <ProfileMenuItem label="Sign out" onClick={signOut} />
         </div>
       )}
