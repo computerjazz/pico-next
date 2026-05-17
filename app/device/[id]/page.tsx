@@ -21,6 +21,35 @@ function DeviceStatRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function CornerMask({ className }: { className?: string }) {
+  return (
+    <svg
+      className={`${className}`}
+      width="20"
+      height="20"
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="
+          M0,0
+          H40
+          V40
+          H0
+          Z
+          M0,40
+          A40,40 0 0 1 40,0
+          L40,40
+          Z
+        "
+        fill="currentColor"
+        fillRule="evenodd"
+      />
+    </svg>
+  );
+}
+
 function DeviceDetails({ device }: { device: Device }) {
   return (
     <>
@@ -111,28 +140,17 @@ export default async function DevicePage({
           className="absolute flex flex-1 left-0 right-0 top-0 z-50 text-background max-w-md mx-auto"
           style={{ transform: "translateY(-1px)" }}
         >
-          <div className="flex flex-1 justify-between px-4">
+          <div className="flex flex-1 justify-between text-background">
             {/* Top Left Mask SVG */}
-            <svg
-              className="-translate-y-1"
-              width="80"
-              height="40"
-              viewBox="0 0 100 40"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M0,0 L40,0 A40,40 0 0 0 0,40 Z" fill="currentColor" />
-            </svg>
-            <svg
-              className="-translate-y-1 -scale-x-100"
-              width="80"
-              height="40"
-              viewBox="0 0 100 40"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M0,0 L40,0 A40,40 0 0 0 0,40 Z" fill="currentColor" />
-            </svg>
+            <div className="flex flex-row">
+              <div className="w-4 h-12 bg-background rounded-br-full" />
+
+              <CornerMask className="" />
+            </div>
+            <div className="flex flex-row">
+              <CornerMask className="-scale-x-100" />
+              <div className="w-4 h-12 bg-background rounded-bl-full" />
+            </div>
           </div>
         </div>
       </div>
