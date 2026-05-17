@@ -94,19 +94,47 @@ export default async function DevicePage({
           <ProfileSignInButton />
         </div>
       </div>
-      <div className="mx-auto max-w-xl p-4 flex flex-col flex-1 min-h-0 overflow-y-scroll">
-        <h1 className="text-2xl font-bold mb-2"></h1>
-
-        {device.type === "shortwave" && isDeviceOwner && (
-          <>
-            <div className="fixed bottom-2 right-4 z-50">
-              <RecordingButton deviceId={deviceId} />
-            </div>
-            <div>
-              <RecordingsList recordings={recordingItems} />
-            </div>
-          </>
-        )}
+      <div className="flex flex-1 flex-col overflow-hidden relative">
+        <div className="max-w-md mx-auto flex flex-col flex-1 min-h-0 overflow-y-scroll relative px-4">
+          {device.type === "shortwave" && isDeviceOwner && (
+            <>
+              <div className="fixed bottom-2 right-4 z-40">
+                <RecordingButton deviceId={deviceId} />
+              </div>
+              <div className="flex flex-1">
+                <RecordingsList recordings={recordingItems} />
+              </div>
+            </>
+          )}
+        </div>
+        <div
+          className="absolute flex flex-1 left-0 right-0 top-0 z-50 text-background max-w-md mx-auto"
+          style={{ transform: "translateY(-1px)" }}
+        >
+          <div className="flex flex-1 justify-between px-4">
+            {/* Top Left Mask SVG */}
+            <svg
+              className="-translate-y-1"
+              width="80"
+              height="40"
+              viewBox="0 0 100 40"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M0,0 L40,0 A40,40 0 0 0 0,40 Z" fill="currentColor" />
+            </svg>
+            <svg
+              className="-translate-y-1 -scale-x-100"
+              width="80"
+              height="40"
+              viewBox="0 0 100 40"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M0,0 L40,0 A40,40 0 0 0 0,40 Z" fill="currentColor" />
+            </svg>
+          </div>
+        </div>
       </div>
     </div>
   );

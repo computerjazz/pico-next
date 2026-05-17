@@ -100,7 +100,7 @@ export default function RecordingItem({
       : PlayCircle;
   return (
     <div
-      className={`flex relative max-w-md ${isDevice ? "self-start text-start items-start" : "self-end text-end items-end"}`}
+      className={`flex relative ${isDevice ? "self-start text-start items-start" : "self-end text-end items-end"}`}
     >
       <div className="absolute z-0 flex align-middle top-0 bottom-0 left-0 right-0 items-center justify-end p-2">
         <button className="cursor-pointer" onClick={onDeletePress}>
@@ -144,7 +144,7 @@ export default function RecordingItem({
           </span>
         </div>
         <div
-          className={`flex flex-1 flex-row gap-2 justify-start self-start ml-4 py-2 text-sm max-w-xs wrap-break-words`}
+          className={`flex flex-1 flex-row gap-2 justify-start self-start ml-4 py-2 text-sm wrap-break-words`}
         >
           <div>
             <button
