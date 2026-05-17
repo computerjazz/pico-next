@@ -73,7 +73,7 @@ export default async function DevicePage({
 
   return (
     <div className="flex flex-col h-screen">
-      <div className="p-4 flex flex-row justify-between">
+      <div className="p-4 flex flex-row justify-between gap-4">
         <div className="flex flex-col justify-center">
           <div className="flex flex-row gap-4">
             <DeviceNameInput device={device} disabled={!isDeviceOwner} />
@@ -94,7 +94,7 @@ export default async function DevicePage({
           <ProfileSignInButton />
         </div>
       </div>
-      <div className="flex flex-1 flex-col overflow-hidden relative">
+      <div className="flex flex-1 flex-col overflow-y-hidden relative">
         <div className="max-w-md mx-auto flex flex-col flex-1 min-h-0 overflow-y-scroll relative px-4">
           {device.type === "shortwave" && isDeviceOwner && (
             <>
