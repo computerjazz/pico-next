@@ -6,7 +6,7 @@ import { auth } from "@/auth";
 import ClaimButton from "./ClaimButton";
 import ProfileSignInButton from "@/app/components/ProfileSignInButton";
 import { RecordingsList } from "./RecordingsList";
-import { devices, recordings } from "@/db/schema";
+import { Device, devices, recordings } from "@/db/schema";
 import { eq, isNull, and, asc } from "drizzle-orm";
 import RecordingButton from "./RecordingButton";
 
@@ -18,6 +18,21 @@ function DeviceStatRow({ label, value }: { label: string; value: string }) {
         <div>{value}</div>
       </div>
     </div>
+  );
+}
+
+function DeviceDetails({ device }: { device: Device }) {
+  return (
+    <>
+      <DeviceStatRow label="Device ID:" value={device.deviceId} />
+      <DeviceStatRow label="Type:" value={device.type} />
+      {device.firmwareVersion && (
+        <DeviceStatRow
+          label="Firmware Version:"
+          value={device.firmwareVersion}
+        />
+      )}
+    </>
   );
 }
 
@@ -64,21 +79,14 @@ export default async function DevicePage({
             <DeviceNameInput device={device} disabled={!isDeviceOwner} />
             <ClaimButton device={device} />
           </div>
-
           <div className="space-y-2 text-sm mt-4">
-            <DeviceStatRow label="Device ID:" value={device.deviceId} />
-            <DeviceStatRow label="Type:" value={device.type} />
-            {device.firmwareVersion && (
-              <DeviceStatRow
-                label="Firmware Version:"
-                value={device.firmwareVersion}
-              />
-            )}
-            {device.type === "shortwave" && (
+            {device.type === "shortwave" ? (
               <div className="flex flex-row gap-4">
                 <DeviceStatRow label="Volume:" value={`${device.volume}%`} />
                 <VolumeInput device={device} disabled={!isDeviceOwner} />
               </div>
+            ) : (
+              <DeviceDetails device={device} />
             )}
           </div>
         </div>
