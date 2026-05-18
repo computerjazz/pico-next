@@ -1,10 +1,10 @@
 import Link from "next/link";
 import PageHeader from "./components/PageHeader";
 import PicopiTitle from "./components/PicopiTitle";
-import Pushbutton from "./components/icons/Pushbutton";
+import Pushbutton from "./components/icons/SchematicPushbutton";
 import { IconProps } from "./components/icons/types";
-import Switch from "./components/icons/Switch";
-import Knob from "./components/icons/Knob";
+import Switch from "./components/icons/SchematicToggle";
+import Knob from "./components/icons/SchematicPotentiometer";
 
 export const revalidate = 0; // always fetch fresh data
 
