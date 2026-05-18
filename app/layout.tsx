@@ -23,7 +23,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const theme = (await cookies()).get("theme")?.value ?? "system";
-
+  console.log("layout.tsx", theme);
   return (
     <html data-theme={theme} lang="en">
       <head></head>

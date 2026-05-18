@@ -128,7 +128,9 @@ function ProfileButton({
                       key={d.deviceId}
                       label={d.name ?? d.deviceId}
                       onClick={() =>
-                        window.location.assign(`/device/${d.deviceId}`)
+                        window.location.assign(
+                          `/${d.type === "shortwave" ? "shortwave" : "device"}/${d.deviceId}`,
+                        )
                       }
                     />
                   );
