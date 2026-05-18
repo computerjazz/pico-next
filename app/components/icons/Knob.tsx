@@ -9,12 +9,29 @@ function Knob({ className = "size-6" }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
     >
-      <path d="M2 12h2l2 -5l3 10l3 -10l3 10l3 -10l1.5 5h2.5" />
+      {/* Arrow shaft with greater gap */}
+      <path
+        d="M12 3.5v3.4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      {/* Arrow head further from resistor */}
+      <path
+        d="M10.8 6.7L12 7.9l1.2-1.2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {/* Squiggly resistor line lower for bigger gap */}
+      <path d="M2 15h2l2-5l3 10l3-10l3 10l3-10l1.5 5h2.5" />
     </svg>
   );
 }
