@@ -1,7 +1,7 @@
 import { IconProps } from "./types";
 
 // https://react-icons.github.io/react-icons/icons/tb/
-function Switch({ className = "size-6" }: IconProps) {
+function SchematicSwitch({ className = "size-6" }: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -24,4 +24,4 @@ function Switch({ className = "size-6" }: IconProps) {
   );
 }
 
-export default Switch;
+export default SchematicSwitch;
