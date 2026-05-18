@@ -1,4 +1,5 @@
 import { signIn } from "@/auth";
+import Google from "./icons/Google";
 
 export function SignInButton() {
   return (
@@ -10,9 +11,10 @@ export function SignInButton() {
     >
       <button
         type="submit"
-        className="inline-flex items-center px-3 py-1 rounded-full text-accent text-sm font-medium hover:bg-accent hover:text-accent-foreground transition cursor-pointer border-2"
+        className="inline-flex items-center px-3 py-1 rounded-full text-accent text-sm font-medium hover:bg-accent hover:text-accent-foreground transition cursor-pointer border-2 gap-2 items-center"
       >
-        Sign in with Google
+        <Google className="size-4" />
+        Sign in
       </button>
     </form>
   );
