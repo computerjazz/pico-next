@@ -10,7 +10,7 @@ export function SignInButton() {
     >
       <button
         type="submit"
-        className="inline-flex items-center px-3 py-1 rounded-full bg-gray-800 text-gray-400 text-sm font-medium hover:bg-blue-200 transition cursor-pointer border-2"
+        className="inline-flex items-center px-3 py-1 rounded-full text-accent text-sm font-medium hover:bg-accent hover:text-accent-foreground transition cursor-pointer border-2"
       >
         Sign in with Google
       </button>
