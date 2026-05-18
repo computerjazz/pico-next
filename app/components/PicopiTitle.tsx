@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-const O_OPTIONS = ["ø", "ô", "ó", "ö", "0", "õ", "ਠ", "⊚"];
+const O_OPTIONS = ["ø", "ô", "ó", "ö", "0", "õ", "ਠ"];
 function PicopiTitle() {
   const [oIdx] = useState(() => Math.floor(Math.random() * O_OPTIONS.length));
   const o = O_OPTIONS[oIdx];

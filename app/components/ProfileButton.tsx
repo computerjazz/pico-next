@@ -39,7 +39,6 @@ function ProfileButton({
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  console.log("theme!!", theme);
   const [isDark, setIsDark] = useState(theme === "dark");
 
   useEffect(() => {

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:release": "next build && npx dotenv-cli -e .env.local -- node dist/server.js",
     "build:server": "tsup server.ts --format esm --out-dir dist  --tsconfig tsconfig.server.json",
     "start": "next start",
     "lint": "eslint",
