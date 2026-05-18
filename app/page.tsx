@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PageHeader from "./components/PageHeader";
+import PicopiTitle from "./components/PicopiTitle";
 
 export const revalidate = 0; // always fetch fresh data
 
@@ -30,7 +31,7 @@ export default function Home() {
     <div>
       <main className="min-h-screen flex flex-col">
         <PageHeader>
-          <h1 className="text-3xl font-bold text-accent mb-2">PICOPI</h1>
+          <PicopiTitle />
         </PageHeader>
         <div className="flex flex-1 flex-col items-center justify-center">
           <p>What can you do with...</p>
