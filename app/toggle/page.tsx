@@ -9,7 +9,7 @@ function TogglePage() {
             <h1 className="text-3xl font-bold text-accent mb-2">Toggle</h1>
           </div>
         </PageHeader>
-        Coming soon
+        <div className="p-4">Coming soon</div>
       </main>
     </div>
   );

@@ -9,14 +9,6 @@ export default function ShortwaveLanding() {
       <main className="flex flex-col gap-6">
         <PageHeader>
           <div className="flex flex-row gap-4 items-center">
-            <Image
-              width={48}
-              height={48}
-              src="/logo-shortwave.png"
-              alt="Shortwave Logo"
-              className="h-12 w-12 rounded-full"
-            />
-
             <h1 className="text-3xl font-bold text-accent mb-2">sh0rtwave</h1>
           </div>
         </PageHeader>

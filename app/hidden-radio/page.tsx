@@ -11,7 +11,7 @@ function HiddenRadioPage() {
             </h1>
           </div>
         </PageHeader>
-        Coming soon
+        <div className="p-4">Coming soon</div>
       </main>
     </div>
   );

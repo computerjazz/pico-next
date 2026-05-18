@@ -4,7 +4,6 @@ import VolumeInput from "./VolumeInput";
 import DeviceNameInput from "../../components/DeviceNameInput";
 import { auth } from "@/auth";
 import ClaimButton from "../../components/ClaimButton";
-import ProfileSignInButton from "@/app/components/ProfileSignInButton";
 import { RecordingsList } from "./RecordingsList";
 import { Device, devices, recordings } from "@/db/schema";
 import { eq, isNull, and, asc } from "drizzle-orm";
