@@ -42,6 +42,17 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
         await leaveMessage({ form, deviceId });
       };
       mediaRecorder.start();
+
+      // Subtle haptic feedback when recording begins
+      if (typeof window !== "undefined" && "vibrate" in navigator) {
+        // Try for a subtle, brief vibration pattern
+        try {
+          navigator.vibrate(30);
+        } catch (err) {
+          // Not critical, ignore failure
+        }
+      }
+
       setIsRecording(true);
     } catch (e) {
       alert(`Could not start recording: ${e}`);
