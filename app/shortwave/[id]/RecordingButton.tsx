@@ -1,7 +1,6 @@
 "use client";
 import { leaveMessage } from "@/app/actions/leaveMessage";
 import { useRef, useState } from "react";
-import { motion } from "motion/react";
 
 function RecordingButton({ deviceId }: { deviceId: string }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -60,18 +59,39 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
   }
 
   return (
-    <motion.div className="flex flex-col items-center gap-2 transition-transform duration-150 hover:scale-105">
+    <div
+      className="flex flex-col items-center gap-2 transition-transform duration-150 hover:scale-105"
+      style={{
+        WebkitUserSelect: "none",
+        userSelect: "none",
+        WebkitTapHighlightColor: "transparent",
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+      onSelect={(e) => e.preventDefault()}
+      tabIndex={-1}
+      draggable={false}
+    >
       <button
-        onPointerDown={startRecording}
-        onPointerUp={stopRecording}
-        className={`${isRecording ? "bg-accent" : "bg-muted-foreground"} border-0 outline-0 rounded-full cursor-pointer w-24 h-24`}
+        onTouchStart={startRecording}
+        onTouchEnd={stopRecording}
+        onMouseDown={startRecording}
+        onMouseLeave={stopRecording}
+        onContextMenu={(e) => e.preventDefault()}
+        className={`${isRecording ? "bg-accent" : "bg-muted-foreground"} border-0 outline-0 rounded-full cursor-pointer w-24 h-24 select-none active:outline-none focus:outline-none`}
         aria-label="Record"
+        tabIndex={0}
+        draggable={false}
+        style={{
+          WebkitUserSelect: "none",
+          userSelect: "none",
+          WebkitTapHighlightColor: "transparent",
+        }}
       >
-        <div className="pointer-none:*: text-accent-foreground">
-          <span>Leave a message</span>
+        <div className="pointer-none:*: text-accent-foreground select-none">
+          <span className="select-none">Leave a message</span>
         </div>
       </button>
-    </motion.div>
+    </div>
   );
 }
 
