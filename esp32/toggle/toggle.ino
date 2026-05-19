@@ -17,9 +17,9 @@ const char* serverHost = SERVER_HOST;
 const char* authToken = AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 const char* portalSsid = "toggle-setup";
-const char* firmwareVersion = "toggle-2026-05-19.1";
+const char* firmwareVersion = "toggle-2026-05-19.2";
 
-#define OTA_CHECK_INTERVAL_MS 10000UL
+#define OTA_CHECK_INTERVAL_MS 120000UL
 
 static DNSServer dnsServer;
 static WebServer portalServer(80);
@@ -48,7 +48,7 @@ int wifiFailCount = 0;
 void checkWifi() {
   if (millis() - lastWifiCheck < WIFI_CHECK_INTERVAL) return;
   lastWifiCheck = millis();
-
+  Serial.print("Checking wifi...\n");
   if (WiFi.status() != WL_CONNECTED) {
     wifiFailCount++;
     if (wifiFailCount >= 5) {
@@ -571,6 +571,7 @@ void loop() {
 
   if (now - lastSwitchDebounceMs > 35 && reading != switchState) {
     switchState = reading;
+    Serial.print("Switched\n");
     postToggleState(switchState);
   }
   lastSwitchReading = reading;
