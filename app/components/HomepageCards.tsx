@@ -18,7 +18,7 @@ export type Card = {
   src?: string;
 };
 
-const cards: Card[] = [
+export const HOMEPAGE_CARDS: Card[] = [
   {
     href: "/shortwave",
     title: "/sh0rtwave",
@@ -52,7 +52,7 @@ function HomepageCards({
 }) {
   return (
     <>
-      {cards.map((card) => (
+      {HOMEPAGE_CARDS.map((card) => (
         <div
           key={card.href}
           onMouseEnter={() => onCardHover?.(card)}
