@@ -17,8 +17,11 @@ function HomepageContent() {
             src={hoveredCard.src}
             alt={hoveredCard.title}
             fill
-            className={`object-cover w-full h-full`}
-            priority
+            className="object-cover w-full h-full"
+            loading="eager"
+            sizes="100vw"
+            priority={false}
+            quality={50}
           />
         )}
       </div>
