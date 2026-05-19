@@ -19,7 +19,7 @@ export default function Home() {
           <PicopiTitle />
         </PageHeader>
         <div className="flex flex-1 flex-col items-center justify-center">
-          <p>What can you do with...</p>
+          <p>Surprisingly deep toys from just one...</p>
           <div className="flex flex-row gap-4 p-4">
             <HomepageCards />
           </div>
