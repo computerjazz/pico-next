@@ -14,6 +14,7 @@ function HomepageContent() {
       >
         {!!hoveredCard?.src && (
           <Image
+            key={hoveredCard.href}
             src={hoveredCard.src}
             alt={hoveredCard.title}
             fill
