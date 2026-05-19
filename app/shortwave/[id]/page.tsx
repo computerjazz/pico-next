@@ -121,34 +121,43 @@ export default async function DevicePage({
         </div>
       </PageHeader>
       <div className="flex flex-1 flex-col overflow-y-hidden relative">
-        <div className="max-w-md mx-auto flex flex-col flex-1 min-h-0 overflow-y-scroll relative px-4">
-          {device.type === "shortwave" && isDeviceOwner && (
-            <>
-              <div className="fixed bottom-2 right-4 z-40">
-                <RecordingButton deviceId={deviceId} />
-              </div>
-              <div className="flex flex-1">
-                <RecordingsList recordings={recordingItems} />
-              </div>
-            </>
-          )}
+        <div className="overflow-y-scroll relative">
+          <div className="max-w-md mx-auto flex flex-col flex-1 min-h-0 px-4">
+            {device.type === "shortwave" && isDeviceOwner && (
+              <>
+                <div className="fixed bottom-2 right-4 z-40">
+                  <RecordingButton deviceId={deviceId} />
+                </div>
+                <div className="flex flex-1">
+                  <RecordingsList recordings={recordingItems} />
+                </div>
+              </>
+            )}
+          </div>
         </div>
         <div
-          className="absolute flex flex-1 left-0 right-0 top-0 z-50 text-background max-w-md mx-auto"
+          className="absolute flex flex-1 flex-row left-0 right-0 top-0 z-50 justify-center"
           style={{ transform: "translateY(-1px)" }}
         >
-          <div className="flex flex-1 justify-between text-background">
-            {/* Top Left Mask SVG */}
-            <div className="flex flex-row">
-              <div className="w-4 h-12 bg-background rounded-br-full" />
+          <div className="flex bg-background flex-1" />
 
-              <CornerMask className="" />
-            </div>
-            <div className="flex flex-row">
-              <CornerMask className="-scale-x-100" />
-              <div className="w-4 h-12 bg-background rounded-bl-full" />
+          <div className="max-w-md flex flex-1000">
+            <div className="flex flex-99 justify-between text-background">
+              {/* Top Left Mask SVG */}
+              <div className="flex flex-row">
+                <div className="flex-1 bg-background" />
+                <div className="w-4 h-12 bg-background rounded-br-full" />
+
+                <CornerMask className="" />
+              </div>
+              <div className="flex flex-1 max-w-md" />
+              <div className="flex flex-row">
+                <CornerMask className="-scale-x-100" />
+                <div className="w-4 h-12 bg-background rounded-bl-full" />
+              </div>
             </div>
           </div>
+          <div className="flex bg-background flex-1" />
         </div>
       </div>
     </div>
