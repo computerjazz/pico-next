@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     // serverSourceMaps: true,
   },
   images: {
+    minimumCacheTTL: 60 * 60 * 24,
     remotePatterns: [
       {
         protocol: "https",
