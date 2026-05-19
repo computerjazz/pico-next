@@ -10,7 +10,7 @@ export default defineConfig({
     user: process.env.DATABASE_USER!,
     password: process.env.DATABASE_PASSWORD!,
     database: process.env.DATABASE_NAME!,
-    port: 5432,
+    port: Number(process.env.DATABASE_PORT!),
     ssl: false,
   },
 });

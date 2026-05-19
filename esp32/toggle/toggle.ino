@@ -17,9 +17,9 @@ const char* serverHost = SERVER_HOST;
 const char* authToken = AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 const char* portalSsid = "toggle-setup";
-const char* firmwareVersion = "toggle-2026-05-03.2";
+const char* firmwareVersion = "toggle-2026-05-19.1";
 
-#define OTA_CHECK_INTERVAL_MS 600000UL
+#define OTA_CHECK_INTERVAL_MS 10000UL
 
 static DNSServer dnsServer;
 static WebServer portalServer(80);
@@ -41,6 +41,27 @@ static bool wsReady = false;
 static String deviceId = "";
 static String groupId = "";
 
+unsigned long lastWifiCheck = 0;
+const unsigned long WIFI_CHECK_INTERVAL = 30000; // 30s
+int wifiFailCount = 0;
+
+void checkWifi() {
+  if (millis() - lastWifiCheck < WIFI_CHECK_INTERVAL) return;
+  lastWifiCheck = millis();
+
+  if (WiFi.status() != WL_CONNECTED) {
+    wifiFailCount++;
+    if (wifiFailCount >= 5) {
+      Serial.println("WiFi stack wedged, rebooting...");
+      ESP.restart();
+    }
+    WiFi.disconnect();
+    delay(1000);
+    WiFi.reconnect();
+  } else {
+    wifiFailCount = 0;
+  }
+}
 
 // Store and load groupId in/from Preferences like deviceId
 static void loadIdsFromPrefs() {
@@ -164,7 +185,16 @@ static bool connectToWifi(const char* ssid, const char* password, unsigned long 
   while (WiFi.status() != WL_CONNECTED && millis() - startMs < timeoutMs) {
     delay(500);
   }
-  if (WiFi.status() == WL_CONNECTED) return true;
+  if (WiFi.status() == WL_CONNECTED) {
+    WiFi.setSleep(false);
+    WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
+       if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+          Serial.println("WiFi lost, reconnecting...");
+          WiFi.reconnect();
+        }
+}, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+    return true;
+  }
   WiFi.disconnect(true, true);
   delay(250);
   return false;
@@ -532,7 +562,7 @@ void setup() {
 
 void loop() {
   wsClient.loop();
-
+  checkWifi();
   const unsigned long now = millis();
   bool reading = readSwitch();
   if (reading != lastSwitchReading) {
