@@ -55,6 +55,7 @@ function HomepageCards({
           key={card.href}
           onMouseEnter={() => onCardHover?.(card)}
           onMouseLeave={() => onCardHover?.(null)}
+          className="flex"
         >
           <HomepageCard
             key={card.href}
