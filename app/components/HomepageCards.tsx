@@ -25,7 +25,7 @@ const cards: Card[] = [
     description: "button to push",
     Icon: RadioButtonOn,
     HoverIcon: SchematicPushbutton,
-    src: "/img/hero-shortwave.jpg", // <-- use leading slash for public assets
+    src: "/img/component/component-button.jpg",
   },
   {
     href: "/toggle",
@@ -33,7 +33,7 @@ const cards: Card[] = [
     description: "switch to flip",
     Icon: ToggleOn,
     HoverIcon: SchematicToggle,
-    src: "/img/hero-toggle.jpg",
+    src: "/img/component/component-switch.jpg",
   },
   {
     href: "/hidden-radio",
@@ -41,6 +41,7 @@ const cards: Card[] = [
     description: "knob to turn",
     Icon: Knob,
     HoverIcon: SchematicPotentiometer,
+    src: "/img/component/component-knob.jpg",
   },
 ];
 

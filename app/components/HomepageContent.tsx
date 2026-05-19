@@ -26,7 +26,7 @@ function HomepageContent() {
         )}
       </div>
       <div className="flex flex-1 flex-col items-center justify-center p-4">
-        <p>Surprisingly deep toys built from just one...</p>
+        <p>Simple connected toys built from just one...</p>
         <div className="flex flex-row gap-4 p-4">
           <HomepageCards
             onCardHover={(card) => {
