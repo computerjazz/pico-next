@@ -13,8 +13,8 @@ function HomepageCard({
   href: string;
   title: string;
   description: string;
-  Icon: (props: IconProps) => React.ReactElement;
-  HoverIcon?: (props: IconProps) => React.ReactElement;
+  Icon: React.ComponentType<IconProps>;
+  HoverIcon?: React.ComponentType<IconProps>;
 }) {
   return (
     <Link
