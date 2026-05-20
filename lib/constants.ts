@@ -1,5 +1,6 @@
 export const CHANNEL_TYPE = {
   TELEGRAM: "telegram",
+  WEB_PUSH: "web-push",
 };
 
 export const RECORDING_SOURCE = {

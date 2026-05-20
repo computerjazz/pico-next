@@ -1,6 +1,7 @@
 // lib/push.ts
 import webpush from "web-push";
 import { db } from "@/db";
+import { CHANNEL_TYPE } from "./constants";
 
 webpush.setVapidDetails(
   "mailto:hi@danielmerrill.com",
@@ -15,7 +16,7 @@ export async function sendPush(payload: {
 }) {
   const deviceChannels = await db.query.deviceChannels.findMany({
     where: (t, { and, eq }) =>
-      and(eq(t.deviceId, payload.deviceId), eq(t.type, "web-push")),
+      and(eq(t.deviceId, payload.deviceId), eq(t.type, CHANNEL_TYPE.WEB_PUSH)),
   });
 
   const subscriptionIds = deviceChannels.map((dc) => dc.channelId);
