@@ -16,7 +16,7 @@ export async function getRecording({ recordingId }: { recordingId: string }) {
   });
 
   if (!recording) {
-    throw new Error("Recording not found");
+    throw new Error(`Recording not found: ${recordingId}`);
   }
 
   const ownerId = recording.device?.userId;

@@ -5,7 +5,8 @@ import RecordingsChat from "../components/RecordingsChat";
 
 export default async function ShortwaveLandingPage() {
   const recordings = await db.query.recordings.findMany({
-    where: (t, { eq }) => eq(t.deviceId, "sh0rtwave-alpha-dev"),
+    where: (t, { and, eq, isNull }) =>
+      and(eq(t.deviceId, "sh0rtwave-alpha-dev"), isNull(t.deletedAt)),
   });
 
   return (
