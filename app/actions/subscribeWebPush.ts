@@ -4,18 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { deviceChannels, pushSubscriptions } from "@/db/schema";
 import { CHANNEL_TYPE } from "@/lib/constants";
-import { z } from "zod";
-
-export const SubscriptionPayloadSchema = z.object({
-  deviceId: z.string(),
-  endpoint: z.string(),
-  keys: z.object({
-    auth: z.string(),
-    p256dh: z.string(),
-  }),
-});
-
-export type SubscriptionPayload = z.infer<typeof SubscriptionPayloadSchema>;
+import { SubscriptionPayload, SubscriptionPayloadSchema } from "@/lib/push";
 
 export async function subscribeWebPush(payload: SubscriptionPayload) {
   const payloadParsed = SubscriptionPayloadSchema.safeParse(payload);
