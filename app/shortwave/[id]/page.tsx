@@ -63,11 +63,11 @@ function ListMask({ color = "background" }: { color?: string }) {
             <div className={`flex-1 bg-${color}`} />
             <div className={`w-4 h-12 bg-${color} rounded-br-full`} />
 
-            <CornerMask className="" />
+            <CornerMask className="translate-x-[-1px]" />
           </div>
           <div className="flex flex-1 max-w-md" />
           <div className="flex flex-row">
-            <CornerMask className="-scale-x-100" />
+            <CornerMask className="-scale-x-100 translate-x-[1px]" />
             <div className={`w-4 h-12 bg-${color} rounded-bl-full`} />
           </div>
         </div>
@@ -135,7 +135,7 @@ export default async function DevicePage({
         scope="/shortwave/"
       />
       <PageHeader>
-        <div className="flex flex-col justify-center">
+        <div className="flex flex-col justify-center pt-2">
           <div className="flex flex-row gap-4">
             <DeviceNameInput device={device} disabled={!isDeviceOwner} />
             <ClaimButton device={device} />

@@ -10,9 +10,9 @@ function PageHeader({ children }: { children: React.ReactNode }) {
           <Image
             width={48}
             height={48}
-            src="/logo-shortwave.png"
+            src="/img/icons/icon-192.png"
             alt="Shortwave Logo"
-            className="h-10 w-10 rounded-full"
+            className="rounded-full aspect-1"
           />
         </Link>
         {children}
