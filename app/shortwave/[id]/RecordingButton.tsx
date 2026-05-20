@@ -86,7 +86,7 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
       draggable={false}
     >
       <button
-        onTouchStart={() => {
+        onPointerDown={() => {
           haptic();
           startRecording();
         }}
