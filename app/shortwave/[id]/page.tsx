@@ -51,7 +51,7 @@ function CornerMask({ className }: { className?: string }) {
   );
 }
 
-function ListMask({ color = "background" }: { color?: string }) {
+function ListMask() {
   return (
     <>
       <div className={`flex bg-background flex-1`} />

@@ -81,7 +81,7 @@ function DeviceNameInput({
               type="button"
               disabled={disabled}
               aria-label="Edit device name"
-              className="hover:text-blue-500 text-muted-foreground transition cursor-pointer"
+              className="hover:text-accent text-muted-foreground transition cursor-pointer"
               onClick={startEdit}
             >
               {/* Pencil icon */}
@@ -103,7 +103,7 @@ function DeviceNameInput({
             name="deviceName"
             type="text"
             ref={inputRef}
-            className="w-full px-2 py-1 border rounded outline-blue-500"
+            className="w-full px-2 py-1 border rounded outline-accent"
             maxLength={50}
             autoComplete="off"
             value={draft}
@@ -140,7 +140,7 @@ function DeviceNameInput({
           <button
             type="button"
             aria-label="Save device name"
-            className="text-green-600 hover:text-green-700 transition"
+            className="text-accent-surface hover:text-accent transition cursor-pointer"
             onClick={acceptEdit}
             tabIndex={0}
           >
@@ -155,12 +155,12 @@ function DeviceNameInput({
           <button
             type="button"
             aria-label="Cancel edit"
-            className="text-red-500 hover:text-red-600 transition"
+            className="text-muted-foreground hover:text-foreground transition cursor-pointer"
             onClick={cancelEdit}
             tabIndex={0}
           >
             {/* X icon */}
-            <svg width="19" height="19" viewBox="0 0 20 20" fill="none">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none">
               <path
                 d="M10 8.586l4.95-4.95 1.414 1.414L11.414 10l4.95 4.95-1.414 1.414L10 11.414l-4.95 4.95-1.414-1.414L8.586 10l-4.95-4.95L5.05 3.636 10 8.586z"
                 fill="currentColor"
