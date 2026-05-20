@@ -10,7 +10,6 @@ import {
   integer,
   boolean,
   primaryKey,
-  serial,
 } from "drizzle-orm/pg-core";
 import { AdapterAccountType } from "next-auth/adapters";
 
@@ -111,6 +110,7 @@ export const devices = pico.table("devices", {
   deviceId: varchar("device_id", { length: 100 }).primaryKey(),
   name: varchar("name", { length: 50 }),
   volume: numeric("volume"),
+  isPublic: boolean("is_public").default(false),
   type: varchar("type", { length: 50 }).notNull(),
   firmwareVersion: varchar("firmware_version", { length: 50 }),
   userId: text("user_id").references(() => users.id, { onDelete: "set null" }),

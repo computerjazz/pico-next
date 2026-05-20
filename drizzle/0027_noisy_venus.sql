@@ -1,0 +1,1 @@
+ALTER TABLE "pico_next_db"."devices" ADD COLUMN "is_public" boolean DEFAULT false;

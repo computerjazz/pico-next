@@ -6,9 +6,7 @@ import fs from "fs";
 
 export async function getRecording({ recordingId }: { recordingId: string }) {
   const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("must be logged in to listen to recording");
-  }
+
   const recording = await db.query.recordings.findFirst({
     where: (r, { eq, and, isNull }) =>
       and(eq(r.id, recordingId), isNull(r.deletedAt)),
@@ -21,7 +19,14 @@ export async function getRecording({ recordingId }: { recordingId: string }) {
     throw new Error("Recording not found");
   }
 
-  if (recording.device?.userId !== session.user.id) {
+  const ownerId = recording.device?.userId;
+  const userId = session?.user?.id;
+  const isPublic = !!recording.device?.isPublic;
+  const isOwner = userId && userId === ownerId;
+
+  const canListen = isOwner || isPublic;
+
+  if (!canListen) {
     throw new Error("Not authorized to access this recording");
   }
 
