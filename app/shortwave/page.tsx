@@ -25,15 +25,18 @@ export default async function ShortwaveLandingPage() {
           priority
         />
         <div className="flex flex-col items-center">
-          <div className="gap-4 max-w-lg flex flex-col p-4 items-center justify-center">
-            <h1 className="text-2xl">Press to record.</h1>
+          <div className="gap-4 max-w-lg flex flex-col p-4">
+            <h1 className="text-2xl font-semibold whitespace-pre-line">
+              {`Trade audio messages.\nNo screens attached.`}
+            </h1>
+
             <p>
-              {`Press and hold the big button on top to send voice messages to a
+              {`Press and hold the big button on top of the little wooden box to send a voice message to a
               parent or friend. If the "answering machine" light on top is
-              blinking, someone has sent you a message! Give the button a quick tap to listen.`}
+              blinking, they've sent you a message back! Give the button a quick tap to listen.`}
             </p>
             <p>
-              {`Log into your account to view all of your messages and record and send new answering machine messages:`}
+              {`Log into your account to view all of your messages and record and send new answering machine messages back:`}
             </p>
             <div className="max-h-96 flex">
               <RecordingsChat recordings={recordings} autoScroll={false} />
