@@ -20,7 +20,7 @@ export function RecordingsList({ recordings }: { recordings: Recording[] }) {
   return (
     <AudioProvider>
       <div
-        className={`flex flex-col flex-1 gap-2 transition-opacity duration-500 pb-16 ${isVisible ? "opacity-100" : "opacity-0"}`}
+        className={`flex flex-col flex-1 gap-2 transition-opacity duration-500 ${isVisible ? "opacity-100" : "opacity-0"}`}
       >
         {recordings.map((r) => {
           return <RecordingItem key={r.id} recording={r} />;

@@ -51,6 +51,32 @@ function CornerMask({ className }: { className?: string }) {
   );
 }
 
+function ListMask({ color = "background" }: { color?: string }) {
+  return (
+    <>
+      <div className={`flex bg-${color} flex-1`} />
+
+      <div className="max-w-md flex flex-1000">
+        <div className={`flex flex-99 justify-between text-${color}`}>
+          {/* Top Left Mask SVG */}
+          <div className="flex flex-row">
+            <div className={`flex-1 bg-${color}`} />
+            <div className={`w-4 h-12 bg-${color} rounded-br-full`} />
+
+            <CornerMask className="" />
+          </div>
+          <div className="flex flex-1 max-w-md" />
+          <div className="flex flex-row">
+            <CornerMask className="-scale-x-100" />
+            <div className={`w-4 h-12 bg-${color} rounded-bl-full`} />
+          </div>
+        </div>
+      </div>
+      <div className={`flex bg-${color} flex-1`} />
+    </>
+  );
+}
+
 function DeviceDetails({ device }: { device: Device }) {
   return (
     <>
@@ -131,9 +157,6 @@ export default async function DevicePage({
           <div className="max-w-md mx-auto flex flex-col flex-1 min-h-0 px-4">
             {device.type === "shortwave" && isDeviceOwner && (
               <>
-                <div className="fixed bottom-2 right-4 z-40">
-                  <RecordingButton deviceId={deviceId} />
-                </div>
                 <div className="flex flex-1">
                   <RecordingsList recordings={recordingItems} />
                 </div>
@@ -145,26 +168,17 @@ export default async function DevicePage({
           className="absolute flex flex-1 flex-row left-0 right-0 top-0 z-40 justify-center"
           style={{ transform: "translateY(-1px)" }}
         >
-          <div className="flex bg-background flex-1" />
-
-          <div className="max-w-md flex flex-1000">
-            <div className="flex flex-99 justify-between text-background">
-              {/* Top Left Mask SVG */}
-              <div className="flex flex-row">
-                <div className="flex-1 bg-background" />
-                <div className="w-4 h-12 bg-background rounded-br-full" />
-
-                <CornerMask className="" />
-              </div>
-              <div className="flex flex-1 max-w-md" />
-              <div className="flex flex-row">
-                <CornerMask className="-scale-x-100" />
-                <div className="w-4 h-12 bg-background rounded-bl-full" />
-              </div>
-            </div>
-          </div>
-          <div className="flex bg-background flex-1" />
+          <ListMask color="background" />
         </div>
+        <div
+          className="absolute flex flex-1 flex-row left-0 right-0 bottom-0 z-40 justify-center rotate-180"
+          style={{ transform: "translateY(-1px)" }}
+        >
+          <ListMask color="background" />
+        </div>
+      </div>
+      <div className="p-4">
+        <RecordingButton deviceId={deviceId} />
       </div>
     </div>
   );

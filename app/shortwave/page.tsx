@@ -17,7 +17,7 @@ export default function ShortwaveLanding() {
           height={128}
           src="/hero-shortwave.jpg"
           alt="Shortwave Hero"
-          className="w-full aspect-[2.5/1] object-cover"
+          className="w-full aspect-2.5/1 object-cover"
           priority
         />
 
