@@ -168,13 +168,13 @@ export default async function DevicePage({
           className="absolute flex flex-1 flex-row left-0 right-0 top-0 z-40 justify-center"
           style={{ transform: "translateY(-1px)" }}
         >
-          <ListMask color="background" />
+          <ListMask />
         </div>
         <div
           className="absolute flex flex-1 flex-row left-0 right-0 bottom-0 z-40 justify-center rotate-180"
           style={{ transform: "translateY(-1px)" }}
         >
-          <ListMask color="background" />
+          <ListMask />
         </div>
       </div>
       <div className="p-4">
