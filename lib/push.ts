@@ -5,7 +5,7 @@ import { CHANNEL_TYPE } from "./constants";
 
 webpush.setVapidDetails(
   "mailto:hi@danielmerrill.com",
-  process.env.VAPID_PUBLIC_KEY!,
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!,
 );
 
