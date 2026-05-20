@@ -6,16 +6,24 @@ import { AudioProvider } from "@/app/components/AudioProvider";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 
-export function RecordingsList({ recordings }: { recordings: Recording[] }) {
+export function RecordingsList({
+  recordings,
+  autoScroll = true,
+}: {
+  recordings: Recording[];
+  autoScroll?: boolean;
+}) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
 
   const onLoad = useStableCallback(() => setIsVisible(true));
 
   useLayoutEffect(() => {
-    bottomRef.current?.scrollIntoView();
+    if (autoScroll) {
+      bottomRef.current?.scrollIntoView();
+    }
     onLoad();
-  }, [onLoad]);
+  }, [onLoad, autoScroll]);
 
   return (
     <AudioProvider>

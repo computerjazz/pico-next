@@ -1,9 +1,13 @@
+import { db } from "@/db";
 import PageHeader from "../components/PageHeader";
 import Image from "next/image";
+import RecordingsChat from "../components/RecordingsChat";
 
-export const revalidate = 0; // always fetch fresh data
+export default async function ShortwaveLandingPage() {
+  const recordings = await db.query.recordings.findMany({
+    where: (t, { eq }) => eq(t.deviceId, "sh0rtwave-alpha-dev"),
+  });
 
-export default function ShortwaveLanding() {
   return (
     <div className="min-h-screen">
       <main className="flex flex-col">
@@ -20,12 +24,22 @@ export default function ShortwaveLanding() {
           className="w-full aspect-2.5/1 object-cover"
           priority
         />
-
-        <p className="max-w-lg text-base text-muted-foreground text-center mt-4">
-          Press the big button to send a voice message.
-        </p>
-
-        <div className="flex flex-row gap-4 mt-6"></div>
+        <div className="flex flex-col items-center">
+          <div className="gap-4 max-w-lg flex flex-col p-4 items-center justify-center">
+            <h1 className="text-2xl">Press to record.</h1>
+            <p>
+              {`Press and hold the big button on top to send voice messages to a
+              parent or friend. If the "answering machine" light on top is
+              blinking, someone has sent you a message! Give the button a quick tap to listen.`}
+            </p>
+            <p>
+              {`Log into your account to view all of your messages and record and send new answering machine messages:`}
+            </p>
+            <div className="max-h-96 flex">
+              <RecordingsChat recordings={recordings} autoScroll={false} />
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   );
