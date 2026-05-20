@@ -2,6 +2,19 @@
 import { leaveMessage } from "@/app/actions/leaveMessage";
 import { useRef, useState } from "react";
 
+function haptic(duration = 30) {
+  // Subtle haptic feedback when recording begins
+  if (typeof window !== "undefined" && "vibrate" in navigator) {
+    // Try for a subtle, brief vibration pattern
+    try {
+      navigator.vibrate(duration);
+    } catch (err) {
+      // Not critical, ignore failure
+      console.log("vibrate err", err);
+    }
+  }
+}
+
 function RecordingButton({ deviceId }: { deviceId: string }) {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -13,15 +26,6 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
       return;
     }
     try {
-      // Subtle haptic feedback when recording begins
-      if (typeof window !== "undefined" && "vibrate" in navigator) {
-        // Try for a subtle, brief vibration pattern
-        try {
-          navigator.vibrate(30);
-        } catch (err) {
-          // Not critical, ignore failure
-        }
-      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const audioPriority = ["audio/mp3", "audio/webm", "audio/ogg"];
       const mimeType = audioPriority.find((mt) =>
@@ -82,7 +86,10 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
       draggable={false}
     >
       <button
-        onTouchStart={startRecording}
+        onTouchStart={() => {
+          haptic();
+          startRecording();
+        }}
         onTouchEnd={stopRecording}
         onMouseDown={startRecording}
         onMouseLeave={stopRecording}

@@ -9,6 +9,7 @@ import { Device, devices, recordings } from "@/db/schema";
 import { eq, isNull, and, asc } from "drizzle-orm";
 import RecordingButton from "./RecordingButton";
 import PageHeader from "@/app/components/PageHeader";
+import PushSubscriber from "@/app/components/PushSubscriber";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -102,6 +103,7 @@ export default async function DevicePage({
 
   return (
     <div className="flex flex-col h-screen">
+      <PushSubscriber shouldPrompt={!!isDeviceOwner} scope="/shortwave/" />
       <PageHeader>
         <div className="flex flex-col justify-center">
           <div className="flex flex-row gap-4">

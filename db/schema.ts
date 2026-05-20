@@ -10,6 +10,7 @@ import {
   integer,
   boolean,
   primaryKey,
+  serial,
 } from "drizzle-orm/pg-core";
 import { AdapterAccountType } from "next-auth/adapters";
 
@@ -179,6 +180,14 @@ export const toggles = pico.table("toggles", {
     mode: "date",
     withTimezone: true,
   }).defaultNow(),
+});
+
+export const pushSubscriptions = pico.table("push_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  endpoint: text("endpoint").unique().notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Relations
