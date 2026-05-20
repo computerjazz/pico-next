@@ -26,12 +26,12 @@ export default async function ShortwaveLandingPage() {
             </h1>
 
             <p>
-              {`Press and hold the big button on top of the little wooden box to send a voice message to a
-              parent or friend. If the "answering machine" light on top is
-              blinking, they've sent you a message back! Give the button a quick tap to listen.`}
+              {`Press the big button on top of the little wooden box to send a voice message to a
+              parent or a friend. When the "answering machine" light starts
+              to blink, they've sent you a message back!`}
             </p>
             <p>
-              {`Log into your account to view all of your messages and record and send new answering machine messages back:`}
+              {`Log into your account to listen to all of your messages and send messages back:`}
             </p>
             <div className="max-h-96 flex">
               <RecordingsChat recordings={recordings} autoScroll={false} />
