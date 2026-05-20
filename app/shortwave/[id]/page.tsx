@@ -54,25 +54,25 @@ function CornerMask({ className }: { className?: string }) {
 function ListMask({ color = "background" }: { color?: string }) {
   return (
     <>
-      <div className={`flex bg-${color} flex-1`} />
+      <div className={`flex bg-background flex-1`} />
 
       <div className="max-w-md flex flex-1000">
         <div className={`flex flex-99 justify-between text-background`}>
           {/* Top Left Mask SVG */}
           <div className="flex flex-row">
-            <div className={`flex-1 bg-${color}`} />
-            <div className={`w-4 h-12 bg-${color} rounded-br-full`} />
+            <div className={`flex-1 bg-background`} />
+            <div className={`w-4 h-12 bg-background rounded-br-full`} />
 
             <CornerMask className="translate-x-[-1px]" />
           </div>
           <div className="flex flex-1 max-w-md" />
           <div className="flex flex-row">
             <CornerMask className="-scale-x-100 translate-x-[1px]" />
-            <div className={`w-4 h-12 bg-${color} rounded-bl-full`} />
+            <div className={`w-4 h-12 bg-background rounded-bl-full`} />
           </div>
         </div>
       </div>
-      <div className={`flex bg-${color} flex-1`} />
+      <div className={`flex bg-background flex-1`} />
     </>
   );
 }
