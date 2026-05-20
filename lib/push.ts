@@ -2,6 +2,18 @@
 import webpush from "web-push";
 import { db } from "@/db";
 import { CHANNEL_TYPE } from "./constants";
+import { z } from "zod";
+
+export const SubscriptionPayloadSchema = z.object({
+  deviceId: z.string(),
+  endpoint: z.string(),
+  keys: z.object({
+    auth: z.string(),
+    p256dh: z.string(),
+  }),
+});
+
+export type SubscriptionPayload = z.infer<typeof SubscriptionPayloadSchema>;
 
 webpush.setVapidDetails(
   "mailto:hi@danielmerrill.com",
