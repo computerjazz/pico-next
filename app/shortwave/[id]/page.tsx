@@ -102,7 +102,7 @@ export default async function DevicePage({
   const isDeviceOwner = sessionUserId && deviceUserId === sessionUserId;
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-svh">
       <PushSubscriber
         shouldPrompt={!!isDeviceOwner}
         deviceId={device.deviceId}

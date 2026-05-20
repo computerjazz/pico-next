@@ -183,6 +183,13 @@
       "when": 1779244748827,
       "tag": "0025_optimal_baron_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1779286515213,
+      "tag": "0026_low_scalphunter",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { subscribeWebPush } from "../actions/subscribeWebPush";
 
 const PushSubscriber = ({
   shouldPrompt,
@@ -40,15 +41,8 @@ const PushSubscriber = ({
         }));
 
       const sub = JSON.parse(JSON.stringify(subscription));
-
-      console.log("subscription!!!", sub);
-      await fetch("/api/push/subscribe", {
-        method: "POST",
-        body: JSON.stringify({
-          ...sub,
-          deviceId,
-        }),
-      });
+      const payload = { ...sub, deviceId };
+      await subscribeWebPush(payload);
     }
 
     setup();

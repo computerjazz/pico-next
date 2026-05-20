@@ -1,0 +1,2 @@
+ALTER TABLE "pico_next_db"."push_subscriptions" ADD COLUMN "user_id" text;--> statement-breakpoint
+ALTER TABLE "pico_next_db"."push_subscriptions" ADD CONSTRAINT "push_subscriptions_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "pico_next_db"."user"("id") ON DELETE set null ON UPDATE no action;

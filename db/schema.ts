@@ -188,6 +188,7 @@ export const pushSubscriptions = pico.table("push_subscriptions", {
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
 });
 
 // Relations
@@ -241,6 +242,18 @@ export const togglesRelations = relations(toggles, ({ one }) => ({
     references: [devices.deviceId],
   }),
 }));
+
+export const pushSubscriptionsRelations = relations(
+  pushSubscriptions,
+  ({ one }) => {
+    return {
+      user: one(users, {
+        fields: [pushSubscriptions.userId],
+        references: [users.id],
+      }),
+    };
+  },
+);
 
 export type Device = typeof devices.$inferSelect;
 export type DeviceChannel = typeof deviceChannels.$inferSelect;
