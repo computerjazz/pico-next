@@ -248,7 +248,11 @@ static void setGainFromConfigJson(const String& json) {
   String volumeStr = doc["volume"];
   if (volumeStr.length() > 0) {
     Serial.printf("Extracted volume: %s\n", volumeStr);
-    float gain = volumeStr.toFloat() / 100.0f;
+    // vol is a string from 0-100, convert it to 0-1
+    float volPct = volumeStr.toFloat() / 100.0f;
+    // max volume is way too loud at 1.0, scale it down
+    float volToGainScale = 0.5f;
+    float gain = volPct * volToGainScale;
     Serial.printf("Setting gain: %f\n", gain);
     setGain(gain);
   }
