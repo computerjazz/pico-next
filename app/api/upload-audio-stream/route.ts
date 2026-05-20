@@ -11,6 +11,7 @@ import { CHANNEL_TYPE } from "@/lib/constants";
 import { getAudioDuration, processAudio } from "@/lib/audio";
 import { clearActiveJob, setActiveJob } from "@/lib/job";
 import { randomUUID } from "crypto";
+import { sendWebPush } from "@/lib/push";
 
 export const runtime = "nodejs";
 
@@ -143,6 +144,10 @@ export async function POST(req: Request) {
         columns: { channelId: true },
       });
 
+      const device = await db.query.devices.findFirst({
+        where: (t, { eq }) => eq(t.deviceId, deviceId),
+      });
+
       const [recording] = await db
         .insert(recordings)
         .values({
@@ -157,9 +162,16 @@ export async function POST(req: Request) {
         .returning();
 
       const chatIds = channels.map((c) => c.channelId);
-      const resp = await sendVoiceToChat(outputMp3Path, {
-        chatIds,
-      });
+      const [resp] = await Promise.all([
+        sendVoiceToChat(outputMp3Path, {
+          chatIds,
+        }),
+        sendWebPush({
+          deviceId,
+          title: device?.name ?? "sh0rtwave",
+          body: "New message!",
+        }),
+      ]);
       console.log("voice resp", resp);
       const { remappedChatIds, chatIdToMessageIdMap } = resp;
 

@@ -9,7 +9,7 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY!,
 );
 
-export async function sendPush(payload: {
+export async function sendWebPush(payload: {
   title: string;
   body: string;
   deviceId: string;
