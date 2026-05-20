@@ -4,7 +4,7 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: "/img/icons/icon-192.png",
-      data: { url: `/shortwave/${data.chatId}` }, // pass the id through
+      data: { url: `/shortwave/${data.deviceId}` },
     }),
   );
 });
