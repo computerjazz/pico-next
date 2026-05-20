@@ -12,7 +12,8 @@ const PushSubscriber = ({
   useEffect(() => {
     if (
       !("serviceWorker" in navigator) ||
-      !("PushManager" in navigator || !shouldPrompt)
+      !("PushManager" in window) ||
+      !shouldPrompt
     ) {
       console.log(
         "cannot register",
@@ -27,10 +28,6 @@ const PushSubscriber = ({
       const reg = await navigator.serviceWorker.register("/sw.js", {
         scope,
       });
-
-      // Don't re-subscribe if already subscribed
-      const existing = await reg.pushManager.getSubscription();
-      if (existing) return;
 
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,

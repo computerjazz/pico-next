@@ -176,6 +176,13 @@
       "when": 1778705778375,
       "tag": "0024_next_agent_zero",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1779244748827,
+      "tag": "0025_optimal_baron_zemo",
+      "breakpoints": true
     }
   ]
 }
