@@ -13,6 +13,15 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
       return;
     }
     try {
+      // Subtle haptic feedback when recording begins
+      if (typeof window !== "undefined" && "vibrate" in navigator) {
+        // Try for a subtle, brief vibration pattern
+        try {
+          navigator.vibrate(30);
+        } catch (err) {
+          // Not critical, ignore failure
+        }
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const audioPriority = ["audio/mp3", "audio/webm", "audio/ogg"];
       const mimeType = audioPriority.find((mt) =>
@@ -42,16 +51,6 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
         await leaveMessage({ form, deviceId });
       };
       mediaRecorder.start();
-
-      // Subtle haptic feedback when recording begins
-      if (typeof window !== "undefined" && "vibrate" in navigator) {
-        // Try for a subtle, brief vibration pattern
-        try {
-          navigator.vibrate(30);
-        } catch (err) {
-          // Not critical, ignore failure
-        }
-      }
 
       setIsRecording(true);
     } catch (e) {
