@@ -155,7 +155,7 @@ export default async function DevicePage({
       <div className="flex flex-1 flex-col overflow-y-hidden relative">
         <div className="overflow-y-scroll relative">
           <div className="max-w-md mx-auto flex flex-col flex-1 min-h-0 px-4">
-            {device.type === "shortwave" && isDeviceOwner && (
+            {isDeviceOwner && (
               <>
                 <div className="flex flex-1">
                   <RecordingsList recordings={recordingItems} />
@@ -177,9 +177,11 @@ export default async function DevicePage({
           <ListMask />
         </div>
       </div>
-      <div className="p-4">
-        <RecordingButton deviceId={deviceId} />
-      </div>
+      {isDeviceOwner && (
+        <div className="p-4">
+          <RecordingButton deviceId={deviceId} />
+        </div>
+      )}
     </div>
   );
 }
