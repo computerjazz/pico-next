@@ -97,13 +97,17 @@ export default async function DevicePage({
     notFound();
   }
 
-  const deviceUserId = device?.userId;
+  const deviceUserId = device.userId;
   const sessionUserId = session?.user?.id;
   const isDeviceOwner = sessionUserId && deviceUserId === sessionUserId;
 
   return (
     <div className="flex flex-col h-screen">
-      <PushSubscriber shouldPrompt={!!isDeviceOwner} scope="/shortwave/" />
+      <PushSubscriber
+        shouldPrompt={!!isDeviceOwner}
+        deviceId={device.deviceId}
+        scope="/shortwave/"
+      />
       <PageHeader>
         <div className="flex flex-col justify-center">
           <div className="flex flex-row gap-4">

@@ -5,9 +5,11 @@ import { useEffect } from "react";
 const PushSubscriber = ({
   shouldPrompt,
   scope,
+  deviceId,
 }: {
   shouldPrompt: boolean;
   scope: string;
+  deviceId: string;
 }) => {
   useEffect(() => {
     if (
@@ -16,8 +18,7 @@ const PushSubscriber = ({
       !shouldPrompt
     ) {
       console.log(
-        "cannot register",
-        navigator,
+        "cannot register sw, pm:",
         "serviceWorker" in navigator,
         "PushManager" in navigator,
       );
@@ -29,19 +30,29 @@ const PushSubscriber = ({
         scope,
       });
 
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-      });
+      const existing = await reg.pushManager.getSubscription();
 
+      const subscription =
+        existing ||
+        (await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        }));
+
+      const sub = JSON.parse(JSON.stringify(subscription));
+
+      console.log("subscription!!!", sub);
       await fetch("/api/push/subscribe", {
         method: "POST",
-        body: JSON.stringify(subscription),
+        body: JSON.stringify({
+          ...sub,
+          deviceId,
+        }),
       });
     }
 
     setup();
-  }, [shouldPrompt, scope]);
+  }, [shouldPrompt, scope, deviceId]);
 
   return null;
 };
