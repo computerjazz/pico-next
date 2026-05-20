@@ -57,7 +57,7 @@ function ListMask({ color = "background" }: { color?: string }) {
       <div className={`flex bg-${color} flex-1`} />
 
       <div className="max-w-md flex flex-1000">
-        <div className={`flex flex-99 justify-between text-${color}`}>
+        <div className={`flex flex-99 justify-between text-background`}>
           {/* Top Left Mask SVG */}
           <div className="flex flex-row">
             <div className={`flex-1 bg-${color}`} />

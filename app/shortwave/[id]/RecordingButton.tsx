@@ -74,7 +74,7 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
 
   return (
     <div
-      className="flex flex-col items-center gap-2 transition-transform duration-150 hover:scale-105"
+      className="flex flex-col items-center gap-2"
       style={{
         WebkitUserSelect: "none",
         userSelect: "none",
@@ -93,9 +93,9 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
         onTouchEnd={stopRecording}
         onMouseDown={startRecording}
         onMouseLeave={stopRecording}
+        onMouseUp={stopRecording}
         onContextMenu={(e) => e.preventDefault()}
-        className={`${isRecording ? "bg-accent" : "bg-muted-foreground"} border-0 outline-0 rounded-full cursor-pointer w-24 h-24 select-none active:outline-none focus:outline-none`}
-        aria-label="Record"
+        className={`${isRecording ? "border-accent" : "border-accent-surface"} flex border-4 rounded-full cursor-pointer w-24 h-24 select-none active:outline-none focus:outline-none overflow-hidden transition-transform duration-150 hover:scale-105`}
         tabIndex={0}
         draggable={false}
         style={{
@@ -104,8 +104,10 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
           WebkitTapHighlightColor: "transparent",
         }}
       >
-        <div className="pointer-none:*: text-accent-foreground select-none">
-          <span className="select-none">Leave a message</span>
+        <div
+          className={`flex flex-1 m-1 pointer-none:*: text-accent-foreground select-none ${isRecording ? "bg-accent" : "bg-accent-surface"} rounded-full items-center`}
+        >
+          <span className="select-none text-xs">Leave a message</span>
         </div>
       </button>
     </div>

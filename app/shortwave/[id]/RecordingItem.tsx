@@ -108,7 +108,7 @@ export default function RecordingItem({
         </button>
       </div>
       <motion.div
-        className={`flex flex-col gap-2 p-4 rounded-md ${isDevice ? "bg-accent-surface text-accent-foreground" : "bg-muted-surface text-muted-foreground"} z-10 `}
+        className={`flex flex-col gap-2 p-4 rounded-md ${isDevice ? "bg-muted-foreground text-accent-foreground" : "bg-muted-surface text-muted-foreground"} z-10 `}
         drag="x"
         dragConstraints={{ right: 0, left: -100 }}
         dragElastic={0.05}
