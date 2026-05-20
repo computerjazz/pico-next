@@ -2,6 +2,7 @@ import { db } from "@/db";
 import PageHeader from "../components/PageHeader";
 import Image from "next/image";
 import RecordingsChat from "../components/RecordingsChat";
+import HeroImage from "../components/HeroImage";
 
 export default async function ShortwaveLandingPage() {
   const recordings = await db.query.recordings.findMany({
@@ -17,14 +18,7 @@ export default async function ShortwaveLandingPage() {
             <h1 className="text-3xl font-bold text-accent mb-2">sh0rtwave</h1>
           </div>
         </PageHeader>
-        <Image
-          width={1024}
-          height={128}
-          src="/hero-shortwave.jpg"
-          alt="Shortwave Hero"
-          className="w-full aspect-2.5/1 object-cover"
-          priority
-        />
+        <HeroImage src="/hero-shortwave.jpg" alt="sh0rtwave hero" />
         <div className="flex flex-col items-center">
           <div className="gap-4 max-w-lg flex flex-col p-4">
             <h1 className="text-2xl font-semibold whitespace-pre-line">
