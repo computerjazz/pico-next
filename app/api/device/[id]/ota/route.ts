@@ -11,18 +11,24 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<RouteParams> },
 ) {
+  const deviceId = (await params).id;
+  console.log(`OTA: check from device: ${deviceId}`);
+
   const maybeResp = await verifyAuth(req, {
-    tag: "ota/shortwave",
+    tag: "device/:id/ota",
     method: "GET",
   });
-  if (maybeResp) return maybeResp;
-  const deviceId = (await params).id;
+  if (maybeResp) {
+    console.log(`OTA: auth failed for device: ${deviceId}`);
+    return maybeResp;
+  }
 
   const device = await db.query.devices.findFirst({
     where: (t, { eq }) => eq(t.deviceId, deviceId),
   });
 
   if (!device) {
+    console.log(`OTA: no device found for id: ${deviceId}`);
     return Response.json(
       {
         success: false,
@@ -58,14 +64,15 @@ export async function GET(
     })
     .where(eq(devices.deviceId, deviceId));
 
-  return Response.json(
-    {
-      deviceType: device.type,
-      currentVersion,
-      otaVersion,
-      updateAvailable,
-      firmwareUrl,
-    },
-    { status: 200 },
-  );
+  const payload = {
+    deviceType: device.type,
+    currentVersion,
+    otaVersion,
+    updateAvailable,
+    firmwareUrl,
+  };
+
+  console.log(`OTA check complete: ${JSON.stringify(payload)}`);
+
+  return Response.json(payload, { status: 200 });
 }
