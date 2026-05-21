@@ -1161,66 +1161,73 @@ void setup() {
 
 void loop() {
   unsigned long now = millis();
-  static unsigned long lastVolMs = 0;
-  static bool          prevPressed     = false;
-  static unsigned long pressStart      = 0;
+  static unsigned long lastVolMs      = 0;
+  static bool          prevPressed    = false;
+  static unsigned long pressStart     = 0;
   static bool          holdingToRecord = false;
+
   bool isPressed = getIsButtonPressed();
+  bool wsBusy    = recording || uploadStreamActive || playbackActive || playbackPending;
 
-  bool wsBusy = recording || uploadStreamActive || playbackActive || playbackPending;
-  bool httpDueThisIter = !isPressed && (
-      (lastPollMs == 0           || now - lastPollMs           >= ANSWERING_MACHINE_POLL_INTERVAL_MS) ||
-      (lastOtaCheckMs == 0       || now - lastOtaCheckMs       >= OTA_CHECK_INTERVAL_MS) ||
-      (lastDeviceInfoCheckMs == 0|| now - lastDeviceInfoCheckMs >= DEVICE_INFO_POLL_INTERVAL_MS));
+  bool httpDue = !isPressed && !wsBusy && (
+    (lastPollMs          == 0 || now - lastPollMs          >= ANSWERING_MACHINE_POLL_INTERVAL_MS) ||
+    (lastOtaCheckMs      == 0 || now - lastOtaCheckMs      >= OTA_CHECK_INTERVAL_MS)              ||
+    (lastDeviceInfoCheckMs == 0 || now - lastDeviceInfoCheckMs >= DEVICE_INFO_POLL_INTERVAL_MS));
 
-  if (wsBusy || httpDueThisIter) wsPause();
-  else                            wsResume();
+  // WS management: pause when HTTP is due or device is busy, resume otherwise.
+  // If we just issued wsPause(), skip this iteration so lwIP can drain the
+  // close handshake before any new SSL connect attempt.
+  if (wsBusy || httpDue) {
+    if (g_wsRunning) {
+      wsPause();
+      delay(5);
+      return;  // come back next iteration — WS will be closed by then
+    }
+  } else {
+    wsResume();
+  }
+
   if (g_wsRunning) wsClient.loop();
 
-  // Skip HTTP polls while another SSL operation is in flight (playback /
-  // recording upload). Holding two TLS contexts simultaneously exhausts heap
-  // and surfaces as `esp-aes: Failed to allocate memory` from mbedTLS.
-  if (!isPressed && !wsBusy) {
+  // HTTP polls — only runs when WS is confirmed down (!g_wsRunning)
+  if (httpDue) {
     if (lastPollMs == 0 || now - lastPollMs >= ANSWERING_MACHINE_POLL_INTERVAL_MS) {
       lastPollMs = now;
       pollAnsweringMachine();
     }
-
     if (lastOtaCheckMs == 0 || now - lastOtaCheckMs >= OTA_CHECK_INTERVAL_MS) {
       lastOtaCheckMs = now;
       checkForOtaUpdate();
     }
-
     if (lastDeviceInfoCheckMs == 0 || now - lastDeviceInfoCheckMs >= DEVICE_INFO_POLL_INTERVAL_MS) {
       lastDeviceInfoCheckMs = now;
       getDeviceInfo();
     }
   }
 
-  if (!isPressed && now - lastVolMs > 150 && USE_VOLUME_PIN) {
+  // Volume pot
+  if (!isPressed && USE_VOLUME_PIN && now - lastVolMs > 150) {
     lastVolMs = now;
-    int raw = analogRead(VOLUME_PIN);          // 0–4095 on ESP32-S3
-    float newGain = raw / 4095.0f * 2.0f;       // 0.0–2.0 (pot center = unity gain)
+    float newGain = analogRead(VOLUME_PIN) / 4095.0f * 2.0f;
     setGain(newGain);
   }
 
+  // Button: press edge
   if (isPressed && !prevPressed) {
-    pressStart      = millis();
-    holdingToRecord = false;
-    if (playbackActive) stopPlayback = true;  // any press cancels playback
+    pressStart       = millis();
+    holdingToRecord  = false;
+    if (playbackActive) stopPlayback = true;
   }
 
-  // Arm recording once the button has been held past the threshold.
-  // Allowed even if playback is active — stopPlayback was already set on the
-  // press edge, so the playback task is winding down.
+  // Button: hold threshold — arm recording
   if (isPressed && !holdingToRecord && !recording &&
       !uploadStreamActive && !stopRequested &&
       millis() - pressStart >= RECORD_HOLD_MS) {
     holdingToRecord = true;
-    // A long-press to record should cancel any queued/active playback.
     playbackPending = false;
     stopPlayback    = true;
-    chunkIndex = 0;
+    chunkIndex      = 0;
+
     struct tm ti;
     if (getLocalTime(&ti)) {
       char buf[20]; strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", &ti);
@@ -1228,59 +1235,50 @@ void loop() {
     } else {
       recordingId = String(millis());
     }
-    // Switch mic to master so it generates its own BCLK/WS clock.
-    // BackgroundAudio's MSB slot format causes the slave mic to mis-frame
-    // WS edges, so master mode is required for reliable i2s_channel_read.
-    // If playback was just interrupted, give the playback task a moment to
-    // release the I2S DMA before we reconfigure the GPIO routing.
+
     if (playbackActive) {
       unsigned long t0 = millis();
       while (playbackActive && millis() - t0 < 800) delay(10);
     }
-    // Reconfigure mic first, then arm recording so audioTask never touches
-    // a channel handle while it is being deleted/recreated.
     micDisable();
-    micEnable(true);  // master for the duration of this recording
-    recording  = true;
+    micEnable(true);
+    recording = true;
     Serial.printf("Recording started — id: %s\n", recordingId.c_str());
   }
 
+  // Button: release edge
   if (!isPressed && prevPressed) {
-    unsigned long dur = millis() - pressStart;
     if (holdingToRecord) {
-      // Long press: stop recording and upload
-      recording = false; stopRequested = true;
+      recording     = false;
+      stopRequested = true;
       Serial.println("Recording stopped");
-    } else if (dur >= SHORT_PRESS_MIN_MS) {
-      Serial.printf("[DEBUG] pending=%d recording=%d active=%d\n", playbackPending, recording, playbackActive);
-      // Quick double-blink LED to acknowledge short press
-      analogWrite(LED_PIN, 255);
-      delay(60);
+    } else if (millis() - pressStart >= SHORT_PRESS_MIN_MS) {
+      // Double-blink to acknowledge
+      analogWrite(LED_PIN, 255); delay(60);
+      analogWrite(LED_PIN, 0);   delay(60);
+      analogWrite(LED_PIN, 255); delay(60);
       analogWrite(LED_PIN, 0);
-      delay(60);
-      analogWrite(LED_PIN, 255);
-      delay(60);
-      analogWrite(LED_PIN, 0);
-      // Short tap: trigger playback (recording never started)
-      Serial.println("[PLAYBACK] Button tap detected: will trigger playback.");
-
+      Serial.println("[PLAYBACK] Button tap: queuing playback");
       playbackPending = true;
     }
     holdingToRecord = false;
   }
+
   prevPressed = isPressed;
 
-  if (playbackPending && !recording && !playbackActive && !isPressed && !holdingToRecord) {
+  // Kick off playback
+  if (playbackPending && !recording && !playbackActive && !isPressed) {
     playbackPending = false;
     playbackActive  = true;
     stopPlayback    = false;
     wsPause();
     pollAnsweringMachine();
     if (playbackTask) {
-      Serial.println("[PLAYBACK] Notifying playback task to start output.");
       xTaskNotifyGive(playbackTask);
+    } else {
+      Serial.println("playback task missing");
+      playbackActive = false;
     }
-    else { Serial.println("playback task missing"); playbackActive = false; }
   }
 
   // LED
@@ -1294,9 +1292,9 @@ void loop() {
     if (now >= nextDoubleBlinkMs) {
       switch (doubleBlinkPhase) {
         case 0: analogWrite(LED_PIN, 255); nextDoubleBlinkMs = now + 80;                     doubleBlinkPhase = 1; break;
-        case 1: analogWrite(LED_PIN, 0);  nextDoubleBlinkMs = now + 120;                    doubleBlinkPhase = 2; break;
+        case 1: analogWrite(LED_PIN, 0);   nextDoubleBlinkMs = now + 120;                    doubleBlinkPhase = 2; break;
         case 2: analogWrite(LED_PIN, 255); nextDoubleBlinkMs = now + 80;                     doubleBlinkPhase = 3; break;
-        case 3: analogWrite(LED_PIN, 0);  nextDoubleBlinkMs = now + DOUBLE_BLINK_PERIOD_MS; doubleBlinkPhase = 0; break;
+        case 3: analogWrite(LED_PIN, 0);   nextDoubleBlinkMs = now + DOUBLE_BLINK_PERIOD_MS; doubleBlinkPhase = 0; break;
       }
     }
   } else {
