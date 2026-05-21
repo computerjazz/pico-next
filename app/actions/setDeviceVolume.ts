@@ -30,7 +30,5 @@ export async function setDeviceVolume({
       }),
     }),
   );
-  revalidatePath(`/device/${deviceId}`);
-
   return { success: true };
 }

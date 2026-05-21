@@ -4,22 +4,18 @@ import VolumeInput from "./VolumeInput";
 import DeviceNameInput from "../../components/DeviceNameInput";
 import { auth } from "@/auth";
 import ClaimButton from "../../components/ClaimButton";
-import { RecordingsList } from "./RecordingsList";
 import { Device, devices, recordings } from "@/db/schema";
 import { eq, isNull, and, asc } from "drizzle-orm";
 import RecordingButton from "./RecordingButton";
 import PageHeader from "@/app/components/PageHeader";
 import PushSubscriber from "@/app/components/PushSubscriber";
-import RecordingListFrame from "@/app/components/RecordingListFrame";
 import RecordingsChat from "@/app/components/RecordingsChat";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <div className="flex flex-row font-semibold text-muted-foreground text-xs gap-2">
-        <div>{label}</div>
-        <div>{value}</div>
-      </div>
+    <div className="flex flex-row font-semibold text-muted-foreground text-xs gap-2">
+      <div>{label}</div>
+      <div>{value}</div>
     </div>
   );
 }
@@ -90,7 +86,6 @@ export default async function DevicePage({
           <div className="space-y-2 text-sm mt-4">
             {device.type === "shortwave" ? (
               <div className="flex flex-row gap-4">
-                <DeviceStatRow label="Volume:" value={`${device.volume}%`} />
                 <VolumeInput device={device} disabled={!isDeviceOwner} />
               </div>
             ) : (
