@@ -41,7 +41,7 @@
 // ============================================================
 
 #define ANSWERING_MACHINE_POLL_INTERVAL_MS       60000UL
-#define DEVICE_INFO_POLL_INTERVAL_MS  60000UL
+#define DEVICE_INFO_POLL_INTERVAL_MS  80000UL
 
 #define OTA_CHECK_INTERVAL_MS  600000UL
 #define RECORD_HOLD_MS         300UL   // hold longer than this to record; tap shorter for playback
@@ -646,50 +646,48 @@ static bool installOtaFromUrl(const String& url) {
 }
 
 static bool checkForOtaUpdate() {
-  WiFiClientSecure client;
-  client.setInsecure();
+  String otaVersion;
+  String firmwareUrl;
 
-  HTTPClient http;
-  if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/ota")) {
-    Serial.println("ota: metadata begin failed");
-    return false;
+  // Scope the first TLS connection so it fully destructs before the download
+  {
+    WiFiClientSecure client;
+    client.setInsecure();
+    HTTPClient http;
+    if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/ota")) {
+      Serial.println("ota: metadata begin failed");
+      return false;
+    }
+    http.addHeader("Authorization", String("Bearer ") + authToken);
+    http.addHeader("x-device-id", deviceId);
+    http.addHeader("x-firmware-version", String(firmwareVersion));
+    http.addHeader("ngrok-skip-browser-warning", "true");
+
+    int code = http.GET();
+    String body = http.getString();
+    http.end();
+    // client and http destruct here, releasing ~44KB back to heap
+    
+    if (code != 200) {
+      Serial.printf("ota: metadata HTTP %d\n", code);
+      return false;
+    }
+
+    JsonDocument doc;
+    if (deserializeJson(doc, body)) return false;
+
+    otaVersion  = doc["otaVersion"].as<String>();
+    firmwareUrl = resolveOtaUrl(doc["firmwareUrl"].as<String>());
   }
 
-  http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("x-device-id", deviceId);
-  http.addHeader("x-firmware-version", String(firmwareVersion));
-  http.addHeader("ngrok-skip-browser-warning", "true");
-
-  int code = http.GET();
-  String body = http.getString();
-  http.end();
-
-  if (code != 200) {
-    Serial.printf("ota: metadata HTTP %d\n", code);
-    return false;
-  }
-
-  JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, body);
-
-  if (error) {
-    Serial.print("Parse failed: ");
-    Serial.println(error.c_str());
-    return false;
-  }
-
-  String otaVersion = doc["otaVersion"];
-  String firmwareUrl = resolveOtaUrl(doc["firmwareUrl"]);
   if (otaVersion.length() == 0) {
     Serial.println("ota: metadata missing otaVersion");
     return false;
   }
-
   if (otaVersion == firmwareVersion) {
     Serial.printf("ota: up to date (%s)\n", firmwareVersion);
     return true;
   }
-
   if (firmwareUrl.length() == 0) {
     Serial.printf("ota: update %s available but no firmwareUrl\n", otaVersion.c_str());
     return false;
