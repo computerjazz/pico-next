@@ -1,13 +1,15 @@
 import { db } from "@/db";
 import PageHeader from "../components/PageHeader";
-import Image from "next/image";
 import RecordingsChat from "../components/RecordingsChat";
 import HeroImage from "../components/HeroImage";
+import { asc } from "drizzle-orm";
+import { recordings } from "@/db/schema";
 
 export default async function ShortwaveLandingPage() {
-  const recordings = await db.query.recordings.findMany({
+  const recordingItems = await db.query.recordings.findMany({
     where: (t, { and, eq, isNull }) =>
       and(eq(t.deviceId, "sh0rtwave-alpha-dev"), isNull(t.deletedAt)),
+    orderBy: asc(recordings.createdAt),
   });
 
   return (
@@ -34,7 +36,7 @@ export default async function ShortwaveLandingPage() {
               {`Log into your account to listen to all of your messages and send messages back:`}
             </p>
             <div className="max-h-96 flex">
-              <RecordingsChat recordings={recordings} autoScroll={false} />
+              <RecordingsChat recordings={recordingItems} autoScroll={false} />
             </div>
           </div>
         </div>
