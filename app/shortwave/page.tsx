@@ -20,13 +20,13 @@ export default async function ShortwaveLandingPage() {
             <h1 className="text-3xl font-bold text-accent mb-2">sh0rtwave</h1>
           </div>
         </PageHeader>
-        <HeroImage src="/hero-shortwave.jpg" alt="sh0rtwave hero" />
+        <HeroImage
+          src="/hero-shortwave.jpg"
+          alt="sh0rtwave hero"
+          text={`Trade voice messages, no screens attached`}
+        />
         <div className="flex flex-col items-center">
           <div className="gap-4 max-w-lg flex flex-col p-4">
-            <h1 className="text-2xl font-semibold whitespace-pre-line">
-              {`Trade audio messages.\nNo screens attached.`}
-            </h1>
-
             <p>
               {`Press the big button on top of the little wooden box to send a voice message to a
               parent or a friend. When the "answering machine" light starts
