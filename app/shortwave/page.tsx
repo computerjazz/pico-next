@@ -21,7 +21,7 @@ export default async function ShortwaveLandingPage() {
           </div>
         </PageHeader>
         <HeroImage
-          src="/hero-shortwave.jpg"
+          src="/img/hero-shortwave.jpg"
           alt="sh0rtwave hero"
           text={`Trade voice messages, no screens attached`}
         />

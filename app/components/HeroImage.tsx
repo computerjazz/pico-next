@@ -22,7 +22,7 @@ function HeroImage({
       {!!text && (
         <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center">
           <div className="bg-linear-to-b from-transparent to-black/60 w-full flex items-center justify-center">
-            <div className="max-w-large pb-8 pt-8 text-3xl font-bold text-accent-foreground">
+            <div className="max-w-large pb-8 pt-8 pl-4 pr-4 text-3xl font-bold text-accent-foreground">
               {text}
             </div>
           </div>
