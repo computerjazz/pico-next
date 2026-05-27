@@ -19,7 +19,7 @@ function HomepageCard({
   return (
     <Link
       href={href}
-      className="p-4 outline-1 outline-accent rounded-lg hover:bg-accent hover:text-accent-foreground cursor-pointer text-center group flex flex-col justify-center items-center gap-2"
+      className="p-4 outline-1 outline-accent rounded-lg hover:bg-accent hover:text-accent-foreground cursor-pointer text-center group flex flex-col justify-center items-center gap-2 w-3xs"
     >
       <div className="flex">
         {/* Icon swap on hover */}
