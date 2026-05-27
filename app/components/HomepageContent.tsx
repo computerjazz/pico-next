@@ -29,7 +29,7 @@ function HomepageContent() {
         );
       })}
       <div className="flex flex-1 flex-col items-center justify-center p-4">
-        <p>Simple connected toys built from just one...</p>
+        <p>Simple connected toys built from a single action:</p>
         <div className="flex flex-row gap-4 p-4 flex-wrap items-center justify-center">
           <HomepageCards onCardHover={setHoveredCard} />
         </div>

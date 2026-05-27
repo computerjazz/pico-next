@@ -22,7 +22,7 @@ export const HOMEPAGE_CARDS: Card[] = [
   {
     href: "/shortwave",
     title: "/sh0rtwave",
-    description: "button to push",
+    description: "push a button",
     Icon: RadioButtonOn,
     HoverIcon: SchematicPushbutton,
     src: "/img/component/component-button.jpg",
@@ -30,7 +30,7 @@ export const HOMEPAGE_CARDS: Card[] = [
   {
     href: "/toggle",
     title: "/toggle",
-    description: "switch to flip",
+    description: "flip a switch",
     Icon: ToggleOn,
     HoverIcon: SchematicToggle,
     src: "/img/component/component-switch.jpg",
@@ -38,7 +38,7 @@ export const HOMEPAGE_CARDS: Card[] = [
   {
     href: "/hidden-radio",
     title: "/hidden-radio",
-    description: "knob to turn",
+    description: "turn a knob",
     Icon: Knob,
     HoverIcon: SchematicPotentiometer,
     src: "/img/component/component-knob.jpg",
