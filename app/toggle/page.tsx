@@ -13,12 +13,12 @@ function TogglePage() {
         <HeroImage
           src="/img/hero-toggle.jpg"
           alt="toggle hero"
-          text="A gentle nudge from afar"
+          text="Stay in sync from afar (or don't)"
         />
         <div className="flex flex-col items-center">
           <div className="gap-4 max-w-lg flex flex-col p-4">
-            <p>{`Put one switch on your countertop, and give the other to a friend. When they're both flipped the same way, the light stays green. When you give yours a flip, your friend's turns red.`}</p>
-            <p>{`How long will it take them to notice and flip them both to green again? Will they give theirs another flip and turn YOURS red?`}</p>
+            <p>{`Keep one toggle and give the other to a friend. When they're both flipped the same way, the light stays green. Flip yours again to turn your friend's toggle red.`}</p>
+            <p>{`How long will it take them to notice? Will they return the toggles back to green, or will they flip theirs again and turn YOURS red?`}</p>
             <p>{`Check the leaderboard to see who's spent the most time out of the red!`}</p>
           </div>
         </div>
