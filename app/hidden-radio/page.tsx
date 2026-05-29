@@ -12,8 +12,17 @@ function HiddenRadioPage() {
             </h1>
           </div>
         </PageHeader>
-        <HeroImage src="/img/hero-hidden-radio.jpg" alt="hero hidden radio" />
-        <div className="p-4">Coming soon</div>
+        <HeroImage
+          src="/img/hero-hidden-radio.jpg"
+          alt="hero hidden radio"
+          text="Listen to the signals that are off the dial"
+        />
+        <div className="flex flex-col items-center">
+          <div className="gap-4 max-w-lg flex flex-col p-4">
+            <p>{`Usually, when we "turn on the radio", we listen to the stations that broadcast between 87.9 FM and 108.0 FM.`}</p>
+            <p>{`But radio is much bigger than that.`}</p>
+          </div>
+        </div>
       </main>
     </div>
   );
