@@ -15,11 +15,11 @@ function HiddenRadioPage() {
         <HeroImage
           src="/img/hero-hidden-radio.jpg"
           alt="hero hidden radio"
-          text="Listen to the signals off the dial"
+          text="Discover what's off the dial"
         />
         <div className="flex flex-col items-center">
           <div className="gap-4 max-w-lg flex flex-col p-4">
-            <p>{`When we turn on the radio, we usually listen to the stations that broadcast between 87.9 FM and 108.0 FM.`}</p>
+            <p>{`Most FM radio stations broadcast between 87.9 and 108.0 MHz.`}</p>
             <p>{`But radio is much, much bigger than that.`}</p>
           </div>
         </div>

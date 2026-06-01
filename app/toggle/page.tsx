@@ -15,6 +15,7 @@ function TogglePage() {
           alt="toggle hero"
           text="Stay in sync from afar (or don't)"
           videoPoster="/img/toggle-hero-poster.jpg"
+          mediaClassName={`opacity-80`}
           videoSources={[
             {
               src: "/vid/toggle-hero-opt.webm",

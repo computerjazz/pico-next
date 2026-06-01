@@ -11,13 +11,16 @@ function HeroImage({
   text,
   videoPoster,
   videoSources,
+  mediaClassName,
 }: {
   src: string;
   alt: string;
   text?: string;
   videoPoster?: string;
   videoSources?: VideoSource[];
+  mediaClassName?: string;
 }) {
+  const className = `w-full aspect-2.5/1 object-cover ${mediaClassName}`;
   return (
     <div className="relative">
       {videoSources ? (
@@ -28,7 +31,7 @@ function HeroImage({
           playsInline
           preload="auto"
           poster={videoPoster}
-          className="w-full aspect-2.5/1 object-cover"
+          className={className}
         >
           {videoSources.map((vs) => (
             <source key={vs.src} src={vs.src} type={vs.type} />
@@ -41,7 +44,7 @@ function HeroImage({
           height={128}
           src={src}
           alt={alt}
-          className="w-full aspect-2.5/1 object-cover"
+          className={className}
           priority
         />
       )}
