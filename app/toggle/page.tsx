@@ -11,9 +11,20 @@ function TogglePage() {
           </div>
         </PageHeader>
         <HeroImage
-          src="/img/hero-toggle.jpg"
+          src="/video/hero-toggle.jpg"
           alt="toggle hero"
           text="Stay in sync from afar (or don't)"
+          videoPoster="/img/toggle-hero-poster.jpg"
+          videoSources={[
+            {
+              src: "/vid/toggle-hero-opt.webm",
+              type: "video/webm",
+            },
+            {
+              src: "/vid/toggle-hero-opt.mp4",
+              type: "video/mp4",
+            },
+          ]}
         />
         <div className="flex flex-col items-center">
           <div className="gap-4 max-w-lg flex flex-col p-4">
