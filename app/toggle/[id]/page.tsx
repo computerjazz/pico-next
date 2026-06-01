@@ -17,6 +17,12 @@ function DeviceStatRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function formatMinutesAgo({ date }: { date: Date }) {
+  return `${Math.floor(
+    (Date.now() - new Date(date).getTime()) / 60000,
+  )} minutes ago`;
+}
+
 function DeviceDetails({ device }: { device: Device }) {
   return (
     <>
@@ -26,6 +32,12 @@ function DeviceDetails({ device }: { device: Device }) {
         <DeviceStatRow
           label="Firmware Version:"
           value={device.firmwareVersion}
+        />
+      )}
+      {device.lastSeenAt && (
+        <DeviceStatRow
+          label="Last seen:"
+          value={formatMinutesAgo({ date: device.lastSeenAt })}
         />
       )}
     </>
