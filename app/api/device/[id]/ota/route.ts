@@ -7,6 +7,10 @@ import path from "node:path";
 
 type RouteParams = { id: string };
 
+function sanitizeVersion(raw: string) {
+  return raw.replace(/[-._]/g, "");
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<RouteParams> },
@@ -38,6 +42,7 @@ export async function GET(
   }
 
   const currentVersion = req.headers.get("x-firmware-version") ?? "unknown";
+  const sanitizedCurrentVersion = sanitizeVersion(currentVersion);
   const binDir = path.join(process.cwd(), "public", device.type, "bin");
   const entries = await readdir(binDir, { withFileTypes: true }).catch(
     () => [],
@@ -51,8 +56,9 @@ export async function GET(
     versionDirs.sort((a, b) =>
       b.localeCompare(a, undefined, { numeric: true }),
     )[0] ?? currentVersion;
+  const sanitizedOtaVersion = sanitizeVersion(otaVersion);
   const updateAvailable =
-    otaVersion !== "unknown" && otaVersion > currentVersion;
+    otaVersion !== "unknown" && sanitizedOtaVersion > sanitizedCurrentVersion;
   const firmwareUrl = updateAvailable
     ? `/${device.type}/bin/${encodeURIComponent(otaVersion)}/${device.type}.ino.bin`
     : null;
