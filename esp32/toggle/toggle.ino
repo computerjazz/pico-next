@@ -39,7 +39,6 @@ static bool lastSwitchReading = false;
 static bool switchState = false;
 static bool wsReady = false;
 static String deviceId = "";
-static String groupId = "";
 
 unsigned long lastWifiCheck = 0;
 const unsigned long WIFI_CHECK_INTERVAL = 30000; // 30s
@@ -63,7 +62,6 @@ void checkWifi() {
   }
 }
 
-// Store and load groupId in/from Preferences like deviceId
 static void loadIdsFromPrefs() {
   devicePrefs.begin("device", false);
 #if FORCE_ID_RESET
@@ -80,19 +78,8 @@ static void loadIdsFromPrefs() {
     }
   }
 #endif
-
-  // Group ID storage
-  groupId = devicePrefs.getString("groupId", "");
-  if (groupId.length() == 0) {
-    groupId = String(GROUP_ID);
-    if (groupId.length() > 0) {
-      devicePrefs.putString("groupId", groupId);
-    }
-  }
-
   devicePrefs.end();
   Serial.printf("device id: %s\n", deviceId.c_str());
-  Serial.printf("group id: %s\n", groupId.c_str());
 }
 
 // For common anode: LED is ON when pin is LOW, OFF when pin is HIGH.
@@ -245,7 +232,6 @@ static void startWifiPortal() {
       "<body>"
       "<h2>Connect toggle</h2>"
       "<div class='device-id'><b>Device ID:</b><br>" + deviceId + "</div>"
-      "<div class='group-id'><b>Group ID:</b><br>" + groupId + "</div>"
       "<form action='/save' method='POST' onsubmit='trimInputs(event)'>"
       "<label>SSID<br><input id='ssid' name='ssid' type='text' autocomplete='username wifi-ssid'></label>"
       "<label>Password<br>"
@@ -515,7 +501,7 @@ static bool postToggleState(bool isOn) {
   http.addHeader("Authorization", String("Bearer ") + authToken);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("ngrok-skip-browser-warning", "true");
-  String body = String("{\"state\":\"") + (isOn ? "on" : "off") + "\",\"groupId\":\"" + groupId + "\"}";
+  String body = String("{\"state\":\"") + (isOn ? "on" : "off") + "\"}";
   int code = http.POST(body);
   http.end();
   return code >= 200 && code < 300;
@@ -525,9 +511,11 @@ static void pollGroupState() {
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
-  String url = String("https://") + serverHost + "/api/toggle/group/" + groupId;
+  String url = String("https://") + serverHost + "/api/toggle/group";
   if (!http.begin(client, url)) return;
   http.addHeader("ngrok-skip-browser-warning", "true");
+  http.addHeader("Authorization", String("Bearer ") + authToken);
+  http.addHeader("x-device-id", deviceId);
   int code = http.GET();
   if (code == 200) {
     String body = http.getString();

@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import ClaimButton from "../../components/ClaimButton";
 import { Device } from "@/db/schema";
 import PageHeader from "@/app/components/PageHeader";
+import Scoreboard from "../group/[groupId]/Scoreboard";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -59,7 +60,9 @@ export default async function TogglePage({
     },
   });
 
-  const device = group.find((d) => d.deviceId === deviceId)?.device;
+  const device = await db.query.devices.findFirst({
+    where: (t, { eq }) => eq(t.deviceId, deviceId),
+  });
 
   if (!device) {
     notFound();
@@ -68,7 +71,8 @@ export default async function TogglePage({
   const deviceUserId = device?.userId;
   const sessionUserId = session?.user?.id;
   const isDeviceOwner = sessionUserId && deviceUserId === sessionUserId;
-
+  const groupId = group[0]?.groupId;
+  const groupDevices = group.map((g) => g.device);
   return (
     <div className="flex flex-col h-screen">
       <PageHeader>
@@ -82,6 +86,12 @@ export default async function TogglePage({
           </div>
         </div>
       </PageHeader>
+      {groupId && (
+        <Scoreboard
+          groupId={groupId}
+          devices={new Map(groupDevices.map((gd) => [gd.deviceId, gd]))}
+        />
+      )}
     </div>
   );
 }
