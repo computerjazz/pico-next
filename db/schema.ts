@@ -139,6 +139,14 @@ export const deviceChannels = pico.table("device_channels", {
   }).defaultNow(),
 });
 
+export const deviceGroups = pico.table("device_groups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  groupId: varchar("group_id", { length: 64 }),
+  deviceId: varchar("device_id", { length: 100 })
+    .notNull()
+    .references(() => devices.deviceId),
+});
+
 export const recordings = pico.table("recordings", {
   id: uuid("id").primaryKey().defaultRandom(),
   deviceId: varchar("device_id", { length: 100 }),
@@ -216,6 +224,15 @@ export const deviceChannelsRelations = relations(
     };
   },
 );
+
+export const deviceGroupRelations = relations(deviceGroups, ({ one }) => {
+  return {
+    device: one(devices, {
+      fields: [deviceGroups.deviceId],
+      references: [devices.deviceId],
+    }),
+  };
+});
 
 export const recordingsRelations = relations(recordings, ({ one, many }) => ({
   device: one(devices, {

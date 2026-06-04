@@ -13,4 +13,5 @@ export default defineConfig({
     port: Number(process.env.DATABASE_PORT!),
     ssl: false,
   },
+  // verbose: true,
 });

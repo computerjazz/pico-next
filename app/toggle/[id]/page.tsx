@@ -52,10 +52,14 @@ export default async function TogglePage({
   const deviceId = (await params).id;
   const session = await auth();
 
-  console.log("toggle page!");
-  const device = await db.query.devices.findFirst({
-    where: (d, { eq }) => eq(d.deviceId, deviceId),
+  const group = await db.query.deviceGroups.findMany({
+    where: (dg, { eq }) => eq(dg.deviceId, deviceId),
+    with: {
+      device: true,
+    },
   });
+
+  const device = group.find((d) => d.deviceId === deviceId)?.device;
 
   if (!device) {
     notFound();

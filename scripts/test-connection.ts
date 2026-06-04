@@ -1,15 +1,17 @@
 import { Pool } from "pg";
 import dns from "dns/promises";
+import "./env";
 
 async function createPool() {
-  const { address } = await dns.lookup("pi-coboy.quoll-jazz.ts.net", {
+  const { address } = await dns.lookup(process.env.DATABASE_HOST!, {
     family: 4,
   });
+  console.log("address!!", address);
   const pool = new Pool({
     user: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
     host: address, // IPv4 resolved from MagicDNS
-    port: 5432,
+    port: Number(process.env.DATABASE_PORT),
     database: process.env.DATABASE_NAME,
   });
 

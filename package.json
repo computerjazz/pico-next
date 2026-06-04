@@ -12,7 +12,8 @@
     "lint": "eslint",
     "gmail:authorize": "tsx scripts/authorize-gmail.ts",
     "gmail:watch": "tsx scripts/start-watch.ts",
-    "generate-token": "tsx scripts/generate-token.ts"
+    "generate-token": "tsx scripts/generate-token.ts",
+    "test-connection": "tsx scripts/test-connection.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",
