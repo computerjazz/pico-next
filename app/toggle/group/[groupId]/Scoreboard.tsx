@@ -3,6 +3,7 @@ import { fetchGroupScoreAction } from "@/app/actions/fetchGroupScore";
 import { generateToken } from "@/app/actions/generateToken";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { Device } from "@/db/schema";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type DeviceStats = {
@@ -33,7 +34,6 @@ function Scoreboard({
   devices: Map<string, Device>;
 }) {
   const [score, setScore] = useState<GroupScore | null>(null);
-
   const allIdle = score?.devices.every((d) => d.role === "idle");
 
   const updateScore = useStableCallback(async function reloadScore() {
@@ -137,9 +137,10 @@ function Scoreboard({
           .map((device) => {
             const isLeader = leader.deviceId === device.deviceId;
             return (
-              <li
+              <Link
                 key={device.deviceId}
                 className={`rounded p-3 flex items-center justify-between ${isLeader ? "bg-accent-surface" : "bg-muted-surface"}`}
+                href={`/toggle/${device.deviceId}`}
               >
                 <div className="flex gap-2 items-center">
                   <div
@@ -150,7 +151,7 @@ function Scoreboard({
                   </p>
                 </div>
                 <p className="text-lg font-semibold">{device.points}</p>
-              </li>
+              </Link>
             );
           })}
       </ul>
