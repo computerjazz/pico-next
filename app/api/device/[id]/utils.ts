@@ -10,7 +10,7 @@ const ShortwaveDevicePostBodySchema = z.object({
 
 const ToggleStatePostBodySchema = z.object({
   state: z.enum(["on", "off"]),
-  groupId: z.string(),
+  groupId: z.string().optional().nullable(),
 });
 
 export async function onShortwaveDevicePost({
@@ -58,11 +58,26 @@ export async function onToggleDevicePost({
 }) {
   const parsed = ToggleStatePostBodySchema.safeParse(json);
   if (!parsed.success) {
-    console.log("bad toggle state request!");
+    console.error("ERR: bad toggle state request!");
     return { error: "malformed body" };
   }
 
-  const { state, groupId } = parsed.data;
+  const { state } = parsed.data;
+  let { groupId } = parsed.data;
+
+  if (!groupId) {
+    const group = await db.query.deviceGroups.findFirst({
+      where: (t, { eq }) => eq(t.deviceId, deviceId),
+    });
+    groupId = group?.groupId;
+  }
+
+  if (!groupId) {
+    console.error("ERR: missing group!");
+    return {
+      error: "missing group id",
+    };
+  }
 
   // make sure device exists, add it if needed
   const insertPromise = db
