@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import Trash from "@/app/components/icons/Trash";
 import { deleteRecording } from "@/app/actions/deleteRecording";
+import ArrowDownTray from "@/app/components/icons/ArrowDownTray";
 
 function useAudio({ recordingId }: { recordingId: string }) {
   const [audioSource, setAudioSource] = useState<string | undefined>(undefined);
@@ -93,6 +94,45 @@ export default function RecordingItem({
     }
   }
 
+  async function onDownloadPress() {
+    // Implement download functionality for the audio file
+    if (!audioSource) {
+      // Try to fetch audio if not available yet
+      await fetchAudio();
+    }
+    const source = audioSource;
+    if (!source) {
+      alert("Audio not available to download.");
+      return;
+    }
+    // Fetch the audio blob if source is object url
+    let blob: Blob;
+    if (typeof source === "string" && source.startsWith("blob:")) {
+      // If the source is a Blob URL, fetch it as a blob
+      const res = await fetch(source);
+      blob = await res.blob();
+    } else if (typeof source === "string" && /^https?:/.test(source)) {
+      // If the source is an HTTP(s) url, fetch it as a blob
+      const res = await fetch(source);
+      blob = await res.blob();
+    } else {
+      alert("Unable to download audio.");
+      return;
+    }
+
+    // Prepare download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `recording-${recording.id}.mp3`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+  }
+
   const PlayPauseIcon = isLoading
     ? EllipsesCircle
     : isPlaying
@@ -102,7 +142,10 @@ export default function RecordingItem({
     <div
       className={`flex relative ${isDevice ? "self-start text-start items-start" : "self-end text-end items-end"}`}
     >
-      <div className="absolute z-0 flex align-middle top-0 bottom-0 left-0 right-0 items-center justify-end p-2">
+      <div className="absolute z-0 flex align-middle top-0 bottom-0 left-0 right-0 items-center justify-end p-2 gap-4">
+        <button className="cursor-pointer" onClick={onDownloadPress}>
+          <ArrowDownTray />
+        </button>
         <button className="cursor-pointer" onClick={onDeletePress}>
           <Trash />
         </button>
