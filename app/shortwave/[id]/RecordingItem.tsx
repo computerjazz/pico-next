@@ -96,11 +96,11 @@ export default function RecordingItem({
 
   async function onDownloadPress() {
     // Implement download functionality for the audio file
-    if (!audioSource) {
+    let source = audioSource;
+    if (!source) {
       // Try to fetch audio if not available yet
-      await fetchAudio();
+      source = await fetchAudio();
     }
-    const source = audioSource;
     if (!source) {
       alert("Audio not available to download.");
       return;
