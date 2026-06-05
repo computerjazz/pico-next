@@ -60,16 +60,26 @@ export default async function TogglePage({
   const deviceId = (await params).id;
   const session = await auth();
 
-  const group = await db.query.deviceGroups.findMany({
+  const group = await db.query.deviceGroups.findFirst({
     where: (dg, { eq }) => eq(dg.deviceId, deviceId),
+  });
+
+  const groupId = group?.groupId;
+
+  if (!groupId) {
+    notFound();
+  }
+
+  const groupsWithDevices = await db.query.deviceGroups.findMany({
+    where: (t, { eq }) => eq(t.groupId, groupId),
     with: {
       device: true,
     },
   });
 
-  const device = await db.query.devices.findFirst({
-    where: (t, { eq }) => eq(t.deviceId, deviceId),
-  });
+  const device = groupsWithDevices.find(
+    (g) => g.device.deviceId === deviceId,
+  )?.device;
 
   if (!device) {
     notFound();
@@ -78,8 +88,8 @@ export default async function TogglePage({
   const deviceUserId = device?.userId;
   const sessionUserId = session?.user?.id;
   const isDeviceOwner = sessionUserId && deviceUserId === sessionUserId;
-  const groupId = group[0]?.groupId;
-  const groupDevices = group.map((g) => g.device);
+  const groupDevices = groupsWithDevices.map((g) => g.device);
+  console.log("devices!!", JSON.stringify(group));
   return (
     <div className="flex flex-col h-screen">
       <PageHeader>

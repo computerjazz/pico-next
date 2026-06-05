@@ -139,7 +139,7 @@ function Scoreboard({
             return (
               <Link
                 key={device.deviceId}
-                className={`rounded p-3 flex items-center justify-between ${isLeader ? "bg-accent-surface" : "bg-muted-surface"}`}
+                className={`rounded p-3 flex items-center justify-between bg-muted-surface ${isLeader && "outline-accent outline-1"}`}
                 href={`/toggle/${device.deviceId}`}
               >
                 <div className="flex gap-2 items-center">
