@@ -1,3 +1,5 @@
+![Alt text](public/img/icons/icon-192.png)
+
 # picopi
 
 Simple connected toys built from a single action — turn a knob, press a button, flip a switch.
