@@ -125,6 +125,7 @@ function Scoreboard({
 
   return (
     <div className="mx-auto max-w-2xl p-4 space-y-4">
+      <h1 className="text-3xl font-bold">Leaderboard</h1>
       <p className="text-sm text-muted-foreground">
         Events: {score.totalEvents} | Updated:{" "}
         {new Date(score.asOf).toLocaleString()}
