@@ -17,9 +17,9 @@ const char* serverHost = SERVER_HOST;
 const char* authToken = AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 const char* portalSsid = "toggle-setup";
-const char* firmwareVersion = "toggle-2026-06-04.2";
+const char* firmwareVersion = "toggle-2026-06-04.3";
 
-#define OTA_CHECK_INTERVAL_MS 120000UL
+#define OTA_CHECK_INTERVAL_MS 60000UL
 
 static DNSServer dnsServer;
 static WebServer portalServer(80);
@@ -525,6 +525,38 @@ static void pollGroupState() {
   http.end();
 }
 
+static bool phoneHome() {
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+  if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/phone-home")) {
+    Serial.println("phoneHome: http begin failed");
+    return false;
+  }
+
+  http.addHeader("Authorization", String("Bearer ") + authToken);
+  http.addHeader("x-device-id", deviceId);
+  http.addHeader("x-firmware-version", String(firmwareVersion));
+  http.addHeader("x-device-type", "toggle");
+  http.addHeader("ngrok-skip-browser-warning", "true");
+
+  int code = http.POST((uint8_t*)nullptr, 0);
+  String body = http.getString();
+
+  http.end();
+
+  if (code >= 200 && code < 300) {
+    Serial.printf("phoneHome: success (%d)\n", code);
+    Serial.println("Returned JSON body:");
+    Serial.println(body);
+    return true;
+  }
+
+  Serial.printf("phoneHome: HTTP %d, body: %s\n", code, body.c_str());
+  return false;
+}
+
 void setup() {
   Serial.begin(115200);
   pinMode(SWITCH_PIN, INPUT_PULLUP);
@@ -536,6 +568,7 @@ void setup() {
   loadIdsFromPrefs();
   connectWifiWithPortal();
   checkForOtaUpdate();
+  phoneHome();
   flashRainbowConnected();
 
   switchState = readSwitch();
