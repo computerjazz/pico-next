@@ -5,11 +5,10 @@ import { WebSocketServer, WebSocket } from "ws";
 import { getRedisSubscriber } from "./lib/redis";
 import { validateTokenDefault } from "./lib/auth";
 import { cleanupActiveJobs, getIsAnyJobActive } from "./lib/job";
+import { addClient, removeClient, sendMessage } from "./lib/websocket";
 
 const app = next({ dev: false });
 const handle = app.getRequestHandler();
-
-const clients = new Map<string, WebSocket>();
 
 async function main() {
   const redisSubscriber = await getRedisSubscriber();
@@ -17,16 +16,7 @@ async function main() {
 
   await redisSubscriber.subscribe("ws:commands", (message) => {
     const { targetId, command } = JSON.parse(message);
-    const socket = clients.get(targetId);
-    if (socket?.readyState === WebSocket.OPEN) {
-      console.log(`Sending message to target ${targetId}`);
-      socket.send(command);
-    } else {
-      console.warn(
-        `Client ${targetId} not connected ${socket?.readyState}`,
-        socket,
-      );
-    }
+    sendMessage({ targetId, command });
   });
 
   await app.prepare();
@@ -40,6 +30,7 @@ async function main() {
 
   wss.on("connection", (socket: WebSocket) => {
     let clientId: string | null = null;
+    let groupId: string | null = null;
     let clientToken: string | null = null;
     let isAlive = true;
 
@@ -80,10 +71,12 @@ async function main() {
         }
         clientId = msg.id;
         clientToken = msg.token;
-        if (clientId) {
-          clients.set(clientId, socket);
-          console.log(`Client registered: ${clientId}`);
-        }
+        groupId = msg.groupId;
+        addClient({
+          socket,
+          clientId,
+          groupId,
+        });
       }
     });
 
@@ -99,17 +92,11 @@ async function main() {
       }
 
       if (clientId) {
-        // Only delete if this socket is still the registered one
-        if (clients.get(clientId) === socket) {
-          clients.delete(clientId);
-          console.log(
-            `Client disconnected: ${clientId} (code: ${code}, reason: ${reasonStr})`,
-          );
-        } else {
-          console.log(
-            `Stale close for ${clientId} — newer socket already registered, skipping delete`,
-          );
-        }
+        removeClient({
+          clientId,
+          groupId,
+          socket,
+        });
       } else {
         console.log(
           `Socket closed before registration (code: ${code}, reason: ${reasonStr})`,

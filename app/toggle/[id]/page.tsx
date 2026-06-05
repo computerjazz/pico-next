@@ -24,7 +24,13 @@ function formatMinutesAgo({ date }: { date: Date }) {
   )} minutes ago`;
 }
 
-function DeviceDetails({ device }: { device: Device }) {
+function DeviceDetails({
+  device,
+  groupId,
+}: {
+  device: Device;
+  groupId?: string | null;
+}) {
   return (
     <>
       <DeviceStatRow label="Device ID:" value={device.deviceId} />
@@ -41,6 +47,7 @@ function DeviceDetails({ device }: { device: Device }) {
           value={formatMinutesAgo({ date: device.lastSeenAt })}
         />
       )}
+      {!!groupId && <DeviceStatRow label="Group:" value={groupId} />}
     </>
   );
 }
@@ -82,7 +89,7 @@ export default async function TogglePage({
             <ClaimButton device={device} />
           </div>
           <div className="space-y-2 text-sm mt-4">
-            <DeviceDetails device={device} />
+            <DeviceDetails device={device} groupId={groupId} />
           </div>
         </div>
       </PageHeader>

@@ -20,9 +20,9 @@ type GroupScore = {
 };
 
 function roleClass(role: "idle" | "active" | "challenger") {
-  if (role === "active") return "text-blue-400";
-  if (role === "challenger") return "text-red-400";
-  return "text-green-400";
+  if (role === "active") return "bg-blue-400";
+  if (role === "challenger") return "bg-red-400";
+  return "bg-green-400";
 }
 
 function Scoreboard({
@@ -75,7 +75,14 @@ function Scoreboard({
 
       ws.onopen = async () => {
         const token = await generateToken({ scope: "websocket" });
-        ws?.send(JSON.stringify({ type: "register", token, id: groupId }));
+        ws?.send(
+          JSON.stringify({
+            type: "register",
+            token,
+            groupId,
+            id: `${groupId}-client-${Math.floor(Math.random() * 100000)}`,
+          }),
+        );
       };
 
       ws.onmessage = () => {
@@ -107,7 +114,6 @@ function Scoreboard({
   if (!score) {
     return (
       <div className="mx-auto max-w-2xl p-4 space-y-4">
-        <h1 className="text-2xl font-bold">Toggle Leaderboard</h1>
         <p className="text-sm text-neutral-500">Loading...</p>
       </div>
     );
@@ -119,37 +125,34 @@ function Scoreboard({
 
   return (
     <div className="mx-auto max-w-2xl p-4 space-y-4">
-      <h1 className="text-2xl font-bold">Toggle Leaderboard</h1>
-      <p className="text-sm text-neutral-500">
-        Group: {score.groupId} | Events: {score.totalEvents} | Updated:{" "}
+      <p className="text-sm text-muted-foreground">
+        Events: {score.totalEvents} | Updated:{" "}
         {new Date(score.asOf).toLocaleString()}
       </p>
-      {leader ? (
-        <p className="text-sm">
-          Leader:{" "}
-          <span className="font-semibold">
-            {devices.get(leader.deviceId)?.name || leader.deviceId}
-          </span>{" "}
-          ({leader.points}s)
-        </p>
-      ) : null}
       <ul className="space-y-2">
-        {score.devices.map((device) => (
-          <li
-            key={device.deviceId}
-            className="rounded border border-neutral-800 p-3 flex items-center justify-between"
-          >
-            <div>
-              <p className="font-medium">
-                {devices.get(device.deviceId)?.name || device.deviceId}
-              </p>
-              <p className={`text-sm ${roleClass(device.role)}`}>
-                {device.role.toUpperCase()} | state: {device.state}
-              </p>
-            </div>
-            <p className="text-lg font-semibold">{device.points}s</p>
-          </li>
-        ))}
+        {score.devices
+          .sort((a, b) => {
+            return a.points > b.points ? -1 : 1;
+          })
+          .map((device) => {
+            const isLeader = leader.deviceId === device.deviceId;
+            return (
+              <li
+                key={device.deviceId}
+                className={`rounded p-3 flex items-center justify-between ${isLeader ? "bg-accent-surface" : "bg-muted-surface"}`}
+              >
+                <div className="flex gap-2 items-center">
+                  <div
+                    className={`w-2 h-2 rounded-full ${roleClass(device.role)}`}
+                  />
+                  <p className="font-medium">
+                    {devices.get(device.deviceId)?.name || device.deviceId}
+                  </p>
+                </div>
+                <p className="text-lg font-semibold">{device.points}</p>
+              </li>
+            );
+          })}
       </ul>
     </div>
   );
