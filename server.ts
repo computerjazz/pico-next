@@ -5,7 +5,12 @@ import { WebSocketServer, WebSocket } from "ws";
 import { getRedisSubscriber } from "./lib/redis";
 import { validateTokenDefault } from "./lib/auth";
 import { cleanupActiveJobs, getIsAnyJobActive } from "./lib/job";
-import { addClient, removeClient, sendMessage } from "./lib/websocket";
+import {
+  addClient,
+  ClientRegisterSchema,
+  removeClient,
+  sendMessage,
+} from "./lib/websocket";
 
 const app = next({ dev: false });
 const handle = app.getRequestHandler();
@@ -15,8 +20,7 @@ async function main() {
   console.log("Redis connected");
 
   await redisSubscriber.subscribe("ws:commands", (message) => {
-    const { targetId, command } = JSON.parse(message);
-    sendMessage({ targetId, command });
+    sendMessage({ message });
   });
 
   await app.prepare();
@@ -29,9 +33,9 @@ async function main() {
   const PING_INTERVAL = 30000;
 
   wss.on("connection", (socket: WebSocket) => {
-    let clientId: string | null = null;
-    let groupId: string | null = null;
-    let clientToken: string | null = null;
+    let clientId: string | undefined | null = null;
+    let groupId: string | undefined | null = null;
+    let clientToken: string | undefined | null = null;
     let lastPongTime = Date.now();
 
     console.log(`socket connection: ${socket.url}`);
@@ -61,9 +65,10 @@ async function main() {
     });
 
     socket.on("message", async (data: Buffer) => {
-      const msg = JSON.parse(data.toString());
-      console.log(`socket message ${msg.id}: ${JSON.stringify(msg)}`);
-      if (msg.type === "register") {
+      const dataStr = data.toString();
+      const parsed = ClientRegisterSchema.safeParse(JSON.parse(dataStr));
+      if (parsed.success) {
+        const msg = parsed.data;
         const isValid = await validateTokenDefault(msg.token);
         if (!isValid) {
           console.warn(`Rejected client: ${msg.id} (bad token)`);

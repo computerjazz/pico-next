@@ -1,5 +1,19 @@
 import { WebSocket } from "ws";
 
+import z from "zod";
+
+const CommandSchema = z.object({
+  targetId: z.string(),
+  command: z.string(),
+});
+
+export const ClientRegisterSchema = z.object({
+  type: z.literal("register"),
+  id: z.string(),
+  groupId: z.string().optional().nullable(),
+  token: z.string(),
+});
+
 type SocketGroup = Map<string, WebSocket>;
 const clients = new Map<string, WebSocket | SocketGroup>();
 
@@ -90,17 +104,13 @@ export function getClients({ targetId }: { targetId?: string | null }) {
   return sockets.filter(isTruthy);
 }
 
-export function sendMessage({
-  targetId,
-  command,
-}: {
-  targetId?: string | null;
-  command?: string | null;
-}) {
-  if (!targetId || !command) {
-    console.error("sendMessage: must have a targetId and command");
+export function sendMessage({ message }: { message?: string | null }) {
+  const parsed = CommandSchema.safeParse(JSON.parse(message ?? ""));
+  if (!parsed.success) {
+    console.error("sendMessage: parse failed", message);
     return;
   }
+  const { targetId, command } = parsed.data;
   getClients({ targetId }).forEach((socket) => {
     if (socket.readyState === WebSocket.OPEN) {
       console.log(`Sending message to target ${targetId}`);
