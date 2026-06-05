@@ -32,11 +32,12 @@ async function main() {
     let clientId: string | null = null;
     let groupId: string | null = null;
     let clientToken: string | null = null;
-    let isAlive = true;
+    let lastPongTime = Date.now();
 
     console.log(`socket connection: ${socket.url}`);
     // Heartbeat
     const pingTimer = setInterval(() => {
+      const isAlive = Date.now() - lastPongTime < 120_000;
       if (!isAlive) {
         console.log(`Ping timeout, closing ${clientId}`);
         socket.terminate();
@@ -46,7 +47,7 @@ async function main() {
     }, PING_INTERVAL);
 
     socket.on("pong", async () => {
-      isAlive = true;
+      lastPongTime = Date.now();
 
       if (clientId) {
         const phoneHomeUrl = `${process.env.API_BASE_URL}/api/device/${clientId}/phone-home`;
