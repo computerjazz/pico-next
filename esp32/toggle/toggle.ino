@@ -8,6 +8,7 @@
 #include <Update.h>
 #include "env.h"
 #include <ArduinoJson.h>
+#include <stdarg.h>
 
 #ifndef FORCE_ID_RESET
 #define FORCE_ID_RESET false
@@ -17,9 +18,10 @@ const char* serverHost = SERVER_HOST;
 const char* authToken = AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 const char* portalSsid = "toggle-setup";
-const char* firmwareVersion = "toggle-2026-06-04.3";
+const char* firmwareVersion = "toggle-2026-06-06.1";
 
 #define OTA_CHECK_INTERVAL_MS 60000UL
+#define LOG_FLUSH_INTERVAL_MS 30000UL
 
 static DNSServer dnsServer;
 static WebServer portalServer(80);
@@ -34,6 +36,7 @@ static String portalNewPassword;
 static unsigned long lastPollMs = 0;
 static unsigned long lastWsMessageMs = 0;
 static unsigned long lastOtaCheckMs = 0;
+static unsigned long lastFlushMs = 0;
 static unsigned long lastSwitchDebounceMs = 0;
 static bool lastSwitchReading = false;
 static bool switchState = false;
@@ -44,22 +47,78 @@ unsigned long lastWifiCheck = 0;
 const unsigned long WIFI_CHECK_INTERVAL = 30000; // 30s
 int wifiFailCount = 0;
 
+String pendingLogs = "";
+
+void appendLog(const char* fmt, ...) {
+  char buf[128];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, args);
+  va_end(args);
+  Serial.println(buf);
+  pendingLogs += String(millis()) + " " + buf + "\n";
+  if (pendingLogs.length() > 4096) {
+    pendingLogs = pendingLogs.substring(pendingLogs.length() - 4096);
+  }
+}
+
+void flushLogs() {
+  if (pendingLogs.length() == 0 || deviceId.length() == 0) return;
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  String logsToSend = pendingLogs;
+  pendingLogs = "";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+  String url = String("https://") + serverHost + "/api/device/" + deviceId + "/logs";
+  if (!http.begin(client, url)) {
+    pendingLogs = logsToSend + pendingLogs;
+    return;
+  }
+  http.setTimeout(8000);
+  http.setConnectTimeout(5000);
+  http.addHeader("Authorization", String("Bearer ") + authToken);
+  http.addHeader("Content-Type", "text/plain");
+  http.addHeader("ngrok-skip-browser-warning", "true");
+
+  int code = http.POST(logsToSend);
+  http.end();
+
+  if (code < 200 || code >= 300) {
+    pendingLogs = logsToSend + pendingLogs;
+  }
+}
+
+
 void checkWifi() {
   if (millis() - lastWifiCheck < WIFI_CHECK_INTERVAL) return;
   lastWifiCheck = millis();
-  Serial.print("Checking wifi...\n");
-  if (WiFi.status() != WL_CONNECTED) {
-    wifiFailCount++;
-    if (wifiFailCount >= 5) {
-      Serial.println("WiFi stack wedged, rebooting...");
-      ESP.restart();
-    }
-    WiFi.disconnect();
-    delay(1000);
-    WiFi.reconnect();
-  } else {
+
+  if (WiFi.status() == WL_CONNECTED) {
     wifiFailCount = 0;
+    return;
   }
+
+  wifiFailCount++;
+  appendLog("WiFi down (fail #%d)", wifiFailCount);
+
+  if (wifiFailCount >= 3) {
+    appendLog("WiFi stack wedged, rebooting...");
+    delay(100);
+    ESP.restart();
+  }
+
+  // Full tear-down + reconnect (WiFi.reconnect() alone is unreliable)
+  wifiPrefs.begin("wifi", true);
+  String ssid = wifiPrefs.getString("ssid", "");
+  String pass = wifiPrefs.getString("password", "");
+  wifiPrefs.end();
+
+  WiFi.disconnect(true);
+  delay(500);
+  WiFi.begin(ssid.c_str(), pass.c_str());
 }
 
 static void loadIdsFromPrefs() {
@@ -79,7 +138,7 @@ static void loadIdsFromPrefs() {
   }
 #endif
   devicePrefs.end();
-  Serial.printf("device id: %s\n", deviceId.c_str());
+  appendLog("device id: %s", deviceId.c_str());
 }
 
 // For common anode: LED is ON when pin is LOW, OFF when pin is HIGH.
@@ -166,17 +225,19 @@ static bool readSwitch() {
 }
 
 static bool connectToWifi(const char* ssid, const char* password, unsigned long timeoutMs = 15000UL) {
+  WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+
   WiFi.begin(ssid, password);
   unsigned long startMs = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - startMs < timeoutMs) {
     delay(500);
   }
   if (WiFi.status() == WL_CONNECTED) {
-    WiFi.setSleep(false);
     WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
        if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
-          Serial.println("WiFi lost, reconnecting...");
+          appendLog("WiFi lost, reconnecting...");
           WiFi.reconnect();
         }
 }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
@@ -317,10 +378,11 @@ static bool installOtaFromUrl(const String& url) {
 
   HTTPClient http;
   if (!http.begin(client, url)) {
-    Serial.printf("ota: http begin failed for %s\n", url.c_str());
+    appendLog("ota: http begin failed for %s", url.c_str());
     return false;
   }
-
+  http.setTimeout(8000);          // 8s total
+  http.setConnectTimeout(5000);   // 5s to connect
   http.addHeader("Authorization", String("Bearer ") + authToken);
   http.addHeader("x-device-id", deviceId);
   http.addHeader("x-firmware-version", String(firmwareVersion));
@@ -328,20 +390,20 @@ static bool installOtaFromUrl(const String& url) {
 
   int code = http.GET();
   if (code != 200) {
-    Serial.printf("ota: download HTTP %d\n", code);
+    appendLog("ota: download HTTP %d", code);
     http.end();
     return false;
   }
 
   int contentLength = http.getSize();
   if (contentLength <= 0) {
-    Serial.printf("ota: invalid content length %d\n", contentLength);
+    appendLog("ota: invalid content length %d", contentLength);
     http.end();
     return false;
   }
 
   if (!Update.begin((size_t)contentLength)) {
-    Serial.printf("ota: Update.begin failed (err=%u)\n", Update.getError());
+    appendLog("ota: Update.begin failed (err=%u)", Update.getError());
     http.end();
     return false;
   }
@@ -349,23 +411,23 @@ static bool installOtaFromUrl(const String& url) {
   WiFiClient* stream = http.getStreamPtr();
   size_t written = Update.writeStream(*stream);
   if (written != (size_t)contentLength) {
-    Serial.printf("ota: wrote %u of %d bytes\n", (unsigned)written, contentLength);
+    appendLog("ota: wrote %u of %d bytes", (unsigned)written, contentLength);
   }
 
   if (!Update.end()) {
-    Serial.printf("ota: Update.end failed (err=%u)\n", Update.getError());
+    appendLog("ota: Update.end failed (err=%u)", Update.getError());
     http.end();
     return false;
   }
 
   if (!Update.isFinished()) {
-    Serial.println("ota: update did not finish");
+    appendLog("ota: update did not finish");
     http.end();
     return false;
   }
 
   http.end();
-  Serial.println("ota: update installed, restarting");
+  appendLog("ota: update installed, restarting");
   delay(200);
   ESP.restart();
   return true;
@@ -377,10 +439,11 @@ static bool checkForOtaUpdate() {
 
   HTTPClient http;
   if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/ota")) {
-    Serial.println("ota: metadata begin failed");
+    appendLog("ota: metadata begin failed");
     return false;
   }
-
+  http.setTimeout(8000);          // 8s total
+  http.setConnectTimeout(5000);   // 5s to connect
   http.addHeader("Authorization", String("Bearer ") + authToken);
   http.addHeader("x-device-id", deviceId);
   http.addHeader("x-firmware-version", String(firmwareVersion));
@@ -391,7 +454,7 @@ static bool checkForOtaUpdate() {
   http.end();
 
   if (code != 200) {
-    Serial.printf("ota: metadata HTTP %d\n", code);
+    appendLog("ota: metadata HTTP %d", code);
     return false;
   }
 
@@ -399,8 +462,7 @@ static bool checkForOtaUpdate() {
   DeserializationError error = deserializeJson(doc, body);
 
   if (error) {
-    Serial.print("Parse failed: ");
-    Serial.println(error.c_str());
+    appendLog("Parse failed: %s", error.c_str());
     return false;
   }
 
@@ -408,21 +470,21 @@ static bool checkForOtaUpdate() {
   String otaVersion = doc["otaVersion"];
   String firmwareUrl = resolveOtaUrl(doc["firmwareUrl"]);
   if (otaVersion.length() == 0) {
-    Serial.println("ota: metadata missing otaVersion");
+    appendLog("ota: metadata missing otaVersion");
     return false;
   }
 
   if (otaVersion == firmwareVersion) {
-    Serial.printf("ota: up to date (%s)\n", firmwareVersion);
+    appendLog("ota: up to date (%s)", firmwareVersion);
     return true;
   }
 
   if (firmwareUrl.length() == 0) {
-    Serial.printf("ota: update %s available but no firmwareUrl\n", otaVersion.c_str());
+    appendLog("ota: update %s available but no firmwareUrl", otaVersion.c_str());
     return false;
   }
 
-  Serial.printf("ota: updating %s -> %s\n", firmwareVersion, otaVersion.c_str());
+  appendLog("ota: updating %s -> %s", firmwareVersion, otaVersion.c_str());
   return installOtaFromUrl(firmwareUrl);
 }
 
@@ -435,18 +497,18 @@ static void applyPayloadColor(const String& payload) {
   String phase = payload.substring(phaseStart, phaseEnd);
 
   if (phase == "aligned") {
-    Serial.printf("%s: aligned\n", deviceId);
+    appendLog("%s: aligned", deviceId.c_str());
     showGreen();
     return;
   }
 
   const String activeLookup = String("\"activeDeviceId\":\"") + deviceId + "\"";
   if (payload.indexOf(activeLookup) >= 0) {
-    Serial.printf("%s: active\n", deviceId);
+    appendLog("%s: active", deviceId.c_str());
 
     showBlue();
   } else {
-    Serial.printf("%s: challenger\n", deviceId);
+    appendLog("%s: challenger", deviceId.c_str());
 
     showRed();
   }
@@ -454,26 +516,29 @@ static void applyPayloadColor(const String& payload) {
 
 static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
   // Print wsEvent safely with explicit length (guard for null/non-string payload)
-  Serial.printf("wsEvent: type %d, ready: %d\n", type, wsReady);
+  appendLog("wsEvent: type %d, ready: %d", type, wsReady);
   if (payload && length > 0) {
-    Serial.print("wsEvent ");
-    for (size_t i = 0; i < length; ++i) Serial.print((char)payload[i]);
-    Serial.printf(" %d\n", (int)length);
+    String payloadStr;
+    payloadStr.reserve(length + 1);
+    for (size_t i = 0; i < length; ++i) payloadStr += (char)payload[i];
+    appendLog("wsEvent %s %d", payloadStr.c_str(), (int)length);
   } else {
-    Serial.printf("wsEvent <null> %d\n", (int)length);
+    appendLog("wsEvent <null> %d", (int)length);
   }
 
   switch (type) {
     case WStype_CONNECTED: {
-      Serial.print("CONNECTED\n");
+      appendLog("CONNECTED");
       wsReady = true;
       String msg = String("{\"type\":\"register\",\"id\":\"") + deviceId + "\",\"token\":\"" + wsToken + "\"}";
       wsClient.sendTXT(msg);
       break;
     }
     case WStype_DISCONNECTED:
-      Serial.print("DISCONNECTED\n");
+      appendLog("DISCONNECTED");
       wsReady = false;
+      // If WS drops, nudge the wifi check immediately
+      lastWifiCheck = 0;
       break;
     case WStype_TEXT: {
       String message;
@@ -481,7 +546,7 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
         message.reserve(length + 1);
         for (size_t i = 0; i < length; ++i) message += (char)payload[i];
       }
-      Serial.printf("received TEXT message %s\n", message);
+      appendLog("received TEXT message %s", message.c_str());
       lastWsMessageMs = millis();
       applyPayloadColor(message);
       break;
@@ -492,12 +557,14 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
 }
 
 static bool postToggleState(bool isOn) {
-  Serial.printf("Posting toggle state... %d\n", isOn);
+  appendLog("Posting toggle state... %d", isOn);
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
   String url = String("https://") + serverHost + "/api/device/" + deviceId;
   if (!http.begin(client, url)) return false;
+  http.setTimeout(8000);          // 8s total
+  http.setConnectTimeout(5000);   // 5s to connect
   http.addHeader("Authorization", String("Bearer ") + authToken);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("ngrok-skip-browser-warning", "true");
@@ -521,7 +588,7 @@ static void pollGroupState() {
     String body = http.getString();
     applyPayloadColor(body);
   }
-  Serial.printf("Polled group state at %s: %d \n", url, code);
+  appendLog("Polled group state at %s: %d", url.c_str(), code);
   http.end();
 }
 
@@ -531,10 +598,11 @@ static bool phoneHome() {
 
   HTTPClient http;
   if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/phone-home")) {
-    Serial.println("phoneHome: http begin failed");
+    appendLog("phoneHome: http begin failed");
     return false;
   }
-
+  http.setTimeout(8000);          // 8s total
+  http.setConnectTimeout(5000);   // 5s to connect
   http.addHeader("Authorization", String("Bearer ") + authToken);
   http.addHeader("x-device-id", deviceId);
   http.addHeader("x-firmware-version", String(firmwareVersion));
@@ -547,13 +615,12 @@ static bool phoneHome() {
   http.end();
 
   if (code >= 200 && code < 300) {
-    Serial.printf("phoneHome: success (%d)\n", code);
-    Serial.println("Returned JSON body:");
-    Serial.println(body);
+    appendLog("phoneHome: success (%d)", code);
+    appendLog("Returned JSON body: %s", body.c_str());
     return true;
   }
 
-  Serial.printf("phoneHome: HTTP %d, body: %s\n", code, body.c_str());
+  appendLog("phoneHome: HTTP %d, body: %s", code, body.c_str());
   return false;
 }
 
@@ -592,7 +659,7 @@ void loop() {
 
   if (now - lastSwitchDebounceMs > 35 && reading != switchState) {
     switchState = reading;
-    Serial.print("Switched\n");
+    appendLog("Switched");
     postToggleState(switchState);
   }
   lastSwitchReading = reading;
@@ -608,6 +675,16 @@ void loop() {
   if (lastOtaCheckMs == 0 || now - lastOtaCheckMs >= OTA_CHECK_INTERVAL_MS) {
     lastOtaCheckMs = now;
     checkForOtaUpdate();
+  }
+
+  if (
+    pendingLogs.length() > 0 &&
+    (lastFlushMs == 0 ||
+      now - lastFlushMs >= LOG_FLUSH_INTERVAL_MS ||
+      pendingLogs.length() > 2048)
+  ) {
+    lastFlushMs = now;
+    flushLogs();
   }
 
   yield(); // feeds watchdog, yields to background tasks, zero artificial delay
