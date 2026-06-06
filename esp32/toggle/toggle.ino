@@ -18,7 +18,7 @@ const char* serverHost = SERVER_HOST;
 const char* authToken = AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 const char* portalSsid = "toggle-setup";
-const char* firmwareVersion = "toggle-2026-06-06.1";
+const char* firmwareVersion = "toggle-2026-06-06.2";
 
 #define OTA_CHECK_INTERVAL_MS 60000UL
 #define LOG_FLUSH_INTERVAL_MS 30000UL
@@ -35,12 +35,15 @@ static String portalNewPassword;
 
 static unsigned long lastPollMs = 0;
 static unsigned long lastWsMessageMs = 0;
+static unsigned long lastWsResumeMs = 0;
 static unsigned long lastOtaCheckMs = 0;
 static unsigned long lastFlushMs = 0;
 static unsigned long lastSwitchDebounceMs = 0;
 static bool lastSwitchReading = false;
 static bool switchState = false;
 static bool wsReady = false;
+static bool g_wsRunning = false;
+static bool pendingSwitchPost = false;
 static String deviceId = "";
 
 unsigned long lastWifiCheck = 0;
@@ -434,41 +437,47 @@ static bool installOtaFromUrl(const String& url) {
 }
 
 static bool checkForOtaUpdate() {
-  WiFiClientSecure client;
-  client.setInsecure();
+  String otaVersion;
+  String firmwareUrl;
 
-  HTTPClient http;
-  if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/ota")) {
-    appendLog("ota: metadata begin failed");
-    return false;
+  // Scope the first TLS connection so it fully destructs before the download.
+  {
+    WiFiClientSecure client;
+    client.setInsecure();
+
+    HTTPClient http;
+    if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/ota")) {
+      appendLog("ota: metadata begin failed");
+      return false;
+    }
+    http.setTimeout(8000);          // 8s total
+    http.setConnectTimeout(5000);   // 5s to connect
+    http.addHeader("Authorization", String("Bearer ") + authToken);
+    http.addHeader("x-device-id", deviceId);
+    http.addHeader("x-firmware-version", String(firmwareVersion));
+    http.addHeader("ngrok-skip-browser-warning", "true");
+
+    int code = http.GET();
+    String body = http.getString();
+    http.end();
+
+    if (code != 200) {
+      appendLog("ota: metadata HTTP %d", code);
+      return false;
+    }
+
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      appendLog("Parse failed: %s", error.c_str());
+      return false;
+    }
+
+    otaVersion  = doc["otaVersion"].as<String>();
+    firmwareUrl = resolveOtaUrl(doc["firmwareUrl"].as<String>());
+    
   }
-  http.setTimeout(8000);          // 8s total
-  http.setConnectTimeout(5000);   // 5s to connect
-  http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("x-device-id", deviceId);
-  http.addHeader("x-firmware-version", String(firmwareVersion));
-  http.addHeader("ngrok-skip-browser-warning", "true");
-
-  int code = http.GET();
-  String body = http.getString();
-  http.end();
-
-  if (code != 200) {
-    appendLog("ota: metadata HTTP %d", code);
-    return false;
-  }
-
-  JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, body);
-
-  if (error) {
-    appendLog("Parse failed: %s", error.c_str());
-    return false;
-  }
-
-
-  String otaVersion = doc["otaVersion"];
-  String firmwareUrl = resolveOtaUrl(doc["firmwareUrl"]);
   if (otaVersion.length() == 0) {
     appendLog("ota: metadata missing otaVersion");
     return false;
@@ -556,6 +565,28 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
   }
 }
 
+// Hold only one TLS context at a time. The ESP32 heap can support a single
+// long-lived SSL connection (the WS) plus brief HTTP polls, but two concurrent
+// SSL contexts fragment the heap and cause subsequent handshakes to fail.
+static void wsResume() {
+  if (g_wsRunning) return;
+  appendLog("wsResume()");
+  wsClient.beginSSL(serverHost, 443, "/api/ws");
+  g_wsRunning = true;
+  lastWsResumeMs = millis();
+}
+
+static void wsPause() {
+  if (!g_wsRunning) return;
+  appendLog("wsPause()");
+  wsClient.disconnect();
+  g_wsRunning = false;
+  wsReady = false;
+  // Yield so lwIP can finalize socket close + free the mbedTLS context before
+  // any subsequent SSL connect attempt.
+  vTaskDelay(pdMS_TO_TICKS(50));
+}
+
 static bool postToggleState(bool isOn) {
   appendLog("Posting toggle state... %d", isOn);
   WiFiClientSecure client;
@@ -580,6 +611,8 @@ static void pollGroupState() {
   HTTPClient http;
   String url = String("https://") + serverHost + "/api/toggle/group";
   if (!http.begin(client, url)) return;
+  http.setTimeout(8000);       
+  http.setConnectTimeout(5000);
   http.addHeader("ngrok-skip-browser-warning", "true");
   http.addHeader("Authorization", String("Bearer ") + authToken);
   http.addHeader("x-device-id", deviceId);
@@ -641,50 +674,73 @@ void setup() {
   switchState = readSwitch();
   lastSwitchReading = switchState;
 
-  wsClient.beginSSL(serverHost, 443, "/api/ws");
   wsClient.onEvent(wsEvent);
   wsClient.setReconnectInterval(2000);
   wsClient.enableHeartbeat(15000, 5000, 3); // ping every 15s, 5s timeout, 3 retries
+  wsResume();
 
 }
 
 void loop() {
-  wsClient.loop();
   checkWifi();
   const unsigned long now = millis();
+
   bool reading = readSwitch();
   if (reading != lastSwitchReading) {
     lastSwitchDebounceMs = now;
   }
-
   if (now - lastSwitchDebounceMs > 35 && reading != switchState) {
     switchState = reading;
     appendLog("Switched");
-    postToggleState(switchState);
+    pendingSwitchPost = true;
   }
   lastSwitchReading = reading;
 
-  // Poll fallback when websocket is disconnected or stale.
-  if (lastPollMs == 0 || now - lastPollMs >= 3000UL) {
-    lastPollMs = now;
-    if (!wsReady || (lastWsMessageMs > 0 && now - lastWsMessageMs > 10000UL)) {
-      pollGroupState();
-    }
-  }
-
-  if (lastOtaCheckMs == 0 || now - lastOtaCheckMs >= OTA_CHECK_INTERVAL_MS) {
-    lastOtaCheckMs = now;
-    checkForOtaUpdate();
-  }
-
-  if (
-    pendingLogs.length() > 0 &&
+  bool wsStale = g_wsRunning && (
+    (lastWsMessageMs > 0 && now - lastWsMessageMs > 10000UL) ||
+    (!wsReady && now - lastWsResumeMs > 8000UL)
+  );
+  bool pollDue = (lastPollMs == 0 || now - lastPollMs >= 3000UL) && wsStale;
+  bool otaDue = lastOtaCheckMs == 0 || now - lastOtaCheckMs >= OTA_CHECK_INTERVAL_MS;
+  bool logFlushDue = pendingLogs.length() > 0 &&
     (lastFlushMs == 0 ||
       now - lastFlushMs >= LOG_FLUSH_INTERVAL_MS ||
-      pendingLogs.length() > 2048)
-  ) {
-    lastFlushMs = now;
-    flushLogs();
+      pendingLogs.length() > 2048);
+  bool httpDue = pendingSwitchPost || pollDue || otaDue || logFlushDue;
+
+  // WS management: pause when HTTP is due, resume otherwise.
+  // If we just issued wsPause(), skip this iteration so lwIP can drain the
+  // close handshake before any new SSL connect attempt.
+  if (httpDue) {
+    if (g_wsRunning) {
+      wsPause();
+      delay(5);
+      return;
+    }
+  } else {
+    wsResume();
+  }
+
+  if (g_wsRunning) wsClient.loop();
+
+  // HTTP requests — only run when WS is confirmed down (!g_wsRunning).
+  if (httpDue) {
+    if (pendingSwitchPost) {
+      pendingSwitchPost = false;
+      postToggleState(switchState);
+    }
+    if (pollDue) {
+      lastPollMs = now;
+      pollGroupState();
+    }
+    if (otaDue) {
+      lastOtaCheckMs = now;
+      checkForOtaUpdate();
+    }
+    if (logFlushDue) {
+      lastFlushMs = now;
+      flushLogs();
+    }
   }
 
   yield(); // feeds watchdog, yields to background tasks, zero artificial delay
