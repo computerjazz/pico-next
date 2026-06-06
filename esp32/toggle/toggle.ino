@@ -18,7 +18,7 @@ const char* serverHost = SERVER_HOST;
 const char* authToken = AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 const char* portalSsid = "toggle-setup";
-const char* firmwareVersion = "toggle-2026-06-06.2";
+const char* firmwareVersion = "toggle-2026-06-06.3";
 
 #define OTA_CHECK_INTERVAL_MS 60000UL
 #define LOG_FLUSH_INTERVAL_MS 30000UL
@@ -92,6 +92,15 @@ void flushLogs() {
   if (code < 200 || code >= 300) {
     pendingLogs = logsToSend + pendingLogs;
   }
+}
+
+void logMemory(const char* label) {
+  appendLog("[mem] %s | free heap: %u | min free heap: %u | stack hwm: %u",
+    label,
+    ESP.getFreeHeap(),
+    ESP.getMinFreeHeap(),
+    uxTaskGetStackHighWaterMark(NULL)
+  );
 }
 
 
@@ -437,6 +446,9 @@ static bool installOtaFromUrl(const String& url) {
 }
 
 static bool checkForOtaUpdate() {
+
+  logMemory("before checkForOtaUpdate");
+
   String otaVersion;
   String firmwareUrl;
 
@@ -588,6 +600,7 @@ static void wsPause() {
 }
 
 static bool postToggleState(bool isOn) {
+  logMemory("before postToggleState");
   appendLog("Posting toggle state... %d", isOn);
   WiFiClientSecure client;
   client.setInsecure();
@@ -606,6 +619,8 @@ static bool postToggleState(bool isOn) {
 }
 
 static void pollGroupState() {
+  logMemory("before pollGroupState");
+
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
@@ -626,6 +641,7 @@ static void pollGroupState() {
 }
 
 static bool phoneHome() {
+  logMemory("before phoneHome");
   WiFiClientSecure client;
   client.setInsecure();
 
