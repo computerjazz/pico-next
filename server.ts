@@ -10,6 +10,7 @@ import {
   ClientRegisterSchema,
   removeClient,
   sendMessage,
+  ToggleFlipSwitchSchema,
 } from "./lib/websocket";
 
 const app = next({ dev: false });
@@ -66,9 +67,11 @@ async function main() {
 
     socket.on("message", async (data: Buffer) => {
       const dataStr = data.toString();
-      const parsed = ClientRegisterSchema.safeParse(JSON.parse(dataStr));
-      if (parsed.success) {
-        const msg = parsed.data;
+      const dataJson = JSON.parse(dataStr);
+      const clientRegisterParsed = ClientRegisterSchema.safeParse(dataJson);
+      const toggleStateParsed = ToggleFlipSwitchSchema.safeParse(dataJson);
+      if (clientRegisterParsed.success) {
+        const msg = clientRegisterParsed.data;
         const isValid = await validateTokenDefault(msg.token);
         if (!isValid) {
           console.warn(`Rejected client: ${msg.id} (bad token)`);
@@ -82,6 +85,22 @@ async function main() {
           socket,
           clientId,
           groupId,
+        });
+      }
+      if (toggleStateParsed.success) {
+        const msg = toggleStateParsed.data;
+        const isValid = await validateTokenDefault(msg.token);
+        if (!isValid) {
+          console.warn(`Rejected toggle state: ${msg.deviceId} (bad token)`);
+          return;
+        }
+        const toggleStateUrl = `${process.env.API_BASE_URL}/api/device/${msg.deviceId}`;
+        await fetch(toggleStateUrl, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${process.env.SERVER_TOKEN}`,
+          },
+          body: JSON.stringify(msg),
         });
       }
     });

@@ -74,23 +74,25 @@ void flushLogs() {
 
   WiFiClientSecure client;
   client.setInsecure();
-  HTTPClient http;
-  String url = String("https://") + serverHost + "/api/device/" + deviceId + "/logs";
-  if (!http.begin(client, url)) {
-    pendingLogs = logsToSend + pendingLogs;
-    return;
-  }
-  http.setTimeout(8000);
-  http.setConnectTimeout(5000);
-  http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("Content-Type", "text/plain");
-  http.addHeader("ngrok-skip-browser-warning", "true");
+  {
+    HTTPClient http;
+    String url = String("https://") + serverHost + "/api/device/" + deviceId + "/logs";
+    if (!http.begin(client, url)) {
+      pendingLogs = logsToSend + pendingLogs;
+      return;
+    }
+    http.setTimeout(8000);
+    http.setConnectTimeout(5000);
+    http.addHeader("Authorization", String("Bearer ") + authToken);
+    http.addHeader("Content-Type", "text/plain");
+    http.addHeader("ngrok-skip-browser-warning", "true");
 
-  int code = http.POST(logsToSend);
-  http.end();
+    int code = http.POST(logsToSend);
+    http.end();
 
-  if (code < 200 || code >= 300) {
-    pendingLogs = logsToSend + pendingLogs;
+    if (code < 200 || code >= 300) {
+      pendingLogs = logsToSend + pendingLogs;
+    }
   }
 }
 
@@ -388,57 +390,59 @@ static bool installOtaFromUrl(const String& url) {
   WiFiClientSecure client;
   client.setInsecure();
 
-  HTTPClient http;
-  if (!http.begin(client, url)) {
-    appendLog("ota: http begin failed for %s", url.c_str());
-    return false;
-  }
-  http.setTimeout(8000);          // 8s total
-  http.setConnectTimeout(5000);   // 5s to connect
-  http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("x-device-id", deviceId);
-  http.addHeader("x-firmware-version", String(firmwareVersion));
-  http.addHeader("ngrok-skip-browser-warning", "true");
+  {
+    HTTPClient http;
+    if (!http.begin(client, url)) {
+      appendLog("ota: http begin failed for %s", url.c_str());
+      return false;
+    }
+    http.setTimeout(8000);          // 8s total
+    http.setConnectTimeout(5000);   // 5s to connect
+    http.addHeader("Authorization", String("Bearer ") + authToken);
+    http.addHeader("x-device-id", deviceId);
+    http.addHeader("x-firmware-version", String(firmwareVersion));
+    http.addHeader("ngrok-skip-browser-warning", "true");
 
-  int code = http.GET();
-  if (code != 200) {
-    appendLog("ota: download HTTP %d", code);
+    int code = http.GET();
+    if (code != 200) {
+      appendLog("ota: download HTTP %d", code);
+      http.end();
+      return false;
+    }
+
+    int contentLength = http.getSize();
+    if (contentLength <= 0) {
+      appendLog("ota: invalid content length %d", contentLength);
+      http.end();
+      return false;
+    }
+
+    if (!Update.begin((size_t)contentLength)) {
+      appendLog("ota: Update.begin failed (err=%u)", Update.getError());
+      http.end();
+      return false;
+    }
+
+    WiFiClient* stream = http.getStreamPtr();
+    size_t written = Update.writeStream(*stream);
+    if (written != (size_t)contentLength) {
+      appendLog("ota: wrote %u of %d bytes", (unsigned)written, contentLength);
+    }
+
+    if (!Update.end()) {
+      appendLog("ota: Update.end failed (err=%u)", Update.getError());
+      http.end();
+      return false;
+    }
+
+    if (!Update.isFinished()) {
+      appendLog("ota: update did not finish");
+      http.end();
+      return false;
+    }
+
     http.end();
-    return false;
   }
-
-  int contentLength = http.getSize();
-  if (contentLength <= 0) {
-    appendLog("ota: invalid content length %d", contentLength);
-    http.end();
-    return false;
-  }
-
-  if (!Update.begin((size_t)contentLength)) {
-    appendLog("ota: Update.begin failed (err=%u)", Update.getError());
-    http.end();
-    return false;
-  }
-
-  WiFiClient* stream = http.getStreamPtr();
-  size_t written = Update.writeStream(*stream);
-  if (written != (size_t)contentLength) {
-    appendLog("ota: wrote %u of %d bytes", (unsigned)written, contentLength);
-  }
-
-  if (!Update.end()) {
-    appendLog("ota: Update.end failed (err=%u)", Update.getError());
-    http.end();
-    return false;
-  }
-
-  if (!Update.isFinished()) {
-    appendLog("ota: update did not finish");
-    http.end();
-    return false;
-  }
-
-  http.end();
   appendLog("ota: update installed, restarting");
   delay(200);
   ESP.restart();
@@ -457,38 +461,39 @@ static bool checkForOtaUpdate() {
     WiFiClientSecure client;
     client.setInsecure();
 
-    HTTPClient http;
-    if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/ota")) {
-      appendLog("ota: metadata begin failed");
-      return false;
+    {
+      HTTPClient http;
+      if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/ota")) {
+        appendLog("ota: metadata begin failed");
+        return false;
+      }
+      http.setTimeout(8000);          // 8s total
+      http.setConnectTimeout(5000);   // 5s to connect
+      http.addHeader("Authorization", String("Bearer ") + authToken);
+      http.addHeader("x-device-id", deviceId);
+      http.addHeader("x-firmware-version", String(firmwareVersion));
+      http.addHeader("ngrok-skip-browser-warning", "true");
+
+      int code = http.GET();
+      String body = http.getString();
+      http.end();
+
+      if (code != 200) {
+        appendLog("ota: metadata HTTP %d", code);
+        return false;
+      }
+
+      JsonDocument doc;
+      DeserializationError error = deserializeJson(doc, body);
+
+      if (error) {
+        appendLog("Parse failed: %s", error.c_str());
+        return false;
+      }
+
+      otaVersion  = doc["otaVersion"].as<String>();
+      firmwareUrl = resolveOtaUrl(doc["firmwareUrl"].as<String>());
     }
-    http.setTimeout(8000);          // 8s total
-    http.setConnectTimeout(5000);   // 5s to connect
-    http.addHeader("Authorization", String("Bearer ") + authToken);
-    http.addHeader("x-device-id", deviceId);
-    http.addHeader("x-firmware-version", String(firmwareVersion));
-    http.addHeader("ngrok-skip-browser-warning", "true");
-
-    int code = http.GET();
-    String body = http.getString();
-    http.end();
-
-    if (code != 200) {
-      appendLog("ota: metadata HTTP %d", code);
-      return false;
-    }
-
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, body);
-
-    if (error) {
-      appendLog("Parse failed: %s", error.c_str());
-      return false;
-    }
-
-    otaVersion  = doc["otaVersion"].as<String>();
-    firmwareUrl = resolveOtaUrl(doc["firmwareUrl"].as<String>());
-    
   }
   if (otaVersion.length() == 0) {
     appendLog("ota: metadata missing otaVersion");
@@ -510,13 +515,14 @@ static bool checkForOtaUpdate() {
 }
 
 static void applyPayloadColor(const String& payload) {
+  Serial.printf("applyPayloadColor!!! %s", payload);
   int phaseStart = payload.indexOf("\"phase\":\"");
   if (phaseStart < 0) return;
   phaseStart += 9;
   int phaseEnd = payload.indexOf('"', phaseStart);
   if (phaseEnd < 0) return;
   String phase = payload.substring(phaseStart, phaseEnd);
-
+  Serial.printf("Applying phase %s\n", phase);
   if (phase == "aligned") {
     appendLog("%s: aligned", deviceId.c_str());
     showGreen();
@@ -563,6 +569,7 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
       break;
     case WStype_TEXT: {
       String message;
+      Serial.println("WStype_TEXT");
       if (payload && length > 0) {
         message.reserve(length + 1);
         for (size_t i = 0; i < length; ++i) message += (char)payload[i];
@@ -602,20 +609,30 @@ static void wsPause() {
 static bool postToggleState(bool isOn) {
   logMemory("before postToggleState");
   appendLog("Posting toggle state... %d", isOn);
-  WiFiClientSecure client;
-  client.setInsecure();
-  HTTPClient http;
-  String url = String("https://") + serverHost + "/api/device/" + deviceId;
-  if (!http.begin(client, url)) return false;
-  http.setTimeout(8000);          // 8s total
-  http.setConnectTimeout(5000);   // 5s to connect
-  http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("ngrok-skip-browser-warning", "true");
-  String body = String("{\"state\":\"") + (isOn ? "on" : "off") + "\"}";
-  int code = http.POST(body);
-  http.end();
-  return code >= 200 && code < 300;
+
+  if (wsClient.isConnected()) {
+    String msg = String("{\"type\":\"toggle-flip-switch\",\"deviceId\":\"") + deviceId + "\",\"state\":\"" + (isOn ? "on" : "off") + "\",\"token\":\"" + wsToken + "\"}";
+    wsClient.sendTXT(msg);
+  } else {
+    WiFiClientSecure client;
+    client.setInsecure();
+    {
+      HTTPClient http;
+      String url = String("https://") + serverHost + "/api/device/" + deviceId;
+      if (!http.begin(client, url)) return false;
+      http.setTimeout(8000);          // 8s total
+      http.setConnectTimeout(5000);   // 5s to connect
+      http.addHeader("Authorization", String("Bearer ") + authToken);
+      http.addHeader("Content-Type", "application/json");
+      http.addHeader("ngrok-skip-browser-warning", "true");
+      String body = String("{\"state\":\"") + (isOn ? "on" : "off") + "\"}";
+      int code = http.POST(body);
+      http.end();
+      return code >= 200 && code < 300;
+    }
+  }
+
+  return false;
 }
 
 static void pollGroupState() {
@@ -623,21 +640,23 @@ static void pollGroupState() {
 
   WiFiClientSecure client;
   client.setInsecure();
-  HTTPClient http;
-  String url = String("https://") + serverHost + "/api/toggle/group";
-  if (!http.begin(client, url)) return;
-  http.setTimeout(8000);       
-  http.setConnectTimeout(5000);
-  http.addHeader("ngrok-skip-browser-warning", "true");
-  http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("x-device-id", deviceId);
-  int code = http.GET();
-  if (code == 200) {
-    String body = http.getString();
-    applyPayloadColor(body);
+  {
+    HTTPClient http;
+    String url = String("https://") + serverHost + "/api/toggle/group";
+    if (!http.begin(client, url)) return;
+    http.setTimeout(8000);       
+    http.setConnectTimeout(5000);
+    http.addHeader("ngrok-skip-browser-warning", "true");
+    http.addHeader("Authorization", String("Bearer ") + authToken);
+    http.addHeader("x-device-id", deviceId);
+    int code = http.GET();
+    if (code == 200) {
+      String body = http.getString();
+      applyPayloadColor(body);
+    }
+    appendLog("Polled group state at %s: %d", url.c_str(), code);
+    http.end();
   }
-  appendLog("Polled group state at %s: %d", url.c_str(), code);
-  http.end();
 }
 
 static bool phoneHome() {
@@ -645,32 +664,34 @@ static bool phoneHome() {
   WiFiClientSecure client;
   client.setInsecure();
 
-  HTTPClient http;
-  if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/phone-home")) {
-    appendLog("phoneHome: http begin failed");
+  {
+    HTTPClient http;
+    if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/phone-home")) {
+      appendLog("phoneHome: http begin failed");
+      return false;
+    }
+    http.setTimeout(8000);          // 8s total
+    http.setConnectTimeout(5000);   // 5s to connect
+    http.addHeader("Authorization", String("Bearer ") + authToken);
+    http.addHeader("x-device-id", deviceId);
+    http.addHeader("x-firmware-version", String(firmwareVersion));
+    http.addHeader("x-device-type", "toggle");
+    http.addHeader("ngrok-skip-browser-warning", "true");
+
+    int code = http.POST((uint8_t*)nullptr, 0);
+    String body = http.getString();
+
+    http.end();
+
+    if (code >= 200 && code < 300) {
+      appendLog("phoneHome: success (%d)", code);
+      appendLog("Returned JSON body: %s", body.c_str());
+      return true;
+    }
+
+    appendLog("phoneHome: HTTP %d, body: %s", code, body.c_str());
     return false;
   }
-  http.setTimeout(8000);          // 8s total
-  http.setConnectTimeout(5000);   // 5s to connect
-  http.addHeader("Authorization", String("Bearer ") + authToken);
-  http.addHeader("x-device-id", deviceId);
-  http.addHeader("x-firmware-version", String(firmwareVersion));
-  http.addHeader("x-device-type", "toggle");
-  http.addHeader("ngrok-skip-browser-warning", "true");
-
-  int code = http.POST((uint8_t*)nullptr, 0);
-  String body = http.getString();
-
-  http.end();
-
-  if (code >= 200 && code < 300) {
-    appendLog("phoneHome: success (%d)", code);
-    appendLog("Returned JSON body: %s", body.c_str());
-    return true;
-  }
-
-  appendLog("phoneHome: HTTP %d, body: %s", code, body.c_str());
-  return false;
 }
 
 void setup() {
@@ -722,17 +743,20 @@ void loop() {
     (lastFlushMs == 0 ||
       now - lastFlushMs >= LOG_FLUSH_INTERVAL_MS ||
       pendingLogs.length() > 2048);
-  bool httpDue = pendingSwitchPost || pollDue || otaDue || logFlushDue;
+  bool httpDue = pollDue || otaDue || logFlushDue;
 
   // WS management: pause when HTTP is due, resume otherwise.
   // If we just issued wsPause(), skip this iteration so lwIP can drain the
   // close handshake before any new SSL connect attempt.
   if (httpDue) {
     if (g_wsRunning) {
+              Serial.println("HTTP DUE -- pausing!!!");
+
       wsPause();
       delay(5);
       return;
     }
+
   } else {
     wsResume();
   }
@@ -740,7 +764,6 @@ void loop() {
   if (g_wsRunning) wsClient.loop();
 
   // HTTP requests — only run when WS is confirmed down (!g_wsRunning).
-  if (httpDue) {
     if (pendingSwitchPost) {
       pendingSwitchPost = false;
       postToggleState(switchState);
@@ -757,7 +780,6 @@ void loop() {
       lastFlushMs = now;
       flushLogs();
     }
-  }
 
   yield(); // feeds watchdog, yields to background tasks, zero artificial delay
 }

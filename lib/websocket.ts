@@ -14,6 +14,13 @@ export const ClientRegisterSchema = z.object({
   token: z.string(),
 });
 
+export const ToggleFlipSwitchSchema = z.object({
+  type: z.literal("toggle-flip-switch"),
+  deviceId: z.string(),
+  state: z.enum(["on", "off"]),
+  token: z.string(),
+});
+
 type SocketGroup = Map<string, WebSocket>;
 const clients = new Map<string, WebSocket | SocketGroup>();
 
