@@ -6,7 +6,6 @@ async function createPool() {
   const { address } = await dns.lookup(process.env.DATABASE_HOST!, {
     family: 4,
   });
-  console.log("address!!", address);
   const pool = new Pool({
     user: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,

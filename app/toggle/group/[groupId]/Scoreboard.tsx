@@ -113,7 +113,7 @@ function Scoreboard({
 
   if (!score) {
     return (
-      <div className="mx-auto max-w-2xl p-4 space-y-4">
+      <div className="p-4 space-y-4">
         <p className="text-sm text-neutral-500">Loading...</p>
       </div>
     );
@@ -124,8 +124,7 @@ function Scoreboard({
     null;
 
   return (
-    <div className="mx-auto max-w-2xl p-4 space-y-4">
-      <h1 className="text-3xl font-bold">Leaderboard</h1>
+    <div className="p-4 space-y-4">
       <p className="text-sm text-muted-foreground">
         Events: {score.totalEvents} | Updated:{" "}
         {new Date(score.asOf).toLocaleString()}

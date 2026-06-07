@@ -32,7 +32,6 @@ export async function GET(
   });
 
   if (transcript) {
-    console.log("transcription success!!", transcript);
     await db
       .update(recordings)
       .set({

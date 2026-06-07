@@ -93,7 +93,6 @@ export default async function TogglePage({
   const sessionUserId = session?.user?.id;
   const isDeviceOwner = sessionUserId && deviceUserId === sessionUserId;
   const groupDevices = groupsWithDevices.map((g) => g.device);
-  console.log("devices!!", JSON.stringify(group));
   return (
     <div className="flex flex-col h-screen">
       <PageHeader>
@@ -107,13 +106,24 @@ export default async function TogglePage({
           </div>
         </div>
       </PageHeader>
-      {groupId && (
-        <Scoreboard
-          groupId={groupId}
-          devices={new Map(groupDevices.map((gd) => [gd.deviceId, gd]))}
-        />
-      )}
-      {isDeviceOwner && <p>{logs}</p>}
+      <div className="flex flex-col max-w-2xl mx-auto p-4">
+        {groupId && (
+          <div className="mt-10">
+            <h1 className="text-3xl font-bold">Leaderboard</h1>
+
+            <Scoreboard
+              groupId={groupId}
+              devices={new Map(groupDevices.map((gd) => [gd.deviceId, gd]))}
+            />
+          </div>
+        )}
+        {isDeviceOwner && !!logs && (
+          <div className="mt-48 flex flex-col flex-wrap">
+            <h1 className="font-bold text-2xl">Device Logs</h1>
+            <pre className="whitespace-pre-wrap wrap-anywhere">{logs}</pre>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
