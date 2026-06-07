@@ -6,6 +6,7 @@ import ClaimButton from "../../components/ClaimButton";
 import { Device } from "@/db/schema";
 import PageHeader from "@/app/components/PageHeader";
 import Scoreboard from "../group/[groupId]/Scoreboard";
+import { getRedis, REDIS_KEYS } from "@/lib/redis";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -59,6 +60,9 @@ export default async function TogglePage({
 }) {
   const deviceId = (await params).id;
   const session = await auth();
+  const redis = await getRedis();
+  const key = `${REDIS_KEYS.DEVICE_LOGS_PREFIX}-${deviceId}`;
+  const logs = await redis.get(key);
 
   const group = await db.query.deviceGroups.findFirst({
     where: (dg, { eq }) => eq(dg.deviceId, deviceId),
@@ -109,6 +113,7 @@ export default async function TogglePage({
           devices={new Map(groupDevices.map((gd) => [gd.deviceId, gd]))}
         />
       )}
+      {isDeviceOwner && <p>{logs}</p>}
     </div>
   );
 }
