@@ -18,7 +18,7 @@ const char* serverHost = SERVER_HOST;
 const char* authToken = AUTH_TOKEN;
 const char* wsToken = WS_TOKEN;
 const char* portalSsid = "toggle-setup";
-const char* firmwareVersion = "toggle-2026-06-06.4";
+const char* firmwareVersion = "toggle-2026-06-06.5";
 
 #define OTA_CHECK_INTERVAL_MS 60000UL
 #define LOG_FLUSH_INTERVAL_MS 30000UL
@@ -45,12 +45,27 @@ static bool wsReady = false;
 static bool g_wsRunning = false;
 static bool pendingSwitchPost = false;
 static String deviceId = "";
+static TaskHandle_t wsTaskHandle = nullptr;
+static SemaphoreHandle_t wsMutex = nullptr;
+static SemaphoreHandle_t logMutex = nullptr;
+
 
 unsigned long lastWifiCheck = 0;
 const unsigned long WIFI_CHECK_INTERVAL = 30000; // 30s
 int wifiFailCount = 0;
 
 String pendingLogs = "";
+
+static void wsTask(void*) {
+  while (true) {
+    if (g_wsRunning) {
+      xSemaphoreTake(wsMutex, portMAX_DELAY);
+      wsClient.loop();
+      xSemaphoreGive(wsMutex);
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
 
 void appendLog(const char* fmt, ...) {
   char buf[128];
@@ -59,21 +74,27 @@ void appendLog(const char* fmt, ...) {
   vsnprintf(buf, sizeof(buf), fmt, args);
   va_end(args);
   Serial.println(buf);
+  if (logMutex) xSemaphoreTake(logMutex, portMAX_DELAY);
   pendingLogs += String(millis()) + " " + buf + "\n";
-  if (pendingLogs.length() > 4096) {
+  if (pendingLogs.length() > 4096)
     pendingLogs = pendingLogs.substring(pendingLogs.length() - 4096);
-  }
+  if (logMutex) xSemaphoreGive(logMutex);
 }
 
 void flushLogs() {
+  lastFlushMs = millis();
+
   if (pendingLogs.length() == 0 || deviceId.length() == 0) return;
   if (WiFi.status() != WL_CONNECTED) return;
 
+  if (logMutex) xSemaphoreTake(logMutex, portMAX_DELAY);
   String logsToSend = pendingLogs;
   pendingLogs = "";
+  if (logMutex) xSemaphoreGive(logMutex);
 
   WiFiClientSecure client;
   client.setInsecure();
+  client.setTimeout(8);
   {
     HTTPClient http;
     String url = String("https://") + serverHost + "/api/device/" + deviceId + "/logs";
@@ -389,7 +410,7 @@ static String resolveOtaUrl(const String& maybeUrl) {
 static bool installOtaFromUrl(const String& url) {
   WiFiClientSecure client;
   client.setInsecure();
-
+  client.setTimeout(60);
   {
     HTTPClient http;
     if (!http.begin(client, url)) {
@@ -452,6 +473,7 @@ static bool installOtaFromUrl(const String& url) {
 static bool checkForOtaUpdate() {
 
   logMemory("before checkForOtaUpdate");
+  lastOtaCheckMs = millis();
 
   String otaVersion;
   String firmwareUrl;
@@ -460,7 +482,7 @@ static bool checkForOtaUpdate() {
   {
     WiFiClientSecure client;
     client.setInsecure();
-
+    client.setTimeout(8);
     {
       HTTPClient http;
       if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/ota")) {
@@ -595,26 +617,18 @@ static void wsResume() {
   lastWsResumeMs = millis();
 }
 
-static void wsPause() {
-  if (!g_wsRunning) return;
-  appendLog("wsPause()");
-  wsClient.disconnect();
-  g_wsRunning = false;
-  wsReady = false;
-  // Yield so lwIP can finalize socket close + free the mbedTLS context before
-  // any subsequent SSL connect attempt.
-  vTaskDelay(pdMS_TO_TICKS(50));
-}
-
 static bool postToggleState(bool isOn) {
   logMemory("before postToggleState");
   appendLog("Posting toggle state... %d", isOn);
 
-  if (wsClient.isConnected()) {
+  if (g_wsRunning && wsReady) {
     String msg = String("{\"type\":\"toggle-flip-switch\",\"deviceId\":\"") + deviceId + "\",\"state\":\"" + (isOn ? "on" : "off") + "\",\"token\":\"" + wsToken + "\"}";
+    xSemaphoreTake(wsMutex, portMAX_DELAY);
     wsClient.sendTXT(msg);
-  } else {
+    xSemaphoreGive(wsMutex);  
+    } else {
     WiFiClientSecure client;
+    client.setTimeout(8);
     client.setInsecure();
     {
       HTTPClient http;
@@ -637,9 +651,10 @@ static bool postToggleState(bool isOn) {
 
 static void pollGroupState() {
   logMemory("before pollGroupState");
-
+  lastPollMs = millis();
   WiFiClientSecure client;
   client.setInsecure();
+  client.setTimeout(8);
   {
     HTTPClient http;
     String url = String("https://") + serverHost + "/api/toggle/group";
@@ -663,6 +678,7 @@ static bool phoneHome() {
   logMemory("before phoneHome");
   WiFiClientSecure client;
   client.setInsecure();
+  client.setTimeout(8);
 
   {
     HTTPClient http;
@@ -695,6 +711,9 @@ static bool phoneHome() {
 }
 
 void setup() {
+  wsMutex = xSemaphoreCreateMutex();
+  logMutex = xSemaphoreCreateMutex();
+
   Serial.begin(115200);
   pinMode(SWITCH_PIN, INPUT_PULLUP);
   pinMode(LED_R_PIN, OUTPUT);
@@ -716,6 +735,7 @@ void setup() {
   wsClient.setReconnectInterval(2000);
   wsClient.enableHeartbeat(15000, 5000, 3); // ping every 15s, 5s timeout, 3 retries
   wsResume();
+  xTaskCreatePinnedToCore(wsTask, "ws", 8192, nullptr, 1, &wsTaskHandle, 0);
 
 }
 
@@ -723,10 +743,9 @@ void loop() {
   checkWifi();
   const unsigned long now = millis();
 
+  // switch debounce
   bool reading = readSwitch();
-  if (reading != lastSwitchReading) {
-    lastSwitchDebounceMs = now;
-  }
+  if (reading != lastSwitchReading) lastSwitchDebounceMs = now;
   if (now - lastSwitchDebounceMs > 35 && reading != switchState) {
     switchState = reading;
     appendLog("Switched");
@@ -734,53 +753,19 @@ void loop() {
   }
   lastSwitchReading = reading;
 
-  bool wsStale = g_wsRunning && (
-    (lastWsMessageMs > 0 && now - lastWsMessageMs > 10000UL) ||
-    (!wsReady && now - lastWsResumeMs > 8000UL)
-  );
-  bool pollDue = (lastPollMs == 0 || now - lastPollMs >= 3000UL) && wsStale;
-  bool otaDue = lastOtaCheckMs == 0 || now - lastOtaCheckMs >= OTA_CHECK_INTERVAL_MS;
-  bool logFlushDue = pendingLogs.length() > 0 &&
-    (lastFlushMs == 0 ||
-      now - lastFlushMs >= LOG_FLUSH_INTERVAL_MS ||
-      pendingLogs.length() > 2048);
-  bool httpDue = pollDue || otaDue || logFlushDue;
+  if (pendingSwitchPost) {
+    pendingSwitchPost = false;
+    postToggleState(switchState);
+  }
+  if (lastOtaCheckMs == 0 || now - lastOtaCheckMs >= OTA_CHECK_INTERVAL_MS) {
+    checkForOtaUpdate();
+  }
+  if (!wsReady && (lastPollMs == 0 || now - lastPollMs >= 30000UL)) {
+    pollGroupState();
+  } 
+  if (pendingLogs.length() > 0 && (lastFlushMs == 0 || now - lastFlushMs >= LOG_FLUSH_INTERVAL_MS || pendingLogs.length() > 2048)) {
+    flushLogs();
+  }
 
-  // WS management: pause when HTTP is due, resume otherwise.
-  // If we just issued wsPause(), skip this iteration so lwIP can drain the
-  // close handshake before any new SSL connect attempt.
-  // if (httpDue) {
-  //   if (g_wsRunning) {
-  //             Serial.println("HTTP DUE -- pausing!!!");
-
-  //     wsPause();
-  //     delay(5);
-  //     return;
-  //   }
-
-  // } else {
-  //   wsResume();
-  // }
-
-  if (g_wsRunning) wsClient.loop();
-
-  // HTTP requests — only run when WS is confirmed down (!g_wsRunning).
-    if (pendingSwitchPost) {
-      pendingSwitchPost = false;
-      postToggleState(switchState);
-    }
-    if (pollDue) {
-      lastPollMs = now;
-      pollGroupState();
-    }
-    if (otaDue) {
-      lastOtaCheckMs = now;
-      checkForOtaUpdate();
-    }
-    if (logFlushDue) {
-      lastFlushMs = now;
-      flushLogs();
-    }
-
-  yield(); // feeds watchdog, yields to background tasks, zero artificial delay
+  yield();
 }
