@@ -707,6 +707,7 @@ void setup() {
   checkForOtaUpdate();
   phoneHome();
   flashRainbowConnected();
+  pollGroupState();
 
   switchState = readSwitch();
   lastSwitchReading = switchState;
@@ -748,18 +749,18 @@ void loop() {
   // WS management: pause when HTTP is due, resume otherwise.
   // If we just issued wsPause(), skip this iteration so lwIP can drain the
   // close handshake before any new SSL connect attempt.
-  if (httpDue) {
-    if (g_wsRunning) {
-              Serial.println("HTTP DUE -- pausing!!!");
+  // if (httpDue) {
+  //   if (g_wsRunning) {
+  //             Serial.println("HTTP DUE -- pausing!!!");
 
-      wsPause();
-      delay(5);
-      return;
-    }
+  //     wsPause();
+  //     delay(5);
+  //     return;
+  //   }
 
-  } else {
-    wsResume();
-  }
+  // } else {
+  //   wsResume();
+  // }
 
   if (g_wsRunning) wsClient.loop();
 
