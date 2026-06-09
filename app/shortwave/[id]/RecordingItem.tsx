@@ -1,7 +1,7 @@
 "use client";
 
 import { getRecording } from "@/app/actions/getRecording";
-import { useAudioContext } from "@/app/components/AudioProvider";
+import { AudioProvider, useAudioContext } from "@/app/components/AudioProvider";
 import EllipsesCircle from "@/app/components/icons/EllipsesCircle";
 import PauseCircle from "@/app/components/icons/PauseCircle";
 import PlayCircle from "@/app/components/icons/PlayCircle";
@@ -12,6 +12,8 @@ import { motion } from "motion/react";
 import Trash from "@/app/components/icons/Trash";
 import { deleteRecording } from "@/app/actions/deleteRecording";
 import ArrowDownTray from "@/app/components/icons/ArrowDownTray";
+import Share from "@/app/components/icons/Share";
+import { shareRecording } from "@/app/actions/shareRecording";
 
 function useAudio({ recordingId }: { recordingId: string }) {
   const [audioSource, setAudioSource] = useState<string | undefined>(undefined);
@@ -66,12 +68,16 @@ function useAudio({ recordingId }: { recordingId: string }) {
   };
 }
 
-export default function RecordingItem({
-  recording,
-}: {
+type Props = {
   recording: Recording;
   className?: string;
-}) {
+  enabledActions?: ("delete" | "share" | "download")[];
+};
+
+export default function RecordingItem({
+  recording,
+  enabledActions = ["delete", "share", "download"],
+}: Props) {
   const { createdAt, durationMillis } = recording;
 
   const {
@@ -91,6 +97,21 @@ export default function RecordingItem({
   async function onDeletePress() {
     if (window.confirm("Are you sure you want to delete this recording?")) {
       await deleteRecording({ recordingId: recording.id });
+    }
+  }
+
+  async function onSharePress() {
+    await shareRecording({ recordingId: recording.id });
+    // Copy a public (shared) URL to clipboard for this recording
+    // You may want to update this URL scheme to your production host as needed
+    // Example: `${window.location.origin}/shortwave/recording/${recording.id}`
+
+    const url = `${window.location.origin}/shortwave/recording/${recording.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      alert("Link copied to clipboard!");
+    } catch (err) {
+      alert("Failed to copy link to clipboard.");
     }
   }
 
@@ -142,18 +163,27 @@ export default function RecordingItem({
     <div
       className={`flex relative ${isDevice ? "self-start text-start items-start" : "self-end text-end items-end"}`}
     >
-      <div className="absolute z-0 flex align-middle top-0 bottom-0 left-0 right-0 items-center justify-end p-2 gap-4">
-        <button className="cursor-pointer" onClick={onDownloadPress}>
-          <ArrowDownTray />
-        </button>
-        <button className="cursor-pointer" onClick={onDeletePress}>
-          <Trash />
-        </button>
+      <div className="absolute z-0 flex align-middle top-0 bottom-0 left-0 right-0 items-center justify-end p-2 gap-8">
+        {enabledActions.includes("delete") && (
+          <button className="cursor-pointer" onClick={onDeletePress}>
+            <Trash />
+          </button>
+        )}
+        {enabledActions.includes("download") && (
+          <button className="cursor-pointer" onClick={onDownloadPress}>
+            <ArrowDownTray />
+          </button>
+        )}
+        {enabledActions.includes("share") && (
+          <button className="cursor-pointer" onClick={onSharePress}>
+            <Share />
+          </button>
+        )}
       </div>
       <motion.div
         className={`flex flex-col gap-2 p-4 rounded-md ${isDevice ? "bg-muted-foreground text-accent-foreground" : "bg-muted-surface text-muted-foreground"} z-10 `}
         drag="x"
-        dragConstraints={{ right: 0, left: -100 }}
+        dragConstraints={{ right: 0, left: -200 }}
         dragElastic={0.05}
       >
         <div className="flex flex-row gap-2 text-xs font-bold opacity-70">
@@ -225,3 +255,11 @@ export default function RecordingItem({
     </div>
   );
 }
+
+export const RecordingItemSingle = (props: Props) => {
+  return (
+    <AudioProvider>
+      <RecordingItem {...props} />
+    </AudioProvider>
+  );
+};

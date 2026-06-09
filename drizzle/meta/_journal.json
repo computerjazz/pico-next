@@ -204,6 +204,13 @@
       "when": 1780611054113,
       "tag": "0028_elite_corsair",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1780983916253,
+      "tag": "0029_oval_loners",
+      "breakpoints": true
     }
   ]
 }

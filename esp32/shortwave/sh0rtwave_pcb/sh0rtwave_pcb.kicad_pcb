@@ -84,7 +84,7 @@
 			(mirror no)
 			(drillshape 0)
 			(scaleselection 1)
-			(outputdirectory "shortwave_pcb_2026-05-26/")
+			(outputdirectory "shortwave_pcb_2026-05-31/")
 		)
 	)
 	(footprint "MountingHole:MountingHole_3.2mm_M3"
@@ -4727,6 +4727,17 @@
 		)
 		(layer "F.Cu")
 		(uuid "460492ea-ff4e-41fc-9092-c0a38d5cab19")
+	)
+	(gr_rect
+		(start 80 47.5)
+		(end 131 105)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill no)
+		(layer "Edge.Cuts")
+		(uuid "9a02f9f0-9e10-4b93-8877-cf03d5af0ec0")
 	)
 	(gr_text "VDD\n"
 		(at 88.5 90 0)
