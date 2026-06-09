@@ -11,10 +11,10 @@ export function SignInButton() {
     >
       <button
         type="submit"
-        className="inline-flex items-center px-3 py-1 rounded-full text-accent text-sm font-medium hover:bg-accent hover:text-accent-foreground transition cursor-pointer border-2 gap-2 items-center"
+        className="whitespace-nowrap inline-flex items-center px-3 py-1 rounded-full text-accent text-sm font-medium hover:bg-accent hover:text-accent-foreground transition cursor-pointer border-2 gap-2 items-center"
       >
         <Google className="size-4" />
-        Sign in
+        <span>Sign in</span>
       </button>
     </form>
   );
