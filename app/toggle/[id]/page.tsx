@@ -120,7 +120,9 @@ export default async function TogglePage({
         {isDeviceOwner && !!logs && (
           <div className="mt-48 flex flex-col flex-wrap">
             <h1 className="font-bold text-2xl">Device Logs</h1>
-            <pre className="whitespace-pre-wrap wrap-anywhere">{logs}</pre>
+            <pre className="whitespace-pre-wrap wrap-anywhere max-h-screen overflow-hidden overflow-y-scroll">
+              {logs}
+            </pre>
           </div>
         )}
       </div>

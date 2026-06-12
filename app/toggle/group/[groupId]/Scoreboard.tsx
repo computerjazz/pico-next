@@ -1,10 +1,11 @@
 "use client";
 import { fetchGroupScoreAction } from "@/app/actions/fetchGroupScore";
 import { generateToken } from "@/app/actions/generateToken";
+import { useSocket } from "@/app/hooks/useSocket";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { Device } from "@/db/schema";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type DeviceStats = {
   deviceId: string;
@@ -26,6 +27,10 @@ function roleClass(role: "idle" | "active" | "challenger") {
   return "bg-green-400";
 }
 
+function getRandomSocketClientId() {
+  return `client-${Math.floor(Math.random() * 100000)}`;
+}
+
 function Scoreboard({
   groupId,
   devices,
@@ -36,6 +41,8 @@ function Scoreboard({
   const [score, setScore] = useState<GroupScore | null>(null);
   const allIdle = score?.devices.every((d) => d.role === "idle");
 
+  const clientId = useMemo(() => getRandomSocketClientId(), []);
+
   const updateScore = useStableCallback(async function reloadScore() {
     try {
       const latestScore = await fetchGroupScoreAction({ groupId });
@@ -44,6 +51,17 @@ function Scoreboard({
       // ignore
     }
   });
+
+  useSocket({
+    groupId,
+    clientId,
+    onMessage: updateScore,
+  });
+
+  useEffect(() => {
+    // update initial score
+    updateScore();
+  }, [updateScore]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -59,57 +77,6 @@ function Scoreboard({
       }
     };
   }, [allIdle, updateScore]);
-
-  useEffect(() => {
-    let ws: WebSocket | null = null;
-    let reconnect: NodeJS.Timeout | null = null;
-    let stopped = false;
-
-    function connectSocket() {
-      if (stopped) return;
-      ws = new WebSocket(
-        (location.protocol === "https:" ? "wss://" : "ws://") +
-          location.host +
-          "/api/ws",
-      );
-
-      ws.onopen = async () => {
-        const token = await generateToken({ scope: "websocket" });
-        ws?.send(
-          JSON.stringify({
-            type: "register",
-            token,
-            groupId,
-            id: `${groupId}-client-${Math.floor(Math.random() * 100000)}`,
-          }),
-        );
-      };
-
-      ws.onmessage = () => {
-        updateScore();
-      };
-
-      ws.onclose = () => {
-        if (!stopped) {
-          reconnect = setTimeout(connectSocket, 2000);
-        }
-      };
-
-      ws.onerror = () => {
-        ws?.close();
-      };
-    }
-
-    connectSocket();
-    // load initial score
-    updateScore();
-
-    return () => {
-      stopped = true;
-      if (ws) ws.close();
-      if (reconnect) clearTimeout(reconnect);
-    };
-  }, [updateScore, groupId]);
 
   if (!score) {
     return (
