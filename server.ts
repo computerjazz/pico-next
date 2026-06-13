@@ -14,7 +14,8 @@ import {
 } from "./lib/websocket";
 
 const dev = process.env.NODE_ENV !== "production";
-const app = next({ dev });
+console.log("dev?", dev, process.env.NODE_ENV);
+const app = next({ dev: false });
 const handle = app.getRequestHandler();
 
 async function main() {
