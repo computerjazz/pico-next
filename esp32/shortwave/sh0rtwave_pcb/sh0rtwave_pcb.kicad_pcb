@@ -84,7 +84,7 @@
 			(mirror no)
 			(drillshape 0)
 			(scaleselection 1)
-			(outputdirectory "shortwave_pcb_2026-05-31/")
+			(outputdirectory "shortwave_pcb_2026-06-12/")
 		)
 	)
 	(footprint "XIAO_ESP32_S3:MODULE_XIAO_ESP32_S3"
@@ -465,7 +465,7 @@
 		(descr "Through hole straight pin header, 1x05, 2.54mm pitch, single row")
 		(tags "Through hole pin header THT 1x05 2.54mm single row")
 		(property "Reference" "INP441"
-			(at 0 -2.42 0)
+			(at 2 4.58 270)
 			(layer "F.SilkS")
 			(uuid "9d1e53e1-f031-4e9e-84f8-000a9d10d4cb")
 			(effects
@@ -714,7 +714,7 @@
 		(descr "Resistor, Axial_DIN0207 series, Axial, Horizontal, pin pitch=10.16mm, 0.25W = 1/4W, length*diameter=6.3*2.5mm^2, http://cdn-reichelt.de/documents/datenblatt/B400/1_4W%23YAG.pdf")
 		(tags "Resistor Axial_DIN0207 series Axial Horizontal pin pitch 10.16mm 0.25W = 1/4W length 6.3mm diameter 2.5mm")
 		(property "Reference" "10"
-			(at 5.16 -2.5 90)
+			(at 5.16 2.5 90)
 			(layer "F.SilkS")
 			(uuid "0afbfd89-84a2-4110-90cb-e64f45c2f281")
 			(effects
@@ -1115,8 +1115,8 @@
 		(at 125 88 -90)
 		(descr "JST PH series connector, B2B-PH-K (http://www.jst-mfg.com/product/pdf/eng/ePH.pdf)")
 		(tags "connector JST PH vertical")
-		(property "Reference" "PWR"
-			(at -4 0.5 90)
+		(property "Reference" "5v in"
+			(at -3.5 0.5 0)
 			(layer "F.SilkS")
 			(uuid "c3577a25-161f-4279-ad87-724747e9dff5")
 			(effects
@@ -2242,7 +2242,7 @@
 		(descr "C, Disc series, Radial, pin pitch=5.00mm, diameter*width=5*2.5mm^2, Capacitor, http://cdn-reichelt.de/documents/datenblatt/B300/DS_KERKO_TC.pdf")
 		(tags "C Disc series Radial pin pitch 5.00mm diameter 5mm width 2.5mm Capacitor")
 		(property "Reference" "100nF"
-			(at 8.5 1 90)
+			(at 2.5 2 90)
 			(layer "F.SilkS")
 			(uuid "676c1d0e-7c8e-46ea-a738-24ee03ab6c0e")
 			(effects
@@ -2253,7 +2253,7 @@
 			)
 		)
 		(property "Value" "Capacitor"
-			(at 7.5 2.5 90)
+			(at 8 -0.5 90)
 			(layer "F.Fab")
 			(uuid "b7cb4a03-538a-4d5b-a794-656cc60dc77f")
 			(effects

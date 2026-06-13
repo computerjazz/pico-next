@@ -488,7 +488,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "sh0rtwave_pcb.kicad_pro",
+    "filename": "Untitled.kicad_pro",
     "version": 3
   },
   "net_settings": {
@@ -524,7 +524,7 @@
     "last_paths": {
       "idf": "",
       "netlist": "",
-      "plot": "shortwave_pcb_2026-06-12/",
+      "plot": "",
       "specctra_dsn": "",
       "vrml": ""
     },
@@ -643,17 +643,17 @@
     "subpart_id_separator": 0,
     "top_level_sheets": [
       {
-        "filename": "sh0rtwave_pcb.kicad_sch",
+        "filename": "Untitled.kicad_sch",
         "name": "Root",
-        "uuid": "8539301a-3318-4665-987f-5313b350678d"
+        "uuid": "86a7fa97-5da5-408f-9f47-534140bc9e8d"
       }
     ],
-    "used_designators": "SW1,C1-2,D1,R1-3,J1-2,U1-2",
+    "used_designators": "R1-2,Q1,#PWR1-2,J1-7",
     "variants": []
   },
   "sheets": [
     [
-      "8539301a-3318-4665-987f-5313b350678d",
+      "86a7fa97-5da5-408f-9f47-534140bc9e8d",
       "Root"
     ]
   ],
