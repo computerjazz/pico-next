@@ -2,8 +2,12 @@ import { useEffect, useMemo } from "react";
 import { generateToken } from "../actions/generateToken";
 import { useStableCallback } from "./useStableCallback";
 
-function getRandomSocketClientId() {
-  return `client-${Math.floor(Math.random() * 100000)}`;
+function getRandomSocketClientId({
+  groupId = "client",
+}: {
+  groupId?: string | null;
+}) {
+  return `${groupId}-${Date.now()}`;
 }
 
 export function useSocket({
@@ -19,7 +23,10 @@ export function useSocket({
     onMessage?.(msg),
   );
 
-  const _clientId = useMemo(() => getRandomSocketClientId(), []);
+  const _clientId = useMemo(
+    () => getRandomSocketClientId({ groupId }),
+    [groupId],
+  );
   clientId = clientId ?? _clientId;
 
   useEffect(() => {
