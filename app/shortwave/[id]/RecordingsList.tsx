@@ -23,6 +23,11 @@ const RecordingSchema = z.object({
   deletedAt: z.coerce.date().nullable(),
 });
 
+const NewRecordingMessageSchema = z.object({
+  type: z.string(),
+  recording: RecordingSchema,
+});
+
 // function createDummyRecording() {
 //   return {
 //     id: `${Date.now()}`,
@@ -67,10 +72,10 @@ export function RecordingsList({
     groupId: socketGroupId,
     onMessage: (payload) => {
       console.log("message", payload);
-      const parsed = RecordingSchema.safeParse(JSON.parse(payload));
+      const parsed = NewRecordingMessageSchema.safeParse(JSON.parse(payload));
       if (parsed.success) {
         console.log("success", parsed.data);
-        setRecordings((prev) => [...prev, parsed.data]);
+        setRecordings((prev) => [...prev, parsed.data.recording]);
       }
     },
   });
