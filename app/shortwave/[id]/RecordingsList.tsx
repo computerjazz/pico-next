@@ -48,12 +48,15 @@ const NewRecordingMessageSchema = z.object({
 export function RecordingsList({
   recordings: initialRecordings,
   autoScroll = true,
+  isScrolledUp,
 }: {
   recordings: Recording[];
   autoScroll?: boolean;
+  isScrolledUp?: boolean;
 }) {
   const [recordings, setRecordings] = useState(initialRecordings);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
   const socketGroupId = recordings[0]?.deviceId;
 
@@ -63,18 +66,21 @@ export function RecordingsList({
   //   }, 3000);
   // }, []);
 
+  const onNewRecording = useStableCallback(() => {
+    if (!isScrolledUp) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  });
+
   useEffect(() => {
-    // TODO: check whether scrolled before scrolling
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [recordings.length]);
+    onNewRecording();
+  }, [recordings.length, onNewRecording]);
 
   useSocket({
     groupId: socketGroupId,
     onMessage: (payload) => {
-      console.log("message", payload);
       const parsed = NewRecordingMessageSchema.safeParse(JSON.parse(payload));
       if (parsed.success) {
-        console.log("success", parsed.data);
         setRecordings((prev) => [...prev, parsed.data.recording]);
       }
     },
@@ -91,6 +97,7 @@ export function RecordingsList({
   return (
     <AudioProvider>
       <div
+        ref={containerRef}
         className={`flex flex-col flex-1 gap-2 transition-opacity duration-500 ${isVisible ? "opacity-100" : "opacity-0"}`}
       >
         {recordings.map((r) => {
