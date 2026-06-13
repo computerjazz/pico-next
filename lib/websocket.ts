@@ -22,7 +22,7 @@ export const ToggleFlipSwitchSchema = z.object({
 });
 
 type SocketGroup = Map<string, WebSocket>;
-const clients = new Map<string, WebSocket | SocketGroup>();
+const clients = new Map<string, SocketGroup>();
 
 function isSocketGroup(
   socketOrGroup?: WebSocket | SocketGroup,
@@ -43,24 +43,17 @@ export function addClient({
   clientId?: string | null;
   groupId?: string | null;
 }) {
-  if (!clientId) {
+  const groupKey = groupId || clientId;
+  const socketKey = clientId || `${groupId}:${Date.now()}`;
+
+  if (!groupKey) {
     console.log("addClient: no clientId, skip register");
     return;
   }
-  if (groupId) {
-    const group = clients.get(groupId) ?? new Map<string, WebSocket>();
-    if (isSocketGroup(group)) {
-      group.set(clientId, socket);
-      clients.set(groupId, group);
-      console.log(
-        `addClient: registered client ${clientId} in group: ${groupId}`,
-      );
-    }
-    // TODO: handle case where single socket is replaced by group?
-  } else {
-    clients.set(clientId, socket);
-    console.log(`addClient: registered client ${clientId}`);
-  }
+
+  const socketGroup = clients.get(groupKey) ?? new Map<string, WebSocket>();
+  socketGroup.set(socketKey, socket);
+  clients.set(groupKey, socketGroup);
 }
 
 export function removeClient({
@@ -72,31 +65,22 @@ export function removeClient({
   clientId?: string | null;
   groupId?: string | null;
 }) {
-  if (!clientId) {
+  const groupKey = groupId || clientId;
+  if (!groupKey || !clientId) {
     console.log("removeClient: cannot remove socket client without clientId");
     return;
   }
-  const groupOrSocket = clients.get(groupId || clientId);
-  if (!groupOrSocket) {
+  const group = clients.get(groupKey);
+  if (!group) {
     console.log("removeClient: no socket found");
     return;
   }
 
-  if (isSocketGroup(groupOrSocket)) {
-    const group = groupOrSocket;
-    const cur = group.get(clientId);
-    if (cur === socket) {
-      group.delete(clientId);
-    } else {
-      console.log("removeClient: (group) socket mismatch, noop");
-    }
+  const cur = group.get(clientId);
+  if (cur === socket) {
+    group.delete(clientId);
   } else {
-    const cur = groupOrSocket;
-    if (cur === socket) {
-      clients.delete(clientId);
-    } else {
-      console.log("removeClient: (single) socket mismatch, noop");
-    }
+    console.log("removeClient: (group) socket mismatch, noop");
   }
 }
 
@@ -106,7 +90,7 @@ export function getClients({ targetId }: { targetId?: string | null }) {
 
   const sockets = isSocketGroup(socketOrGroup)
     ? [...socketOrGroup.values()]
-    : [socketOrGroup];
+    : [];
 
   return sockets.filter(isTruthy);
 }
