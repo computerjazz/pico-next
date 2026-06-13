@@ -5,17 +5,23 @@ import RecordingItem from "./RecordingItem";
 import { AudioProvider } from "@/app/components/AudioProvider";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
+import { useSocket } from "@/app/hooks/useSocket";
 
 export function RecordingsList({
-  recordings,
+  recordings: initialRecordings,
   autoScroll = true,
 }: {
   recordings: Recording[];
   autoScroll?: boolean;
 }) {
+  const [recordings, setRecordings] = useState(initialRecordings);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
-
+  const socketGroupId = recordings[0]?.deviceId;
+  useSocket({
+    groupId: socketGroupId,
+    onMessage: (payload) => console.log("message!!!", payload),
+  });
   const onLoad = useStableCallback(() => setIsVisible(true));
 
   useLayoutEffect(() => {

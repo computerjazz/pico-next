@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx --import ./scripts/env.ts server.ts",
     "build": "next build",
     "build:release": "next build && npx dotenv-cli -e .env.local -- node dist/server.js",
     "build:server": "tsup server.ts --format esm --out-dir dist  --tsconfig tsconfig.server.json",

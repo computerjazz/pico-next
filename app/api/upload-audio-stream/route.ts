@@ -12,6 +12,7 @@ import { getAudioDuration, processAudio } from "@/lib/audio";
 import { clearActiveJob, setActiveJob } from "@/lib/job";
 import { randomUUID } from "crypto";
 import { sendWebPush } from "@/lib/push";
+import { getRedis } from "@/lib/redis";
 
 export const runtime = "nodejs";
 
@@ -161,6 +162,17 @@ export async function POST(req: Request) {
         })
         .returning();
 
+      const redis = await getRedis();
+      await redis.publish(
+        "ws:commands",
+        JSON.stringify({
+          targetId: deviceId,
+          command: JSON.stringify({
+            type: "shortwave_recording_add",
+            recording,
+          }),
+        }),
+      );
       const chatIds = channels.map((c) => c.channelId);
       const [resp] = await Promise.all([
         sendVoiceToChat(outputMp3Path, {

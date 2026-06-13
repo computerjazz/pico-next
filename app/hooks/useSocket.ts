@@ -1,17 +1,26 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { generateToken } from "../actions/generateToken";
 import { useStableCallback } from "./useStableCallback";
+
+function getRandomSocketClientId() {
+  return `client-${Math.floor(Math.random() * 100000)}`;
+}
 
 export function useSocket({
   onMessage,
   clientId,
   groupId,
 }: {
-  onMessage?: () => void;
-  clientId: string;
-  groupId?: string;
+  onMessage?: (msg: MessageEvent<unknown>) => void;
+  clientId?: string | null;
+  groupId?: string | null;
 }) {
-  const _onMessage = useStableCallback(() => onMessage?.());
+  const _onMessage = useStableCallback((msg: MessageEvent<unknown>) =>
+    onMessage?.(msg),
+  );
+
+  const _clientId = useMemo(() => getRandomSocketClientId(), []);
+  clientId = clientId ?? _clientId;
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -38,9 +47,9 @@ export function useSocket({
         );
       };
 
-      ws.onmessage = (_msg) => {
-        console.log("socket message", JSON.stringify(_msg));
-        _onMessage();
+      ws.onmessage = (msg) => {
+        console.log("socket message", JSON.stringify(msg));
+        _onMessage(msg);
       };
 
       ws.onclose = () => {
@@ -53,12 +62,11 @@ export function useSocket({
         ws?.close();
       };
     }
-
     connectSocket();
 
     return () => {
       stopped = true;
-      if (ws) ws.close();
+      ws?.close();
       if (reconnect) clearTimeout(reconnect);
     };
   }, [clientId, groupId, _onMessage]);

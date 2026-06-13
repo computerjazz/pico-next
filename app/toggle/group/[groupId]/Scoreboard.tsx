@@ -27,10 +27,6 @@ function roleClass(role: "idle" | "active" | "challenger") {
   return "bg-green-400";
 }
 
-function getRandomSocketClientId() {
-  return `client-${Math.floor(Math.random() * 100000)}`;
-}
-
 function Scoreboard({
   groupId,
   devices,
@@ -40,8 +36,6 @@ function Scoreboard({
 }) {
   const [score, setScore] = useState<GroupScore | null>(null);
   const allIdle = score?.devices.every((d) => d.role === "idle");
-
-  const clientId = useMemo(() => getRandomSocketClientId(), []);
 
   const updateScore = useStableCallback(async function reloadScore() {
     try {
@@ -54,7 +48,6 @@ function Scoreboard({
 
   useSocket({
     groupId,
-    clientId,
     onMessage: updateScore,
   });
 
