@@ -15,13 +15,11 @@ export function useSocket({
   clientId,
   groupId,
 }: {
-  onMessage?: (msg: MessageEvent<unknown>) => void;
+  onMessage?: (msg: string) => void;
   clientId?: string | null;
   groupId?: string | null;
 }) {
-  const _onMessage = useStableCallback((msg: MessageEvent<unknown>) =>
-    onMessage?.(msg),
-  );
+  const _onMessage = useStableCallback((msg: string) => onMessage?.(msg));
 
   const _clientId = useMemo(
     () => getRandomSocketClientId({ groupId }),
@@ -55,8 +53,7 @@ export function useSocket({
       };
 
       ws.onmessage = (msg) => {
-        console.log("socket message", JSON.stringify(msg));
-        _onMessage(msg);
+        _onMessage(msg.data);
       };
 
       ws.onclose = () => {

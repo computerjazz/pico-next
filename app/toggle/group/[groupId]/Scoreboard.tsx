@@ -1,11 +1,10 @@
 "use client";
 import { fetchGroupScoreAction } from "@/app/actions/fetchGroupScore";
-import { generateToken } from "@/app/actions/generateToken";
 import { useSocket } from "@/app/hooks/useSocket";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { Device } from "@/db/schema";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 type DeviceStats = {
   deviceId: string;

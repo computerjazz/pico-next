@@ -6,6 +6,22 @@ import { AudioProvider } from "@/app/components/AudioProvider";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { useSocket } from "@/app/hooks/useSocket";
+import z from "zod";
+
+const RecordingSchema = z.object({
+  id: z.string(),
+  deviceId: z.string().max(100).nullable(),
+  createdAt: z.coerce.date(),
+  filepath: z.string().max(512),
+  filepathProcessed: z.string().max(512).nullable(),
+  name: z.string().max(512).nullable(),
+  contentType: z.string().max(25).nullable(),
+  source: z.string().max(25).nullable(),
+  transcript: z.string().nullable(),
+  isShared: z.boolean().default(false),
+  durationMillis: z.string().max(25).nullable(),
+  deletedAt: z.coerce.date().nullable(),
+});
 
 export function RecordingsList({
   recordings: initialRecordings,
@@ -20,7 +36,14 @@ export function RecordingsList({
   const socketGroupId = recordings[0]?.deviceId;
   useSocket({
     groupId: socketGroupId,
-    onMessage: (payload) => console.log("message!!!", payload),
+    onMessage: (payload) => {
+      console.log("message", payload);
+      const parsed = RecordingSchema.safeParse(JSON.parse(payload));
+      if (parsed.success) {
+        console.log("success", parsed.data);
+        setRecordings((prev) => [...prev, parsed.data]);
+      }
+    },
   });
   const onLoad = useStableCallback(() => setIsVisible(true));
 
