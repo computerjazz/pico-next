@@ -3,7 +3,7 @@
 import { Recording } from "@/db/schema";
 import RecordingItem from "./RecordingItem";
 import { AudioProvider } from "@/app/components/AudioProvider";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { useSocket } from "@/app/hooks/useSocket";
 import z from "zod";
@@ -23,6 +23,23 @@ const RecordingSchema = z.object({
   deletedAt: z.coerce.date().nullable(),
 });
 
+// function createDummyRecording() {
+//   return {
+//     id: `${Date.now()}`,
+//     deviceId: "my-device",
+//     createdAt: new Date(),
+//     filepath: "/fake/path",
+//     filepathProcessed: null,
+//     name: null,
+//     contentType: "mp3",
+//     source: null,
+//     transcript: `test ${new Date().toTimeString()}`,
+//     isShared: false,
+//     durationMillis: "1234",
+//     deletedAt: null,
+//   };
+// }
+
 export function RecordingsList({
   recordings: initialRecordings,
   autoScroll = true,
@@ -34,6 +51,18 @@ export function RecordingsList({
   const bottomRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
   const socketGroupId = recordings[0]?.deviceId;
+
+  // useEffect(() => {
+  //   setInterval(() => {
+  //     setRecordings((prev) => [...prev, createDummyRecording()]);
+  //   }, 3000);
+  // }, []);
+
+  useEffect(() => {
+    // TODO: check whether scrolled before scrolling
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [recordings.length]);
+
   useSocket({
     groupId: socketGroupId,
     onMessage: (payload) => {
