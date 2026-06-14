@@ -11,6 +11,7 @@
     "build:server": "tsup server.ts --format esm --out-dir dist  --tsconfig tsconfig.server.json",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
     "gmail:authorize": "tsx scripts/authorize-gmail.ts",
     "gmail:watch": "tsx scripts/start-watch.ts",
     "generate-token": "tsx scripts/generate-token.ts",
@@ -57,6 +58,8 @@
     "tailwindcss": "^4",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.8"
   }
 }
