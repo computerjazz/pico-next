@@ -24,7 +24,7 @@ export type ToggleGroupScore = {
   totalEvents: number;
 };
 
-function scoreFromEvents(
+export function scoreFromEvents(
   groupId: string,
   events: ToggleEvent[],
 ): ToggleGroupScore {
