@@ -18,7 +18,7 @@ function ProfileMenuItem({
 }) {
   return (
     <button
-      className="w-full text-right px-4 py-2 hover:bg-accent hover:text-accent-foreground rounded"
+      className="w-full text-right px-4 py-2 hover:bg-accent hover:text-accent-foreground rounded cursor-pointer"
       onClick={onClick}
       tabIndex={0}
       type="button"

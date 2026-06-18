@@ -1,10 +1,10 @@
 "use server";
 
+import { auth } from "@/auth";
 import { db } from "@/db";
 import { devices } from "@/db/schema";
 import { getRedis } from "@/lib/redis";
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 
 export async function setDeviceVolume({
   deviceId,
@@ -14,6 +14,10 @@ export async function setDeviceVolume({
   volume: number;
 }) {
   const redis = await getRedis();
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("must be logged in to rename device");
+  }
   await db
     .update(devices)
     .set({

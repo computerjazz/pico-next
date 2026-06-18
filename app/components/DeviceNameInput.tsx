@@ -1,7 +1,34 @@
 "use client";
 
 import { Device } from "@/db/schema";
-import { useState, useRef, useLayoutEffect } from "react";
+import { useState, useRef, useLayoutEffect, useEffect, ReactNode } from "react";
+import PencilMini from "./icons/PencilMini";
+import XCircle from "./icons/XCircle";
+import CheckCircle from "./icons/CheckCircle";
+import EllipsesVertical from "./icons/EllipsesVertical";
+import { IconProps } from "./icons/types";
+import Share from "./icons/Share";
+import { shareDevice } from "../actions/shareDevice";
+
+function MenuItem({
+  Icon,
+  title,
+  onClick,
+}: {
+  Icon: (props: IconProps) => ReactNode;
+  title: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="w-full flex gap-2 items-start text-sm px-4 py-2 hover:bg-accent hover:text-accent-foreground rounded cursor-pointer"
+      onClick={onClick}
+    >
+      <Icon />
+      {title}
+    </button>
+  );
+}
 
 function DeviceNameInput({
   device,
@@ -10,6 +37,7 @@ function DeviceNameInput({
   device: Device;
   disabled?: boolean;
 }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(device.name ?? "");
   const [draft, setDraft] = useState(device.name ?? "");
@@ -20,6 +48,23 @@ function DeviceNameInput({
   // Hold the measured height of the row to lock when transition occurs
   const [rowHeight, setRowHeight] = useState<number | undefined>(undefined);
 
+  // Listen for clicks outside the container to close the dropdown
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isMenuOpen]);
+
   useLayoutEffect(() => {
     // Measure and lock the height before a mode switch
     if (containerRef.current) {
@@ -27,8 +72,20 @@ function DeviceNameInput({
     }
   }, [editing, name, draft]);
 
+  async function _shareDevice() {
+    const {
+      share: { redeemCode },
+    } = await shareDevice({
+      deviceId: device.deviceId,
+    });
+    await navigator.clipboard.writeText(
+      `${window.location.origin}/shortwave/${device.deviceId}/share/${redeemCode}`,
+    );
+  }
+
   // When switching into edit mode, focus input
   function startEdit() {
+    setIsMenuOpen(false);
     setDraft(name);
     setEditing(true);
     setTimeout(() => inputRef.current?.focus(), 0);
@@ -60,7 +117,7 @@ function DeviceNameInput({
   return (
     <div
       ref={containerRef}
-      className="flex items-center gap-2 font-bold text-2xl"
+      className="flex items-center gap-2 font-bold text-2xl relative"
       style={
         rowHeight !== undefined
           ? { minHeight: rowHeight, height: rowHeight }
@@ -82,15 +139,9 @@ function DeviceNameInput({
               disabled={disabled}
               aria-label="Edit device name"
               className="hover:text-accent text-muted-foreground transition cursor-pointer"
-              onClick={startEdit}
+              onClick={() => setIsMenuOpen(true)}
             >
-              {/* Pencil icon */}
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M13.293 2.293a1 1 0 0 1 1.414 0l3 3a1 1 0 0 1 0 1.414l-10 10a1 1 0 0 1-.39.242l-4 1.333a1 1 0 0 1-1.26-1.26l1.333-4a1 1 0 0 1 .242-.39l10-10zM15 4l1 1-9.293 9.293-1.242.414.414-1.242L15 4z"
-                  fill="currentColor"
-                />
-              </svg>
+              <EllipsesVertical />
             </button>
           )}
           {/* Hidden input to support outside form submission */}
@@ -144,13 +195,7 @@ function DeviceNameInput({
             onClick={acceptEdit}
             tabIndex={0}
           >
-            {/* Check icon */}
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path
-                d="M7.5 13.5L4 10l1.41-1.41L7.5 10.67l7.09-7.09L16 4l-8.5 9.5z"
-                fill="currentColor"
-              />
-            </svg>
+            <CheckCircle />
           </button>
           <button
             type="button"
@@ -159,15 +204,15 @@ function DeviceNameInput({
             onClick={cancelEdit}
             tabIndex={0}
           >
-            {/* X icon */}
-            <svg width="17" height="17" viewBox="0 0 20 20" fill="none">
-              <path
-                d="M10 8.586l4.95-4.95 1.414 1.414L11.414 10l4.95 4.95-1.414 1.414L10 11.414l-4.95 4.95-1.414-1.414L8.586 10l-4.95-4.95L5.05 3.636 10 8.586z"
-                fill="currentColor"
-              />
-            </svg>
+            <XCircle />
           </button>
         </>
+      )}
+      {isMenuOpen && (
+        <div className="absolute right-0 mt-2 w-40 rounded shadow-lg z-50 bg-surface p-2 flex flex-col items-start">
+          <MenuItem title="Edit name" Icon={PencilMini} onClick={startEdit} />
+          <MenuItem title="Share device" Icon={Share} onClick={_shareDevice} />
+        </div>
       )}
     </div>
   );
