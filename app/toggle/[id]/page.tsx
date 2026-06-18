@@ -7,6 +7,7 @@ import { Device } from "@/db/schema";
 import PageHeader from "@/app/components/PageHeader";
 import Scoreboard from "../group/[groupId]/Scoreboard";
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
+import DeviceHeader from "@/app/components/DeviceHeader";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -98,7 +99,7 @@ export default async function TogglePage({
       <PageHeader>
         <div className="flex flex-col justify-center">
           <div className="flex flex-row gap-4">
-            <DeviceNameInput device={device} disabled={!isDeviceOwner} />
+            <DeviceHeader device={device} disabled={!isDeviceOwner} />
             <ClaimButton device={device} />
           </div>
           <div className="space-y-2 text-sm mt-4">

@@ -10,6 +10,7 @@ import RecordingButton from "./RecordingButton";
 import PageHeader from "@/app/components/PageHeader";
 import PushSubscriber from "@/app/components/PushSubscriber";
 import RecordingsChat from "@/app/components/RecordingsChat";
+import DeviceHeader from "@/app/components/DeviceHeader";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -80,7 +81,7 @@ export default async function DevicePage({
       <PageHeader>
         <div className="flex flex-col justify-center">
           <div className="flex flex-row gap-4">
-            <DeviceNameInput device={device} disabled={!isDeviceOwner} />
+            <DeviceHeader device={device} disabled={!isDeviceOwner} />
             <ClaimButton device={device} />
           </div>
           <div className="space-y-2 text-sm mt-4">

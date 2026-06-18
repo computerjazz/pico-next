@@ -1,0 +1,1 @@
+ALTER TABLE "pico_next_db"."device_shares" ADD COLUMN "redeem_code_expires_at" timestamp with time zone;

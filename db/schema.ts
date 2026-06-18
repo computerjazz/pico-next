@@ -145,6 +145,10 @@ export const deviceShares = pico.table("device_shares", {
     .references(() => devices.deviceId),
   userId: text("user_id").references(() => users.id),
   redeemCode: uuid("redeem_code").primaryKey().defaultRandom(),
+  redeemCodeExpiresAt: timestamp("redeem_code_expires_at", {
+    mode: "date",
+    withTimezone: true,
+  }).$defaultFn(() => new Date(Date.now() + 24 * 60 * 60 * 1000)),
 });
 
 export const deviceGroups = pico.table("device_groups", {
