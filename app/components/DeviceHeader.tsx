@@ -15,7 +15,6 @@ function DeviceHeader({
   disabled?: boolean;
 }) {
   const [isEditingDeviceName, setIsEditingDeviceName] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   async function _shareDevice() {
     const {
@@ -48,7 +47,7 @@ function DeviceHeader({
         isEditing={isEditingDeviceName}
         onEditComplete={() => setIsEditingDeviceName(false)}
       />
-      <DeviceMenu isOpen={isMenuOpen} disabled={disabled} items={items} />
+      <DeviceMenu disabled={disabled} items={items} />
     </div>
   );
 }
