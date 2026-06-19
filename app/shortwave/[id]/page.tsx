@@ -1,7 +1,6 @@
 import { db } from "@/db";
 import { notFound } from "next/navigation";
 import VolumeInput from "./VolumeInput";
-import DeviceNameInput from "../../components/DeviceNameInput";
 import { auth } from "@/auth";
 import ClaimButton from "../../components/ClaimButton";
 import { Device, devices, recordings } from "@/db/schema";
@@ -11,6 +10,7 @@ import PageHeader from "@/app/components/PageHeader";
 import PushSubscriber from "@/app/components/PushSubscriber";
 import RecordingsChat from "@/app/components/RecordingsChat";
 import DeviceHeader from "@/app/components/DeviceHeader";
+import { getDeviceAccess } from "@/lib/access";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -53,18 +53,11 @@ export default async function DevicePage({
     notFound();
   }
 
-  const deviceUserId = device.userId;
-  const isDeviceOwner = sessionUserId && deviceUserId === sessionUserId;
-
-  let canViewRecordings = isDeviceOwner;
-  if (!isDeviceOwner && sessionUserId) {
-    // check shares
-    const sharedDevice = await db.query.deviceShares.findFirst({
-      where: (t, { eq, and }) =>
-        and(eq(t.deviceId, device.deviceId), eq(t.userId, sessionUserId)),
-    });
-    canViewRecordings = !!sharedDevice;
-  }
+  const { isOwner, isShare } = await getDeviceAccess({
+    deviceId: device.deviceId,
+    userId: sessionUserId,
+  });
+  const canViewRecordings = isOwner || isShare;
 
   const _recordingItems = canViewRecordings
     ? await db
@@ -82,14 +75,14 @@ export default async function DevicePage({
   return (
     <div className="flex flex-col h-svh">
       <PushSubscriber
-        shouldPrompt={!!isDeviceOwner}
+        shouldPrompt={!!isOwner}
         deviceId={device.deviceId}
         scope="/shortwave/"
       />
       <PageHeader>
         <div className="flex flex-col justify-center">
           <div className="flex flex-row gap-4">
-            <DeviceHeader device={device} disabled={!isDeviceOwner} />
+            <DeviceHeader device={device} disabled={!isOwner} />
             <ClaimButton device={device} />
           </div>
           <div className="space-y-2 text-sm mt-4">

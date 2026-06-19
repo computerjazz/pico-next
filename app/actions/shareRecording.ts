@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { recordings } from "@/db/schema";
+import { getDeviceAccess } from "@/lib/access";
 import { eq } from "drizzle-orm";
 
 export async function shareRecording({ recordingId }: { recordingId: string }) {
@@ -25,16 +26,15 @@ export async function shareRecording({ recordingId }: { recordingId: string }) {
     throw new Error("Recording/device not found");
   }
 
-  if (device.userId !== sessionUserId) {
-    const share = await db.query.deviceShares.findFirst({
-      where: (t, { and, eq }) =>
-        and(eq(t.deviceId, device.deviceId), eq(t.userId, sessionUserId)),
-    });
-    if (!share) {
-      throw new Error("Unauthorized: You do not own this recording");
-    }
-  }
+  const { isOwner, isShare } = await getDeviceAccess({
+    deviceId: device.deviceId,
+    userId: sessionUserId,
+  });
 
+  const isAuthorized = isOwner || isShare;
+  if (!isAuthorized) {
+    throw new Error("Unauthorized: You do not own this recording");
+  }
   await db
     .update(recordings)
     .set({
