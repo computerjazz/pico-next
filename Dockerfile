@@ -5,7 +5,7 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm test
-RUN npm run build && npm run build:server
+RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build && npm run build:server
 
 # Stage 2: production image
 FROM node:20-alpine
