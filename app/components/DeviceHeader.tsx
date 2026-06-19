@@ -6,6 +6,7 @@ import { shareDevice } from "../actions/shareDevice";
 import { useState } from "react";
 import PencilMini from "./icons/PencilMini";
 import Share from "./icons/Share";
+import { toast } from "sonner";
 
 function DeviceHeader({
   device,
@@ -17,11 +18,6 @@ function DeviceHeader({
   const [isEditingDeviceName, setIsEditingDeviceName] = useState(false);
 
   async function _shareDevice() {
-    // Show a confirmation dialog before sharing
-    const confirmed = window.confirm(
-      "Sharing with another person will allow them to view all recordings for this device.\n\nDo you want to continue?",
-    );
-    if (!confirmed) return;
     const {
       share: { redeemCode },
     } = await shareDevice({
@@ -30,6 +26,7 @@ function DeviceHeader({
     await navigator.clipboard.writeText(
       `${window.location.origin}/shortwave/${device.deviceId}/share/${redeemCode}`,
     );
+    toast.success("Link copied to clipboard");
   }
 
   const items = [
