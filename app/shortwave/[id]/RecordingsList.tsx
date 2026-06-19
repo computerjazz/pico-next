@@ -66,15 +66,16 @@ export function RecordingsList({
   //   }, 3000);
   // }, []);
 
+  const lengthDiff = recordings.length - initialRecordings.length;
   const onNewRecording = useStableCallback(() => {
-    if (!isScrolledUp) {
+    if (!isScrolledUp && lengthDiff > 0) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   });
 
   useEffect(() => {
     onNewRecording();
-  }, [recordings.length, onNewRecording]);
+  }, [lengthDiff, onNewRecording]);
 
   useSocket({
     groupId: socketGroupId,
