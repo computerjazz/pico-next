@@ -20,7 +20,8 @@ export async function leaveMessage({
   form: FormData;
 }) {
   const session = await auth();
-  if (!session || !session.user) {
+  const sessionUserId = session?.user?.id;
+  if (!sessionUserId) {
     throw new Error("Must be logged in to record audio");
   }
   const file = form.get("audio") as File | null;
@@ -32,7 +33,22 @@ export async function leaveMessage({
     where: (t, { eq }) => eq(t.deviceId, deviceId),
   });
 
-  if (device?.userId !== session.user.id) {
+  if (!device) {
+    throw new Error("Device not found");
+  }
+
+  const isDeviceOwner = device.userId === sessionUserId;
+  let canRecord = isDeviceOwner;
+  if (!canRecord) {
+    // check shares
+    const share = await db.query.deviceShares.findFirst({
+      where: (t, { eq, and }) =>
+        and(eq(t.deviceId, device.deviceId), eq(t.userId, sessionUserId)),
+    });
+    canRecord = !!share;
+  }
+
+  if (!canRecord) {
     throw new Error("Cannot record a message for this device");
   }
 
