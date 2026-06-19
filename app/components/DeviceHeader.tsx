@@ -7,6 +7,7 @@ import { useState } from "react";
 import PencilMini from "./icons/PencilMini";
 import Share from "./icons/Share";
 import { toast } from "sonner";
+import { useConfirm } from "./ConfirmDialog";
 
 function DeviceHeader({
   device,
@@ -16,8 +17,18 @@ function DeviceHeader({
   disabled?: boolean;
 }) {
   const [isEditingDeviceName, setIsEditingDeviceName] = useState(false);
+  const { confirm, ConfirmDialog } = useConfirm();
 
   async function _shareDevice() {
+    const ok = await confirm({
+      title: "Share this device?",
+      description:
+        "A single-use link will be created that will give the invited person access to this device.",
+      confirmText: "Share",
+      destructive: true,
+    });
+
+    if (!ok) return;
     const {
       share: { redeemCode },
     } = await shareDevice({
@@ -50,6 +61,7 @@ function DeviceHeader({
         onEditComplete={() => setIsEditingDeviceName(false)}
       />
       <DeviceMenu disabled={disabled} items={items} />
+      {ConfirmDialog}
     </div>
   );
 }
