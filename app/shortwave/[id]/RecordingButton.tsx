@@ -1,6 +1,7 @@
 "use client";
 import { leaveMessage } from "@/app/actions/leaveMessage";
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 function haptic(duration = 30) {
   // Subtle haptic feedback when recording begins
@@ -58,7 +59,7 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
 
       setIsRecording(true);
     } catch (e) {
-      alert(`Could not start recording: ${e}`);
+      toast.error(`Could not start recording`);
       setIsRecording(false);
     }
   }

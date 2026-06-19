@@ -8,6 +8,7 @@ import { Device } from "@/db/schema";
 import { setTheme } from "../actions/theme";
 import Moon from "./icons/Moon";
 import Sun from "./icons/Sun";
+import { useConfirm } from "./ConfirmDialog";
 
 function ProfileMenuItem({
   label,
@@ -40,6 +41,7 @@ function ProfileButton({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDark, setIsDark] = useState(theme === "dark");
+  const { confirm, ConfirmDialog } = useConfirm();
 
   useEffect(() => {
     setTheme(isDark ? "dark" : "light");
@@ -165,16 +167,20 @@ function ProfileButton({
 
           <ProfileMenuItem
             label="Sign out"
-            onClick={() => {
-              if (!window.confirm("Are you sure you want to sign out?")) {
-                return;
-              }
-
+            onClick={async () => {
+              const ok = await confirm({
+                description: "Are you sure you want to sign out?",
+                destructive: true,
+                confirmText: "Leave",
+                cancelText: "Stay",
+              });
+              if (!ok) return;
               signOut();
             }}
           />
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { useState, useCallback } from "react";
 
 type ConfirmOptions = {
-  title: string;
+  title?: string;
   description?: string;
   confirmText?: string;
   cancelText?: string;
@@ -47,9 +47,11 @@ export function useConfirm() {
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
         <AlertDialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface rounded-lg p-6 w-full max-w-sm shadow-lg z-50">
-          <AlertDialog.Title className="text-lg font-semibold">
-            {state.title}
-          </AlertDialog.Title>
+          {state.title && (
+            <AlertDialog.Title className="text-lg font-semibold">
+              {state.title}
+            </AlertDialog.Title>
+          )}
           {state.description && (
             <AlertDialog.Description className="text-sm text-foreground mt-2">
               {state.description}
@@ -59,7 +61,7 @@ export function useConfirm() {
             <AlertDialog.Cancel asChild>
               <button
                 onClick={handleCancel}
-                className="px-4 py-2 rounded-md text-sm font-medium border"
+                className="px-4 py-2 rounded-md text-sm font-medium border cursor-pointer"
               >
                 {state.cancelText ?? "Cancel"}
               </button>
@@ -67,7 +69,7 @@ export function useConfirm() {
             <AlertDialog.Action asChild>
               <button
                 onClick={handleConfirm}
-                className={`px-4 py-2 rounded-md text-sm font-medium text-accent-foreground ${
+                className={`px-4 py-2 rounded-md text-sm font-medium text-accent-foreground cursor-pointer ${
                   state.destructive ? "bg-accent" : "bg-muted-surface"
                 }`}
               >

@@ -14,6 +14,8 @@ import { deleteRecording } from "@/app/actions/deleteRecording";
 import ArrowDownTray from "@/app/components/icons/ArrowDownTray";
 import Share from "@/app/components/icons/Share";
 import { shareRecording } from "@/app/actions/shareRecording";
+import { useConfirm } from "@/app/components/ConfirmDialog";
+import { toast } from "sonner";
 
 function useAudio({ recordingId }: { recordingId: string }) {
   const [audioSource, setAudioSource] = useState<string | undefined>(undefined);
@@ -45,7 +47,7 @@ function useAudio({ recordingId }: { recordingId: string }) {
       setAudioSource(_audioSrc);
       return _audioSrc;
     } catch (e) {
-      alert("Could not fetch audio");
+      toast.error("Could not fetch audio");
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +81,7 @@ export default function RecordingItem({
   enabledActions = ["delete", "share", "download"],
 }: Props) {
   const { createdAt, durationMillis } = recording;
-
+  const { confirm, ConfirmDialog } = useConfirm();
   const {
     isPlaying,
     isLoading,
@@ -95,7 +97,14 @@ export default function RecordingItem({
   const isDevice = recording.source === "shortwave-device";
 
   async function onDeletePress() {
-    if (window.confirm("Are you sure you want to delete this recording?")) {
+    const shouldDelete = await confirm({
+      description: "Are you sure you want to delete this recording?",
+      destructive: true,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+    });
+
+    if (shouldDelete) {
       await deleteRecording({ recordingId: recording.id });
     }
   }
@@ -109,9 +118,9 @@ export default function RecordingItem({
     const url = `${window.location.origin}/shortwave/recording/${recording.id}`;
     try {
       await navigator.clipboard.writeText(url);
-      alert("Link copied to clipboard!");
+      toast.success("Link copied to clipboard!");
     } catch (err) {
-      alert("Failed to copy link to clipboard.");
+      toast.error("Failed to copy link to clipboard.");
     }
   }
 
@@ -123,7 +132,7 @@ export default function RecordingItem({
       source = await fetchAudio();
     }
     if (!source) {
-      alert("Audio not available to download.");
+      toast.error("Audio not available to download.");
       return;
     }
     // Fetch the audio blob if source is object url
@@ -137,7 +146,7 @@ export default function RecordingItem({
       const res = await fetch(source);
       blob = await res.blob();
     } else {
-      alert("Unable to download audio.");
+      toast.error("Unable to download audio.");
       return;
     }
 
@@ -252,6 +261,7 @@ export default function RecordingItem({
 
         <audio ref={audioRef} onPlay={onPlay} onPause={onPause} />
       </motion.div>
+      {ConfirmDialog}
     </div>
   );
 }
