@@ -43,10 +43,15 @@ export default async function DevicePage({
 }) {
   const deviceId = (await params).id;
   const session = await auth();
+  const sessionUserId = session?.user?.id;
 
   const device = await db.query.devices.findFirst({
     where: (d, { eq }) => eq(d.deviceId, deviceId),
   });
+
+  if (!device) {
+    notFound();
+  }
 
   const _recordingItems = await db
     .select({ recordings })
@@ -55,7 +60,7 @@ export default async function DevicePage({
     .where(
       and(
         eq(recordings.deviceId, deviceId),
-        eq(devices.userId, session?.user?.id ?? "__NO_USER__"),
+        eq(devices.userId, sessionUserId ?? "__NO_USER__"),
         isNull(recordings.deletedAt),
       ),
     )
@@ -63,12 +68,7 @@ export default async function DevicePage({
 
   const recordingItems = _recordingItems.map((ri) => ri.recordings);
 
-  if (!device) {
-    notFound();
-  }
-
   const deviceUserId = device.userId;
-  const sessionUserId = session?.user?.id;
   const isDeviceOwner = sessionUserId && deviceUserId === sessionUserId;
 
   return (
