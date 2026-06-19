@@ -17,6 +17,11 @@ function DeviceHeader({
   const [isEditingDeviceName, setIsEditingDeviceName] = useState(false);
 
   async function _shareDevice() {
+    // Show a confirmation dialog before sharing
+    const confirmed = window.confirm(
+      "Sharing with another person will allow them to view all recordings for this device.\n\nDo you want to continue?",
+    );
+    if (!confirmed) return;
     const {
       share: { redeemCode },
     } = await shareDevice({

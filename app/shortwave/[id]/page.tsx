@@ -95,7 +95,7 @@ export default async function DevicePage({
           <div className="space-y-2 text-sm mt-4">
             {device.type === "shortwave" ? (
               <div className="flex flex-row gap-4">
-                <VolumeInput device={device} disabled={!isDeviceOwner} />
+                <VolumeInput device={device} disabled={!canViewRecordings} />
               </div>
             ) : (
               <DeviceDetails device={device} />
@@ -104,7 +104,7 @@ export default async function DevicePage({
         </div>
       </PageHeader>
 
-      {isDeviceOwner && (
+      {canViewRecordings && (
         <>
           <RecordingsChat recordings={recordingItems} />
           <div className="p-4">

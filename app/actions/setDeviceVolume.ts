@@ -15,24 +15,27 @@ export async function setDeviceVolume({
 }) {
   const redis = await getRedis();
   const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("must be logged in to rename device");
+  const sessionUserId = session?.user?.id;
+  if (!sessionUserId) {
+    throw new Error("must be logged in to set device volume");
   }
-  await db
-    .update(devices)
-    .set({
-      volume: String(volume),
-    })
-    .where(eq(devices.deviceId, deviceId));
-  await redis.publish(
-    "ws:commands",
-    JSON.stringify({
-      targetId: deviceId,
-      command: JSON.stringify({
-        type: "shortwave_config",
+  await Promise.all([
+    db
+      .update(devices)
+      .set({
         volume: String(volume),
+      })
+      .where(eq(devices.deviceId, deviceId)),
+    redis.publish(
+      "ws:commands",
+      JSON.stringify({
+        targetId: deviceId,
+        command: JSON.stringify({
+          type: "shortwave_config",
+          volume: String(volume),
+        }),
       }),
-    }),
-  );
+    ),
+  ]);
   return { success: true };
 }

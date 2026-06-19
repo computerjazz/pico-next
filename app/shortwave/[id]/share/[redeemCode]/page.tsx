@@ -4,7 +4,7 @@ import PageHeader from "@/app/components/PageHeader";
 import PillButton from "@/app/components/PillButton";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 export default async function SharePage({
   params,
@@ -46,6 +46,10 @@ export default async function SharePage({
               action={async () => {
                 "use server";
                 await joinDevice({ redeemCode });
+                // After joining the device, navigate to the device page
+                // Since we're in a server action, we need to redirect using next/navigation
+                // (imported as notFound above, but can use redirect directly)
+                redirect(`/shortwave/${share.device.deviceId}`);
               }}
             >
               <PillButton type="submit" label="Join" />

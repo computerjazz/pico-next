@@ -1,7 +1,6 @@
 "use client";
 
 import { setDeviceVolume } from "@/app/actions/setDeviceVolume";
-import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { Device } from "@/db/schema";
 import throttle from "lodash/throttle";
 import { useMemo, useState } from "react";
