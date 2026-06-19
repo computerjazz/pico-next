@@ -7,7 +7,8 @@ import { eq } from "drizzle-orm";
 
 export async function shareRecording({ recordingId }: { recordingId: string }) {
   const session = await auth();
-  if (!session?.user?.id) {
+  const sessionUserId = session?.user?.id;
+  if (!sessionUserId) {
     throw new Error("Unauthorized");
   }
 
@@ -18,12 +19,20 @@ export async function shareRecording({ recordingId }: { recordingId: string }) {
     },
   });
 
-  if (!recording || !recording.device) {
-    throw new Error("Recording not found");
+  const device = recording?.device;
+
+  if (!recording || !device) {
+    throw new Error("Recording/device not found");
   }
 
-  if (recording.device.userId !== session.user.id) {
-    throw new Error("Unauthorized: You do not own this recording");
+  if (device.userId !== sessionUserId) {
+    const share = await db.query.deviceShares.findFirst({
+      where: (t, { and, eq }) =>
+        and(eq(t.deviceId, device.deviceId), eq(t.userId, sessionUserId)),
+    });
+    if (!share) {
+      throw new Error("Unauthorized: You do not own this recording");
+    }
   }
 
   await db

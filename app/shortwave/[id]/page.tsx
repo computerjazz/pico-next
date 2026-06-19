@@ -53,23 +53,31 @@ export default async function DevicePage({
     notFound();
   }
 
-  const _recordingItems = await db
-    .select({ recordings })
-    .from(recordings)
-    .innerJoin(devices, eq(recordings.deviceId, devices.deviceId))
-    .where(
-      and(
-        eq(recordings.deviceId, deviceId),
-        eq(devices.userId, sessionUserId ?? "__NO_USER__"),
-        isNull(recordings.deletedAt),
-      ),
-    )
-    .orderBy(asc(recordings.createdAt));
-
-  const recordingItems = _recordingItems.map((ri) => ri.recordings);
-
   const deviceUserId = device.userId;
   const isDeviceOwner = sessionUserId && deviceUserId === sessionUserId;
+
+  let canViewRecordings = isDeviceOwner;
+  if (!isDeviceOwner && sessionUserId) {
+    // check shares
+    const sharedDevice = await db.query.deviceShares.findFirst({
+      where: (t, { eq, and }) =>
+        and(eq(t.deviceId, device.deviceId), eq(t.userId, sessionUserId)),
+    });
+    canViewRecordings = !!sharedDevice;
+  }
+
+  const _recordingItems = canViewRecordings
+    ? await db
+        .select({ recordings })
+        .from(recordings)
+        .innerJoin(devices, eq(recordings.deviceId, devices.deviceId))
+        .where(
+          and(eq(recordings.deviceId, deviceId), isNull(recordings.deletedAt)),
+        )
+        .orderBy(asc(recordings.createdAt))
+    : [];
+
+  const recordingItems = _recordingItems.map((ri) => ri.recordings);
 
   return (
     <div className="flex flex-col h-svh">

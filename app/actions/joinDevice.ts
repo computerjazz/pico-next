@@ -27,6 +27,12 @@ export async function joinDevice({ redeemCode }: { redeemCode: string }) {
     throw new Error("invite code already redeemed");
   }
 
+  if (
+    invite.redeemCodeExpiresAt &&
+    invite.redeemCodeExpiresAt.getTime() < new Date().getTime()
+  ) {
+    throw new Error("invite code is expired");
+  }
   const [share] = await db
     .update(deviceShares)
     .set({
