@@ -11,6 +11,7 @@ import os from "os";
 import fs from "fs";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { getDeviceAccess } from "@/lib/access";
 
 export async function leaveMessage({
   deviceId,
@@ -37,16 +38,12 @@ export async function leaveMessage({
     throw new Error("Device not found");
   }
 
-  const isDeviceOwner = device.userId === sessionUserId;
-  let canRecord = isDeviceOwner;
-  if (!canRecord) {
-    // check shares
-    const share = await db.query.deviceShares.findFirst({
-      where: (t, { eq, and }) =>
-        and(eq(t.deviceId, device.deviceId), eq(t.userId, sessionUserId)),
-    });
-    canRecord = !!share;
-  }
+  const { isOwner, isShare } = await getDeviceAccess({
+    deviceId: device.deviceId,
+    userId: sessionUserId,
+  });
+
+  const canRecord = isOwner || isShare;
 
   if (!canRecord) {
     throw new Error("Cannot record a message for this device");
