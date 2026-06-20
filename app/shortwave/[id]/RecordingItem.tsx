@@ -16,6 +16,7 @@ import Share from "@/app/components/icons/Share";
 import { shareRecording } from "@/app/actions/shareRecording";
 import { useConfirm } from "@/app/components/ConfirmDialog";
 import { toast } from "sonner";
+import { formatAudioDuration } from "@/lib/utils";
 
 function useAudio({ recordingId }: { recordingId: string }) {
   const [audioSource, setAudioSource] = useState<string | undefined>(undefined);
@@ -211,16 +212,7 @@ export default function RecordingItem({
             {durationMillis && (
               <>
                 <span className="mx-2">•</span>
-                <span>
-                  {(() => {
-                    const ms = parseInt(durationMillis, 10);
-                    if (isNaN(ms)) return null;
-                    const totalSeconds = Math.floor(ms / 1000);
-                    const minutes = Math.floor(totalSeconds / 60);
-                    const seconds = totalSeconds % 60;
-                    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-                  })()}
-                </span>
+                <span>{formatAudioDuration({ durationMillis })}</span>
               </>
             )}
           </span>

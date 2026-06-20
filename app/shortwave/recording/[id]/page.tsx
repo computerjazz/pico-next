@@ -3,21 +3,44 @@ import { notFound, unauthorized } from "next/navigation";
 import { auth } from "@/auth";
 import PageHeader from "@/app/components/PageHeader";
 import { RecordingItemSingle } from "../../[id]/RecordingItem";
+import { Metadata } from "next";
+import { formatAudioDuration } from "@/lib/utils";
+import { cache } from "react";
 
-export default async function RecordingPage({
-  params,
-}: {
+type Props = {
   params: Promise<{ id: string }>;
-}) {
-  const recordingId = (await params).id;
-  const session = await auth();
+};
 
+const getRecording = cache(async ({ recordingId }: { recordingId: string }) => {
   const recording = await db.query.recordings.findFirst({
     where: (d, { eq }) => eq(d.id, recordingId),
     with: {
       device: true,
     },
   });
+  return recording;
+});
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const recordingId = (await params).id;
+
+  const recording = await getRecording({ recordingId });
+  return {
+    title: `Recording from ${recording?.device?.name || "sh0rtwave"}`,
+    description: formatAudioDuration({
+      durationMillis: recording?.durationMillis || "",
+    }),
+    openGraph: {
+      images: ["/img/logo-shortwave.png"],
+    },
+  };
+}
+
+export default async function RecordingPage({ params }: Props) {
+  const recordingId = (await params).id;
+  const session = await auth();
+
+  const recording = await getRecording({ recordingId });
 
   const isOwner = recording?.device?.userId === session?.user?.id;
 
