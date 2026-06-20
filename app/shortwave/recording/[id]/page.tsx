@@ -28,9 +28,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const recording = await getRecording({ recordingId });
   return {
     title: `Recording from ${recording?.device?.name || "sh0rtwave"}`,
-    description: formatAudioDuration({
+    description: `${recording?.transcript} • ${formatAudioDuration({
       durationMillis: recording?.durationMillis || "",
-    }),
+    })}`,
     openGraph: {
       images: ["/img/logo-shortwave.png"],
     },
