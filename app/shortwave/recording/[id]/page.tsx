@@ -6,6 +6,7 @@ import { RecordingItemSingle } from "../../[id]/RecordingItem";
 import { Metadata } from "next";
 import { formatAudioDuration } from "@/lib/utils";
 import { cache } from "react";
+import { getDeviceAccess } from "@/lib/access";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -39,12 +40,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function RecordingPage({ params }: Props) {
   const recordingId = (await params).id;
   const session = await auth();
+  const sessionUserId = session?.user?.id;
 
   const recording = await getRecording({ recordingId });
 
-  const isOwner = recording?.device?.userId === session?.user?.id;
+  const { isOwner, isShare } = await getDeviceAccess({
+    userId: sessionUserId,
+    deviceId: recording?.device?.deviceId,
+    device: recording?.device,
+  });
 
-  const canView = isOwner || recording?.isShared;
+  const canView = isOwner || isShare || recording?.isShared;
 
   if (!recording) {
     notFound();

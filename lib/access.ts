@@ -1,14 +1,17 @@
 import { db } from "@/db";
+import { Device } from "@/db/schema";
 
-type DeviceAccess = { isOwner: boolean; isShare: boolean };
+type Access = { isOwner: boolean; isShare: boolean };
 
 export async function getDeviceAccess({
   deviceId,
   userId,
+  device: _device,
 }: {
   deviceId?: string | null;
   userId?: string | null;
-}): Promise<DeviceAccess> {
+  device?: Device | null;
+}): Promise<Access> {
   if (!deviceId || !userId) {
     return {
       isOwner: false,
@@ -16,9 +19,11 @@ export async function getDeviceAccess({
     };
   }
 
-  const device = await db.query.devices.findFirst({
-    where: (t, { eq }) => eq(t.deviceId, deviceId),
-  });
+  const device =
+    _device ||
+    (await db.query.devices.findFirst({
+      where: (t, { eq }) => eq(t.deviceId, deviceId),
+    }));
 
   if (!device) {
     return {

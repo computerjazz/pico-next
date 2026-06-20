@@ -111,7 +111,16 @@ export default function RecordingItem({
   }
 
   async function onSharePress() {
-    await shareRecording({ recordingId: recording.id });
+    const sharePublic = await confirm({
+      title: "Share recording",
+      description: "Who should be able to view this recording?",
+      confirmText: "Anyone with link",
+      cancelText: "Private to device",
+      destructive: true,
+    });
+    if (sharePublic) {
+      await shareRecording({ recordingId: recording.id });
+    }
     // Copy a public (shared) URL to clipboard for this recording
     // You may want to update this URL scheme to your production host as needed
     // Example: `${window.location.origin}/shortwave/recording/${recording.id}`
