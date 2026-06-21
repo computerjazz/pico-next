@@ -9,3 +9,8 @@ export const RECORDING_SOURCE = {
 };
 
 export const PICOPI_O_OPTIONS = ["ø", "ô", "ó", "ö", "0", "õ", "ਠ"];
+
+export const DEVICE_TYPE = {
+  SHORTWAVE: "shortwave",
+  TOGGLE: "toggle",
+};

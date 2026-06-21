@@ -61,10 +61,6 @@ export default async function TogglePage({
 }) {
   const deviceId = (await params).id;
   const session = await auth();
-  const redis = await getRedis();
-  const key = `${REDIS_KEYS.DEVICE_LOGS_PREFIX}-${deviceId}`;
-  const logs = await redis.get(key);
-
   const group = await db.query.deviceGroups.findFirst({
     where: (dg, { eq }) => eq(dg.deviceId, deviceId),
   });
@@ -99,7 +95,11 @@ export default async function TogglePage({
       <PageHeader>
         <div className="flex flex-col justify-center">
           <div className="flex flex-row gap-4">
-            <DeviceHeader device={device} disabled={!isDeviceOwner} />
+            <DeviceHeader
+              device={device}
+              disabled={!isDeviceOwner}
+              groupId={groupId}
+            />
             <ClaimButton device={device} />
           </div>
           <div className="space-y-2 text-sm mt-4">
@@ -116,14 +116,6 @@ export default async function TogglePage({
               groupId={groupId}
               devices={new Map(groupDevices.map((gd) => [gd.deviceId, gd]))}
             />
-          </div>
-        )}
-        {isDeviceOwner && !!logs && (
-          <div className="mt-48 flex flex-col flex-wrap">
-            <h1 className="font-bold text-2xl">Device Logs</h1>
-            <pre className="whitespace-pre-wrap wrap-anywhere max-h-screen overflow-hidden overflow-y-scroll">
-              {logs}
-            </pre>
           </div>
         )}
       </div>

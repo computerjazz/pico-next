@@ -8,12 +8,16 @@ import PencilMini from "./icons/PencilMini";
 import Share from "./icons/Share";
 import { toast } from "sonner";
 import { useConfirm } from "./ConfirmDialog";
+import ArrowUTurnLeft from "./icons/ArrowUturnLeft";
+import { resetToggleGroup } from "../actions/resetToggleGroup";
 
 function DeviceHeader({
   device,
   disabled,
+  groupId,
 }: {
   device: Device;
+  groupId?: string;
   disabled?: boolean;
 }) {
   const [isEditingDeviceName, setIsEditingDeviceName] = useState(false);
@@ -40,18 +44,46 @@ function DeviceHeader({
     toast.success("Link copied to clipboard");
   }
 
+  async function _resetToggleGroup() {
+    if (!groupId) {
+      toast.error("No group found");
+      return;
+    }
+
+    const ok = await confirm({
+      title: "Reset group?",
+      description:
+        "This will reset the leaderboard and erase all toggle events.",
+      confirmText: "Reset",
+      cancelText: "Cancel",
+      destructive: true,
+    });
+
+    if (!ok) return;
+    await resetToggleGroup({ groupId });
+    toast.success("Group reset");
+  }
+
   const items = [
     {
       label: "Edit name",
       onClick: () => setIsEditingDeviceName(true),
       Icon: PencilMini,
+      deviceType: ["shortwave", "toggle"],
     },
     {
       label: "Share device",
       onClick: _shareDevice,
       Icon: Share,
+      deviceType: ["shortwave"],
     },
-  ];
+    {
+      label: "Reset group",
+      onClick: _resetToggleGroup,
+      Icon: ArrowUTurnLeft,
+      deviceType: ["toggle"],
+    },
+  ].filter((item) => item.deviceType.includes(device.type));
 
   return (
     <div className="flex items-center gap-2 justify-center">
