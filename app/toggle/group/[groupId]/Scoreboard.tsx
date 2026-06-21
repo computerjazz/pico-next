@@ -94,11 +94,10 @@ function Scoreboard({
             return a.points > b.points ? -1 : 1;
           })
           .map((device) => {
-            const isLeader = leader.deviceId === device.deviceId;
             return (
               <Link
                 key={device.deviceId}
-                className={`rounded p-3 flex items-center justify-between bg-muted-surface ${isLeader && "outline-accent outline-1"}`}
+                className={`rounded p-3 flex items-center justify-between bg-muted-surface`}
                 href={`/toggle/${device.deviceId}`}
               >
                 <div className="flex gap-2 items-center">
