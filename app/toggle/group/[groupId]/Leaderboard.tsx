@@ -26,7 +26,7 @@ function roleClass(role: "idle" | "active" | "challenger") {
   return "bg-green-400";
 }
 
-function Scoreboard({
+function Leaderboard({
   groupId,
   devices,
 }: {
@@ -78,10 +78,6 @@ function Scoreboard({
     );
   }
 
-  const leader =
-    [...score.devices].sort((left, right) => right.points - left.points)[0] ??
-    null;
-
   return (
     <div className="p-4 space-y-4">
       <p className="text-sm text-muted-foreground">
@@ -117,4 +113,4 @@ function Scoreboard({
   );
 }
 
-export default Scoreboard;
+export default Leaderboard;

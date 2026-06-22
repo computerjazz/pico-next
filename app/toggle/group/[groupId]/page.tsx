@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import Scoreboard from "./Scoreboard";
+import Leaderboard from "./Leaderboard";
 import { Device } from "@/db/schema";
 
 type PageParams = {
@@ -26,5 +26,5 @@ export default async function ToggleGroupPage({
     acc.set(curDevice.deviceId, curDevice);
     return acc;
   }, new Map<string, Device>());
-  return <Scoreboard groupId={groupId} devices={devices} />;
+  return <Leaderboard groupId={groupId} devices={devices} />;
 }

@@ -1,12 +1,10 @@
 import { db } from "@/db";
 import { notFound } from "next/navigation";
-import DeviceNameInput from "../../components/DeviceNameInput";
 import { auth } from "@/auth";
 import ClaimButton from "../../components/ClaimButton";
 import { Device } from "@/db/schema";
 import PageHeader from "@/app/components/PageHeader";
-import Scoreboard from "../group/[groupId]/Scoreboard";
-import { getRedis, REDIS_KEYS } from "@/lib/redis";
+import Leaderboard from "../group/[groupId]/Leaderboard";
 import DeviceHeader from "@/app/components/DeviceHeader";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
@@ -112,7 +110,7 @@ export default async function TogglePage({
           <div className="mt-10">
             <h1 className="text-3xl font-bold">Leaderboard</h1>
 
-            <Scoreboard
+            <Leaderboard
               groupId={groupId}
               devices={new Map(groupDevices.map((gd) => [gd.deviceId, gd]))}
             />
