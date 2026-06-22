@@ -92,10 +92,6 @@ function Leaderboard({
   return (
     <div className="p-4 space-y-4">
       <p className="text-sm text-muted-foreground">
-        Events: {score.totalEvents} | Updated:{" "}
-        {new Date(score.asOf).toLocaleString()}
-      </p>{" "}
-      <p className="text-sm text-muted-foreground">
         {`${devices.get(leader.deviceId)?.name ?? leader.deviceId} is ahead by ${diff.hours}hrs ${diff.minutes}min ${diff.seconds}sec`}
       </p>
       <ul className="space-y-2">
