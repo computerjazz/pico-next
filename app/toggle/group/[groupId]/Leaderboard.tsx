@@ -3,6 +3,7 @@ import { fetchGroupScoreAction } from "@/app/actions/fetchGroupScore";
 import { useSocket } from "@/app/hooks/useSocket";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { Device } from "@/db/schema";
+import { getHrsMinSecFromMillis } from "@/lib/utils";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -78,11 +79,24 @@ function Leaderboard({
     );
   }
 
+  const leader = score.devices.reduce((acc, cur) => {
+    return cur.points > acc.points ? cur : acc;
+  });
+
+  const diffSeconds = score.devices.reduce((acc, cur) => {
+    return Math.abs(acc - cur.points);
+  }, 0);
+
+  const diff = getHrsMinSecFromMillis({ millis: diffSeconds * 1000 });
+
   return (
     <div className="p-4 space-y-4">
       <p className="text-sm text-muted-foreground">
         Events: {score.totalEvents} | Updated:{" "}
         {new Date(score.asOf).toLocaleString()}
+      </p>{" "}
+      <p className="text-sm text-muted-foreground">
+        {`${devices.get(leader.deviceId)?.name ?? leader.deviceId} is ahead by ${diff.hours}hrs ${diff.minutes}min ${diff.seconds}sec`}
       </p>
       <ul className="space-y-2">
         {score.devices
