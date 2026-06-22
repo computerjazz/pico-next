@@ -27,7 +27,7 @@ function DeviceHeader({
     const ok = await confirm({
       title: "Share this device?",
       description:
-        "A single-use link will be created that will give the invited person access to this device.",
+        "A single-use link will be created that will let the invited person view past recordings and record new answering machine messages.",
       confirmText: "Share",
       destructive: true,
     });

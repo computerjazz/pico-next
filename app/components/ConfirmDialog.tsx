@@ -10,11 +10,12 @@ type ConfirmOptions = {
   confirmText?: string;
   cancelText?: string;
   destructive?: boolean;
+  options?: { text: string; type: string }[];
 };
 
 type ConfirmState = ConfirmOptions & {
   open: boolean;
-  resolve?: (value: boolean) => void;
+  resolve?: (value: boolean | string) => void;
 };
 
 export function useConfirm() {
@@ -24,18 +25,23 @@ export function useConfirm() {
   });
 
   const confirm = useCallback((options: ConfirmOptions) => {
-    return new Promise<boolean>((resolve) => {
+    return new Promise<boolean | string>((resolve) => {
       setState({ ...options, open: true, resolve });
     });
   }, []);
 
   const handleConfirm = () => {
-    state.resolve?.(true);
+    state.resolve?.("confirm");
     setState((s) => ({ ...s, open: false }));
   };
 
   const handleCancel = () => {
     state.resolve?.(false);
+    setState((s) => ({ ...s, open: false }));
+  };
+
+  const handleOption = (type: string) => {
+    state.resolve?.(type);
     setState((s) => ({ ...s, open: false }));
   };
 
@@ -66,6 +72,21 @@ export function useConfirm() {
                 {state.cancelText ?? "Cancel"}
               </button>
             </AlertDialog.Cancel>
+            {state.options?.map((option) => {
+              return (
+                <AlertDialog.Action
+                  asChild
+                  key={`option-${option.text}-${option.type}`}
+                >
+                  <button
+                    onClick={() => handleOption(option.type)}
+                    className={`px-4 py-2 rounded-md text-sm font-medium border cursor-pointer`}
+                  >
+                    {option.text}
+                  </button>
+                </AlertDialog.Action>
+              );
+            })}
             <AlertDialog.Action asChild>
               <button
                 onClick={handleConfirm}

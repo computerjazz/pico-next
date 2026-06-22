@@ -111,15 +111,19 @@ export default function RecordingItem({
   }
 
   async function onSharePress() {
-    const sharePublic = await confirm({
+    const result = await confirm({
       title: "Share recording",
       description: "Who should be able to view this recording?",
       confirmText: "Anyone with link",
-      cancelText: "Private to device",
+      cancelText: "Cancel",
+      options: [{ text: "Private to device", type: "neutral" }],
       destructive: true,
     });
-    if (sharePublic) {
+    if (result === "confirm") {
       await shareRecording({ recordingId: recording.id });
+    }
+    if (result === false) {
+      return;
     }
     // Copy a public (shared) URL to clipboard for this recording
     // You may want to update this URL scheme to your production host as needed
