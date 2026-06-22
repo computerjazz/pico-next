@@ -42,14 +42,11 @@ export function scoreFromEvents(
   const result = events.reduce(
     (acc, cur) => {
       const { activeDeviceId, devices, prev } = acc;
-
       devices.set(cur.deviceId, {
         lastSeenState: cur.state,
         runningMs: devices.get(cur.deviceId)?.runningMs || 0,
         lastUpdatedAt: cur.updatedAt,
       });
-
-      const thisDevice = devices.get(cur.deviceId);
 
       if (devices.size < 2 || !prev) {
         return {
@@ -63,11 +60,14 @@ export function scoreFromEvents(
       // get diff
       if (isIdle) {
         const diffMs = cur.updatedAt.getTime() - prev.updatedAt.getTime();
-        if (activeDeviceId && thisDevice) {
+        const activeDevice = activeDeviceId
+          ? devices.get(activeDeviceId)
+          : null;
+        if (activeDevice && activeDeviceId) {
           // award ms to active device id
-          const updatedMs = thisDevice.runningMs + diffMs;
-          devices.set(cur.deviceId, {
-            ...thisDevice,
+          const updatedMs = activeDevice.runningMs + diffMs;
+          devices.set(activeDeviceId, {
+            ...activeDevice,
             runningMs: updatedMs,
           });
         }
