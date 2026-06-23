@@ -230,11 +230,5 @@ async function getGroupScore_deprecated({ groupId }: { groupId: string }) {
 export async function getGroupScore({ groupId }: { groupId: string }) {
   const latestToggleResults = await getTogglesFromGroupId({ groupId });
   const score = getScoreFromToggles({ toggles: latestToggleResults });
-  const { isAllSameState, targetState } = getCurrentState({
-    toggles: latestToggleResults,
-  });
-  if (!isAllSameState && !targetState) {
-    return getGroupScore_deprecated({ groupId });
-  }
   return score;
 }
