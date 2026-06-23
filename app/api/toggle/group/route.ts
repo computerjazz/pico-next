@@ -10,6 +10,6 @@ export async function GET(req: Request) {
   if (!groupId) {
     return Response.json({ error: "missing group id" }, { status: 400 });
   }
-  const score = await getGroupScore(groupId);
+  const score = await getGroupScore({ groupId });
   return Response.json(score, { status: 200 });
 }

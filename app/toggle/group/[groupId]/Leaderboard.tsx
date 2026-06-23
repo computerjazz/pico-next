@@ -3,23 +3,10 @@ import { fetchGroupScoreAction } from "@/app/actions/fetchGroupScore";
 import { useSocket } from "@/app/hooks/useSocket";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { Device } from "@/db/schema";
+import { ToggleGroupScore } from "@/lib/toggle-score";
 import { getHrsMinSecFromMillis } from "@/lib/utils";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-
-type DeviceStats = {
-  deviceId: string;
-  points: number;
-  role: "idle" | "active" | "challenger";
-  state: string;
-};
-
-type GroupScore = {
-  groupId: string;
-  devices: DeviceStats[];
-  asOf: string;
-  totalEvents: number;
-};
 
 function roleClass(role: "idle" | "active" | "challenger") {
   if (role === "active") return "bg-blue-400";
@@ -34,7 +21,7 @@ function Leaderboard({
   groupId: string;
   devices: Map<string, Device>;
 }) {
-  const [score, setScore] = useState<GroupScore | null>(null);
+  const [score, setScore] = useState<ToggleGroupScore | null>(null);
   const allIdle = score?.devices.every((d) => d.role === "idle");
 
   const updateScore = useStableCallback(async function reloadScore() {
@@ -92,7 +79,7 @@ function Leaderboard({
   return (
     <div className="p-4 space-y-4">
       <p className="text-sm text-muted-foreground">
-        {`${devices.get(leader.deviceId)?.name ?? leader.deviceId} is ahead by ${diff.hours}hrs ${diff.minutes}min ${diff.seconds}sec`}
+        {`${devices.get(leader.deviceId ?? "")?.name ?? leader.deviceId} is ahead by ${diff.hours}hrs ${diff.minutes}min ${diff.seconds}sec`}
       </p>
       <ul className="space-y-2">
         {score.devices
@@ -111,7 +98,8 @@ function Leaderboard({
                     className={`w-2 h-2 rounded-full ${roleClass(device.role)}`}
                   />
                   <p className="font-medium">
-                    {devices.get(device.deviceId)?.name || device.deviceId}
+                    {devices.get(device.deviceId ?? "")?.name ||
+                      device.deviceId}
                   </p>
                 </div>
                 <p className="text-lg font-semibold">{device.points}</p>

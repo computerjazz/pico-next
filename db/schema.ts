@@ -197,6 +197,12 @@ export const toggles = pico.table("toggles", {
   deviceId: varchar("device_id", { length: 100 }),
   groupId: varchar("group_id", { length: 100 }),
   state: varchar("state", { length: 50 }).notNull().default("off"),
+  targetState: varchar("target_state", { length: 10 }),
+  scoreSnapshot: numeric("score_snapshot").notNull().default("0"),
+  scoringSince: timestamp("scoring_since", {
+    mode: "date",
+    withTimezone: true,
+  }),
   updatedAt: timestamp("updated_at", {
     mode: "date",
     withTimezone: true,

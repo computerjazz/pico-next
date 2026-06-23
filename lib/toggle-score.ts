@@ -1,6 +1,7 @@
 import { db } from "@/db";
-import { toggles } from "@/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { Toggle, toggles } from "@/db/schema";
+import { isTruthy } from "./utils";
+import { eq, asc } from "drizzle-orm";
 
 type ToggleEvent = {
   deviceId: string;
@@ -9,19 +10,18 @@ type ToggleEvent = {
 };
 
 export type ToggleDeviceScore = {
-  deviceId: string;
+  deviceId: string | null;
   state: string;
   role: "idle" | "active" | "challenger";
   points: number;
 };
 
 export type ToggleGroupScore = {
-  groupId: string;
+  groupId: string | null;
   asOf: string;
   phase: "aligned" | "contested";
   activeDeviceId: string | null;
   devices: ToggleDeviceScore[];
-  totalEvents: number;
 };
 
 export function scoreFromEvents(
@@ -120,11 +120,96 @@ export function scoreFromEvents(
         };
       },
     ),
-    totalEvents: events.length,
   };
 }
 
-export async function getGroupScore(groupId: string) {
+export function parseToggles({ toggles }: { toggles: Toggle[] }) {
+  const parsedToggles = toggles.map((t) => {
+    const isScoring = t.state === t.targetState;
+    if (isScoring) {
+      // Device is scoring
+      return {
+        ...t,
+        scoringSince: t.scoringSince || new Date(),
+      };
+    } else if (t.scoringSince) {
+      // Device _was_ scoring but is no longer
+      // calculate score and null out scoringSince
+      const latestScore = Math.floor(
+        (Date.now() - t.scoringSince.getTime()) / 1000,
+      );
+      return {
+        ...t,
+        scoringSince: null,
+        scoreSnapshot: String(Number(t.scoreSnapshot) + latestScore), // TODO: how to fix discrepency between auto-gen types from db (string) and actual intent (number)?
+      };
+    } else {
+      // device wasn't scoring and is still in unscoring state
+      return t;
+    }
+  });
+
+  return {
+    parsedToggles,
+  };
+}
+
+function getCurrentState({ toggles }: { toggles: Toggle[] }) {
+  const initialToggle = toggles[0];
+  const isAllSameState = toggles.every((t) => t.state === initialToggle?.state);
+  return {
+    isAllSameState,
+    groupId: initialToggle?.groupId,
+    targetState: initialToggle?.targetState,
+  };
+}
+
+export function getScoreFromToggles({
+  toggles,
+}: {
+  toggles: Toggle[];
+}): ToggleGroupScore {
+  const { isAllSameState, groupId } = getCurrentState({ toggles });
+  return {
+    groupId,
+    phase: isAllSameState ? "aligned" : "contested",
+    activeDeviceId: isAllSameState
+      ? null
+      : (toggles.find((r) => r.state === r.targetState)?.deviceId ?? null),
+    asOf: new Date().toISOString(),
+    devices: toggles.map((r) => {
+      const isActive = r.state === r.targetState;
+      const role = isAllSameState ? "idle" : isActive ? "active" : "challenger";
+      return {
+        deviceId: r.deviceId,
+        role,
+        points: Number(r.scoreSnapshot),
+        state: r.state,
+      };
+    }),
+  };
+}
+
+export async function getTogglesFromGroupId({ groupId }: { groupId: string }) {
+  const groupDeviceIds = await db.query.deviceGroups
+    .findMany({
+      where: (t, { eq }) => eq(t.groupId, groupId),
+    })
+    .then((result) => result.map((dg) => dg.deviceId));
+
+  const latestToggleResults = await Promise.all(
+    groupDeviceIds.map((deviceId) =>
+      db.query.toggles.findFirst({
+        where: (t, { eq }) => eq(t.deviceId, deviceId),
+        orderBy: (t, { desc }) => desc(t.updatedAt),
+      }),
+    ),
+  ).then((results) => results.filter(isTruthy));
+
+  return latestToggleResults;
+}
+
+async function getGroupScore_deprecated({ groupId }: { groupId: string }) {
   const rows = await db
     .select({
       deviceId: toggles.deviceId,
@@ -140,4 +225,16 @@ export async function getGroupScore(groupId: string) {
   });
 
   return scoreFromEvents(groupId, events);
+}
+
+export async function getGroupScore({ groupId }: { groupId: string }) {
+  const latestToggleResults = await getTogglesFromGroupId({ groupId });
+  const score = getScoreFromToggles({ toggles: latestToggleResults });
+  const { isAllSameState, targetState } = getCurrentState({
+    toggles: latestToggleResults,
+  });
+  if (!isAllSameState && !targetState) {
+    return getGroupScore_deprecated({ groupId });
+  }
+  return score;
 }

@@ -1,7 +1,8 @@
 import { db } from "@/db";
 import { devices, toggles } from "@/db/schema";
 import { getRedis } from "@/lib/redis";
-import { getGroupScore } from "@/lib/toggle-score";
+import { getScoreFromToggles, parseToggles } from "@/lib/toggle-score";
+import { isTruthy } from "@/lib/utils";
 import z from "zod";
 
 const ShortwaveDevicePostBodySchema = z.object({
@@ -62,10 +63,11 @@ export async function onToggleDevicePost({
     return { error: "malformed body" };
   }
 
-  const { state } = parsed.data;
+  const { state: newState } = parsed.data;
   let { groupId } = parsed.data;
 
   if (!groupId) {
+    // A toggle can only be a member of one group
     const group = await db.query.deviceGroups.findFirst({
       where: (t, { eq }) => eq(t.deviceId, deviceId),
     });
@@ -79,26 +81,48 @@ export async function onToggleDevicePost({
     };
   }
 
-  // make sure device exists, add it if needed
-  const insertPromise = db
-    .insert(devices)
-    .values({
-      deviceId,
-      type: "toggle",
+  const groupDeviceIds = await db.query.deviceGroups
+    .findMany({
+      where: (t, { eq }) => eq(t.groupId, groupId),
     })
-    .onConflictDoNothing();
+    .then((result) => result.map((dg) => dg.deviceId));
 
-  const togglePromise = db.insert(toggles).values({
-    state,
-    groupId,
-    deviceId,
+  const latestToggleResults = await Promise.all(
+    groupDeviceIds.map((deviceId) =>
+      db.query.toggles.findFirst({
+        where: (t, { eq }) => eq(t.deviceId, deviceId),
+        orderBy: (t, { desc }) => desc(t.updatedAt),
+      }),
+    ),
+  ).then((results) =>
+    results.filter(isTruthy).map((r) => {
+      return r.deviceId === deviceId ? { ...r, state: newState } : r;
+    }),
+  );
+
+  const initialItem = latestToggleResults[0];
+  const firstState = initialItem?.state;
+  const isAllSameState =
+    !!firstState && latestToggleResults.every((t) => t.state === firstState);
+
+  const nullTarget = initialItem?.targetState === null;
+  // If all are currently green, target state flips
+  const targetState = nullTarget
+    ? newState
+    : isAllSameState
+      ? null
+      : initialItem?.targetState;
+
+  const { parsedToggles } = parseToggles({
+    toggles: latestToggleResults.map((t) => ({ ...t, targetState })),
   });
 
-  const [redis] = await Promise.all([getRedis(), insertPromise, togglePromise]);
+  const togglePromises = parsedToggles.map((parsedToggle) =>
+    db.insert(toggles).values(parsedToggle),
+  );
 
-  const score = await getGroupScore(groupId);
-  const deviceIds = score.devices.map((d) => d.deviceId);
-  const allIds = [...deviceIds, groupId];
+  const redis = await getRedis();
+  const allIds = [...groupDeviceIds, groupId];
   await Promise.all(
     allIds.map(async (targetId) => {
       return redis.publish(
@@ -107,15 +131,13 @@ export async function onToggleDevicePost({
           targetId: targetId,
           command: JSON.stringify({
             type: "toggle_state",
-            groupId,
-            phase: score.phase,
-            activeDeviceId: score.activeDeviceId,
-            asOf: score.asOf,
-            devices: score.devices,
+            ...getScoreFromToggles({ toggles: parsedToggles }),
           }),
         }),
       );
     }),
   );
+  // Update db after websocket event so that ws can be as snappy as possible
+  await Promise.all(togglePromises);
   return { success: true };
 }
