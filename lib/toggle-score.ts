@@ -191,6 +191,7 @@ export function getScoreFromToggles({
 
       return {
         deviceId: r.deviceId,
+        isActive,
         role,
         points,
         state: r.state,

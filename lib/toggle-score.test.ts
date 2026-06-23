@@ -339,7 +339,7 @@ describe("getScoreFromToggles", () => {
       {
         deviceId: "d1",
         state: "on",
-        targetState: "on",
+        targetState: null,
         scoreSnapshot: "42",
         scoringSince: null,
         groupId: "g1",
@@ -349,7 +349,7 @@ describe("getScoreFromToggles", () => {
       {
         deviceId: "d2",
         state: "on",
-        targetState: "on",
+        targetState: null,
         scoreSnapshot: "99",
         scoringSince: null,
         groupId: "g1",
@@ -370,6 +370,7 @@ describe("getScoreFromToggles", () => {
         points: 42,
         state: "on",
         updatedAt: toggles[0].updatedAt,
+        isActive: false,
       },
       {
         deviceId: "d2",
@@ -377,6 +378,7 @@ describe("getScoreFromToggles", () => {
         points: 99,
         state: "on",
         updatedAt: toggles[1].updatedAt,
+        isActive: false,
       },
     ]);
   });
@@ -415,6 +417,7 @@ describe("getScoreFromToggles", () => {
         points: 5,
         state: "on",
         updatedAt: toggles[0].updatedAt,
+        isActive: true,
       },
       {
         deviceId: "devB",
@@ -422,6 +425,7 @@ describe("getScoreFromToggles", () => {
         points: 10,
         state: "off",
         updatedAt: toggles[1].updatedAt,
+        isActive: false,
       },
     ]);
   });
