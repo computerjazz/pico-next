@@ -23,7 +23,7 @@ async function migrateToggles() {
       deviceId: d.deviceId,
       scoreSnapshot: String(d.points),
       targetState,
-      scoringSince: isActive ? d.updatedAt : null,
+      scoringSince: isActive ? (d.updatedAt ?? null) : null,
       updatedAt: d.updatedAt ?? null,
     };
   });

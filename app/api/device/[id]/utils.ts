@@ -1,13 +1,26 @@
 import { db } from "@/db";
 import { devices, toggles } from "@/db/schema";
 import { getRedis } from "@/lib/redis";
-import { getScoreFromToggles, parseToggles } from "@/lib/toggle-score";
+import {
+  getScoreFromToggles,
+  parseToggles,
+  ToggleGroupScore,
+} from "@/lib/toggle-score";
 import { isTruthy } from "@/lib/utils";
 import z from "zod";
 
 const ShortwaveDevicePostBodySchema = z.object({
   volume: z.number().min(0).max(100).optional(),
 });
+
+type ToggleWsCommand = {
+  type: "toggle_state";
+} & ToggleGroupScore;
+
+type ToggleWsPayload = {
+  targetId: string;
+  command: ToggleWsCommand;
+};
 
 const ToggleStatePostBodySchema = z.object({
   state: z.enum(["on", "off"]),
@@ -119,12 +132,12 @@ export async function onToggleDevicePost({
 
   const score = getScoreFromToggles({ toggles: parsedToggles });
   const baseWsCommand = {
-    type: "toggle_state",
+    type: "toggle_state" as const,
     ...score,
   };
 
   const idsToNotify = [...groupDeviceIds, groupId];
-  const payloads = idsToNotify.map((targetId) => {
+  const payloads: ToggleWsPayload[] = idsToNotify.map((targetId) => {
     const isActive =
       score.devices.find((d) => d.deviceId === targetId && d.role === "active")
         ?.deviceId ?? null;
