@@ -117,27 +117,41 @@ export async function onToggleDevicePost({
     toggles: latestToggleResults.map((t) => ({ ...t, targetState })),
   });
 
+  const score = getScoreFromToggles({ toggles: parsedToggles });
+  const baseWsCommand = {
+    type: "toggle_state",
+    ...score,
+  };
+
+  const idsToNotify = [...groupDeviceIds, groupId];
+  const payloads = idsToNotify.map((targetId) => {
+    const isActive =
+      score.devices.find((d) => d.deviceId === targetId && d.role === "active")
+        ?.deviceId ?? null;
+
+    const activeDeviceId = isActive
+      ? targetId
+      : (score.devices.find((d) => d.role === "active")?.deviceId ?? null);
+    return {
+      targetId,
+      command: {
+        ...baseWsCommand,
+        activeDeviceId,
+      },
+    };
+  });
+
+  const redis = await getRedis();
+  await Promise.all(
+    payloads.map(async (payload) => {
+      return redis.publish("ws:commands", JSON.stringify(payload));
+    }),
+  );
+
+  // Update db after websocket event so that ws can be as snappy as possible
   const togglePromises = parsedToggles.map((parsedToggle) =>
     db.insert(toggles).values(parsedToggle),
   );
-
-  const redis = await getRedis();
-  const allIds = [...groupDeviceIds, groupId];
-  await Promise.all(
-    allIds.map(async (targetId) => {
-      return redis.publish(
-        "ws:commands",
-        JSON.stringify({
-          targetId: targetId,
-          command: JSON.stringify({
-            type: "toggle_state",
-            ...getScoreFromToggles({ toggles: parsedToggles }),
-          }),
-        }),
-      );
-    }),
-  );
-  // Update db after websocket event so that ws can be as snappy as possible
   await Promise.all(togglePromises);
   return { success: true };
 }

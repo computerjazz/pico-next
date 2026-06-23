@@ -9,11 +9,14 @@ async function migrateToggles() {
   if (!groupId) {
     throw new Error("must provide gorupId in order to migrate");
   }
-  const score = await getGroupScore_deprecated({ groupId });
+  const score = await getGroupScore_deprecated({
+    groupId,
+    includeInProgressScore: false,
+  });
   const activeDevice = score.devices.find((d) => d.role === "active");
   const targetState = activeDevice?.state || null;
   const devices: Omit<Toggle, "id" | "updatedAt">[] = score.devices.map((d) => {
-    const isActive = activeDevice?.deviceId === d.deviceId;
+    const isActive = d.role === "active";
     return {
       groupId,
       state: d.state,

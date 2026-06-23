@@ -25,10 +25,15 @@ export type ToggleGroupScore = {
   devices: ToggleDeviceScore[];
 };
 
-export function scoreFromEvents(
-  groupId: string,
-  events: ToggleEvent[],
-): ToggleGroupScore {
+export function scoreFromEvents({
+  groupId,
+  events,
+  includeInProgressScore = true,
+}: {
+  groupId: string;
+  events: ToggleEvent[];
+  includeInProgressScore?: boolean;
+}): ToggleGroupScore {
   const deviceIds = events.reduce((acc, cur) => {
     acc.add(cur.deviceId);
     return acc;
@@ -110,7 +115,7 @@ export function scoreFromEvents(
               : "challenger";
         const prevUpdated = result.prev?.updatedAt ?? new Date();
         const totalMs =
-          role === "active"
+          role === "active" && includeInProgressScore
             ? runningMs + (new Date().getTime() - prevUpdated.getTime())
             : runningMs;
         return {
@@ -191,7 +196,6 @@ export function getScoreFromToggles({
 
       return {
         deviceId: r.deviceId,
-        isActive,
         role,
         points,
         state: r.state,
@@ -222,8 +226,10 @@ export async function getTogglesFromGroupId({ groupId }: { groupId: string }) {
 
 export async function getGroupScore_deprecated({
   groupId,
+  includeInProgressScore = true,
 }: {
   groupId: string;
+  includeInProgressScore?: boolean;
 }) {
   const rows = await db
     .select({
@@ -239,7 +245,7 @@ export async function getGroupScore_deprecated({
     return !!row.deviceId && !!row.state && !!row.updatedAt;
   });
 
-  return scoreFromEvents(groupId, events);
+  return scoreFromEvents({ groupId, events, includeInProgressScore });
 }
 
 export async function getGroupScore({ groupId }: { groupId: string }) {

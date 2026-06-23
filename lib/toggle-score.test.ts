@@ -49,7 +49,7 @@ describe("scoreFromEvents", () => {
   });
 
   it("returns an aligned empty score when there are no events", () => {
-    const score = scoreFromEvents("group-1", []);
+    const score = scoreFromEvents({ groupId: "group-1", events: [] });
 
     expect(score.groupId).toBe("group-1");
     expect(score.phase).toBe("aligned");
@@ -59,7 +59,10 @@ describe("scoreFromEvents", () => {
   });
 
   it("tracks a single device as idle before a challenger appears", () => {
-    const score = scoreFromEvents("group-1", [event("device-a", "on", 1_000)]);
+    const score = scoreFromEvents({
+      groupId: "group-1",
+      events: [event("device-a", "on", 1_000)],
+    });
 
     expect(score.phase).toBe("aligned");
     expect(score.devices).toEqual([
@@ -74,10 +77,10 @@ describe("scoreFromEvents", () => {
   });
 
   it("stays aligned when both devices share the same state", () => {
-    const score = scoreFromEvents("group-1", [
-      event("device-a", "on", 1_000),
-      event("device-b", "on", 2_000),
-    ]);
+    const score = scoreFromEvents({
+      groupId: "group-1",
+      events: [event("device-a", "on", 1_000), event("device-b", "on", 2_000)],
+    });
 
     expect(score.phase).toBe("aligned");
     expect(score.activeDeviceId).toBeNull();
@@ -100,11 +103,14 @@ describe("scoreFromEvents", () => {
   });
 
   it("marks a mismatch as contested and accrues live points for the active device", () => {
-    const score = scoreFromEvents("group-1", [
-      event("device-a", "on", 1_000),
-      event("device-b", "on", 2_000),
-      event("device-a", "off", 3_000),
-    ]);
+    const score = scoreFromEvents({
+      groupId: "group-1",
+      events: [
+        event("device-a", "on", 1_000),
+        event("device-b", "on", 2_000),
+        event("device-a", "off", 3_000),
+      ],
+    });
 
     expect(score.phase).toBe("contested");
     expect(score.activeDeviceId).toBe("device-a");
@@ -127,16 +133,19 @@ describe("scoreFromEvents", () => {
   });
 
   it("awards elapsed contested time when devices realign", () => {
-    const score = scoreFromEvents("group-1", [
-      // device a turns on
-      event("device-a", "on", 1_000),
-      // device b turns on
-      event("device-b", "on", 2_000),
-      // device a turns off (blue)
-      event("device-a", "off", 3_000),
-      // device b turns off (a should be awarded points)
-      event("device-b", "off", 6_000),
-    ]);
+    const score = scoreFromEvents({
+      groupId: "group-1",
+      events: [
+        // device a turns on
+        event("device-a", "on", 1_000),
+        // device b turns on
+        event("device-b", "on", 2_000),
+        // device a turns off (blue)
+        event("device-a", "off", 3_000),
+        // device b turns off (a should be awarded points)
+        event("device-b", "off", 6_000),
+      ],
+    });
 
     expect(score.phase).toBe("aligned");
     expect(score.activeDeviceId).toBeNull();
@@ -159,24 +168,27 @@ describe("scoreFromEvents", () => {
   });
 
   it("awards elapsed contested time after multiple toggles", () => {
-    const score = scoreFromEvents("group-1", [
-      // device a init
-      event("device-a", "off", 1_000),
-      // device b init
-      event("device-b", "off", 1_000),
-      // device a turns ON (blue)
-      event("device-a", "on", 2_000),
-      // device b turns ON (a should be awarded points)
-      event("device-b", "on", 3_000),
-      // device b starts earning points
-      event("device-b", "off", 4_000),
-      // devices align again, b should be awarded points
-      event("device-b", "on", 5_000),
-      // device a starts earning points
-      event("device-a", "off", 6_000),
-      // devices align again, a is awarded points
-      event("device-b", "off", 7_000),
-    ]);
+    const score = scoreFromEvents({
+      groupId: "group-1",
+      events: [
+        // device a init
+        event("device-a", "off", 1_000),
+        // device b init
+        event("device-b", "off", 1_000),
+        // device a turns ON (blue)
+        event("device-a", "on", 2_000),
+        // device b turns ON (a should be awarded points)
+        event("device-b", "on", 3_000),
+        // device b starts earning points
+        event("device-b", "off", 4_000),
+        // devices align again, b should be awarded points
+        event("device-b", "on", 5_000),
+        // device a starts earning points
+        event("device-a", "off", 6_000),
+        // devices align again, a is awarded points
+        event("device-b", "off", 7_000),
+      ],
+    });
 
     expect(score.phase).toBe("aligned");
     expect(score.activeDeviceId).toBeNull();
@@ -370,7 +382,6 @@ describe("getScoreFromToggles", () => {
         points: 42,
         state: "on",
         updatedAt: toggles[0].updatedAt,
-        isActive: false,
       },
       {
         deviceId: "d2",
@@ -378,7 +389,6 @@ describe("getScoreFromToggles", () => {
         points: 99,
         state: "on",
         updatedAt: toggles[1].updatedAt,
-        isActive: false,
       },
     ]);
   });
@@ -417,7 +427,6 @@ describe("getScoreFromToggles", () => {
         points: 5,
         state: "on",
         updatedAt: toggles[0].updatedAt,
-        isActive: true,
       },
       {
         deviceId: "devB",
@@ -425,7 +434,6 @@ describe("getScoreFromToggles", () => {
         points: 10,
         state: "off",
         updatedAt: toggles[1].updatedAt,
-        isActive: false,
       },
     ]);
   });
