@@ -63,7 +63,13 @@ describe("scoreFromEvents", () => {
 
     expect(score.phase).toBe("aligned");
     expect(score.devices).toEqual([
-      { deviceId: "device-a", state: "on", role: "idle", points: 0 },
+      {
+        deviceId: "device-a",
+        state: "on",
+        role: "idle",
+        points: 0,
+        updatedAt: new Date(1_000),
+      },
     ]);
   });
 
@@ -76,8 +82,20 @@ describe("scoreFromEvents", () => {
     expect(score.phase).toBe("aligned");
     expect(score.activeDeviceId).toBeNull();
     expect(score.devices).toEqual([
-      { deviceId: "device-a", state: "on", role: "idle", points: 0 },
-      { deviceId: "device-b", state: "on", role: "idle", points: 0 },
+      {
+        deviceId: "device-a",
+        state: "on",
+        role: "idle",
+        points: 0,
+        updatedAt: new Date(1_000),
+      },
+      {
+        deviceId: "device-b",
+        state: "on",
+        role: "idle",
+        points: 0,
+        updatedAt: new Date(2_000),
+      },
     ]);
   });
 
@@ -91,8 +109,20 @@ describe("scoreFromEvents", () => {
     expect(score.phase).toBe("contested");
     expect(score.activeDeviceId).toBe("device-a");
     expect(score.devices).toEqual([
-      { deviceId: "device-a", state: "off", role: "active", points: 7 },
-      { deviceId: "device-b", state: "on", role: "challenger", points: 0 },
+      {
+        deviceId: "device-a",
+        state: "off",
+        role: "active",
+        points: 7,
+        updatedAt: new Date(3_000),
+      },
+      {
+        deviceId: "device-b",
+        state: "on",
+        role: "challenger",
+        points: 0,
+        updatedAt: new Date(2_000),
+      },
     ]);
   });
 
@@ -111,8 +141,20 @@ describe("scoreFromEvents", () => {
     expect(score.phase).toBe("aligned");
     expect(score.activeDeviceId).toBeNull();
     expect(score.devices).toEqual([
-      { deviceId: "device-a", state: "off", role: "idle", points: 3 },
-      { deviceId: "device-b", state: "off", role: "idle", points: 0 },
+      {
+        deviceId: "device-a",
+        state: "off",
+        role: "idle",
+        points: 3,
+        updatedAt: new Date(3_000),
+      },
+      {
+        deviceId: "device-b",
+        state: "off",
+        role: "idle",
+        points: 0,
+        updatedAt: new Date(6_000),
+      },
     ]);
   });
 
@@ -139,8 +181,20 @@ describe("scoreFromEvents", () => {
     expect(score.phase).toBe("aligned");
     expect(score.activeDeviceId).toBeNull();
     expect(score.devices).toEqual([
-      { deviceId: "device-a", state: "off", role: "idle", points: 2 },
-      { deviceId: "device-b", state: "off", role: "idle", points: 1 },
+      {
+        deviceId: "device-a",
+        state: "off",
+        role: "idle",
+        points: 2,
+        updatedAt: new Date(6_000),
+      },
+      {
+        deviceId: "device-b",
+        state: "off",
+        role: "idle",
+        points: 1,
+        updatedAt: new Date(7_000),
+      },
     ]);
   });
 });
@@ -315,12 +369,14 @@ describe("getScoreFromToggles", () => {
         role: "idle",
         points: 42,
         state: "on",
+        updatedAt: toggles[0].updatedAt,
       },
       {
         deviceId: "d2",
         role: "idle",
         points: 99,
         state: "on",
+        updatedAt: toggles[1].updatedAt,
       },
     ]);
   });
@@ -358,12 +414,14 @@ describe("getScoreFromToggles", () => {
         role: "active",
         points: 5,
         state: "on",
+        updatedAt: toggles[0].updatedAt,
       },
       {
         deviceId: "devB",
         role: "challenger",
         points: 10,
         state: "off",
+        updatedAt: toggles[1].updatedAt,
       },
     ]);
   });

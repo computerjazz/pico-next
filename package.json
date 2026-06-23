@@ -15,7 +15,8 @@
     "gmail:authorize": "tsx scripts/authorize-gmail.ts",
     "gmail:watch": "tsx scripts/start-watch.ts",
     "generate-token": "tsx scripts/generate-token.ts",
-    "test-connection": "tsx scripts/test-connection.ts"
+    "test-connection": "tsx scripts/test-connection.ts",
+    "migrate:toggles": "tsx scripts/db-migrate-toggles.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",

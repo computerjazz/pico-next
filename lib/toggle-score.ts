@@ -14,6 +14,7 @@ export type ToggleDeviceScore = {
   state: string;
   role: "idle" | "active" | "challenger";
   points: number;
+  updatedAt?: Date | null;
 };
 
 export type ToggleGroupScore = {
@@ -100,7 +101,7 @@ export function scoreFromEvents(
     phase: result.activeDeviceId ? "contested" : "aligned",
     activeDeviceId: result.activeDeviceId,
     devices: Object.values([...result.devices]).map(
-      ([deviceId, { lastSeenState, runningMs }]) => {
+      ([deviceId, { lastSeenState, runningMs, lastUpdatedAt }]) => {
         const role =
           result.activeDeviceId === null
             ? "idle"
@@ -117,6 +118,7 @@ export function scoreFromEvents(
           role,
           points: Math.floor(totalMs / 1000),
           state: lastSeenState,
+          updatedAt: lastUpdatedAt,
         };
       },
     ),
@@ -180,11 +182,19 @@ export function getScoreFromToggles({
     devices: toggles.map((r) => {
       const isActive = r.state === r.targetState;
       const role = isAllSameState ? "idle" : isActive ? "active" : "challenger";
+      const numSecondsSinceUpdated = Math.floor(
+        (Date.now() - new Date(r.updatedAt ?? Date.now()).getTime()) / 1000,
+      );
+
+      const points =
+        Number(r.scoreSnapshot) + (isActive ? numSecondsSinceUpdated : 0);
+
       return {
         deviceId: r.deviceId,
         role,
-        points: Number(r.scoreSnapshot),
+        points,
         state: r.state,
+        updatedAt: r.updatedAt,
       };
     }),
   };
@@ -209,7 +219,11 @@ export async function getTogglesFromGroupId({ groupId }: { groupId: string }) {
   return latestToggleResults;
 }
 
-async function getGroupScore_deprecated({ groupId }: { groupId: string }) {
+export async function getGroupScore_deprecated({
+  groupId,
+}: {
+  groupId: string;
+}) {
   const rows = await db
     .select({
       deviceId: toggles.deviceId,
