@@ -9,6 +9,7 @@ import { setTheme } from "../actions/theme";
 import Moon from "./icons/Moon";
 import Sun from "./icons/Sun";
 import { useConfirm } from "./ConfirmDialog";
+import Switch from "./Switch";
 
 function ProfileMenuItem({
   label,
@@ -143,23 +144,7 @@ function ProfileButton({
             <button onClick={() => setIsDark(false)} className="cursor-pointer">
               <Sun />
             </button>
-            <div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isDark}
-                  onChange={toggleTheme}
-                  className="sr-only peer"
-                  aria-checked={isDark}
-                />
-                <div className="w-11 h-6 bg-accent-foreground peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-muted-foreground rounded-full peer dark:bg-accent-foreground transition-colors peer-checked:bg-muted-foreground"></div>
-                <div
-                  className={`absolute left-0 top-0 w-6 h-6 rounded-full bg-white border border-gray-300 transition-transform duration-300 transform ${
-                    isDark ? "translate-x-5" : ""
-                  }`}
-                ></div>
-              </label>
-            </div>
+            <Switch isOn={isDark} onChange={toggleTheme} />
             <button onClick={() => setIsDark(true)} className="cursor-pointer">
               <Moon />
             </button>

@@ -134,6 +134,7 @@ export async function onToggleDevicePost({
   const baseWsCommand = {
     type: "toggle_state" as const,
     ...score,
+    groupId,
   };
 
   const idsToNotify = [...groupDeviceIds, groupId];
@@ -162,9 +163,21 @@ export async function onToggleDevicePost({
   );
 
   // Update db after websocket event so that ws can be as snappy as possible
-  const togglePromises = parsedToggles.map((parsedToggle) =>
-    db.insert(toggles).values(parsedToggle),
-  );
+  const togglePromises = parsedToggles.map((parsedToggle) => {
+    const { id: _id, updatedAt: _updatedAt, ...rest } = parsedToggle;
+    return db.insert(toggles).values(rest);
+  });
   await Promise.all(togglePromises);
+
+  const isInit = !parsedToggles.find((pt) => pt.deviceId === deviceId);
+  if (isInit) {
+    await db.insert(toggles).values({
+      deviceId,
+      groupId,
+      state: newState,
+      targetState,
+    });
+  }
+
   return { success: true };
 }

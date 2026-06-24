@@ -1,5 +1,8 @@
 "use client";
+import React from "react";
 import { fetchGroupScoreAction } from "@/app/actions/fetchGroupScore";
+import { toggleDevice } from "@/app/actions/toggleDevice";
+import Switch from "@/app/components/Switch";
 import { useSocket } from "@/app/hooks/useSocket";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { Device } from "@/db/schema";
@@ -23,6 +26,8 @@ function Leaderboard({
 }) {
   const [score, setScore] = useState<ToggleGroupScore | null>(null);
   const allIdle = score?.devices.every((d) => d.role === "idle");
+
+  const isTestGroup = groupId === process.env.NEXT_PUBLIC_VIRTUAL_GROUP_ID; // TODO: cleanup
 
   const updateScore = useStableCallback(async function reloadScore() {
     try {
@@ -68,18 +73,17 @@ function Leaderboard({
 
   const leader = score.devices.reduce((acc, cur) => {
     return cur.points > acc.points ? cur : acc;
-  });
+  }, score.devices[0]);
 
   const diffSeconds = score.devices.reduce((acc, cur) => {
     return Math.abs(acc - cur.points);
   }, 0);
 
   const diff = getHrsMinSecFromMillis({ millis: diffSeconds * 1000 });
-
   return (
     <div className="p-4 space-y-4">
       <p className="text-sm text-muted-foreground">
-        {`${devices.get(leader.deviceId ?? "")?.name ?? leader.deviceId} is ahead by ${diff.hours}hrs ${diff.minutes}min ${diff.seconds}sec`}
+        {`${devices.get(leader?.deviceId ?? "")?.name ?? leader?.deviceId} is ahead by ${diff.hours}hrs ${diff.minutes}min ${diff.seconds}sec`}
       </p>
       <ul className="space-y-2">
         {score.devices
@@ -88,22 +92,35 @@ function Leaderboard({
           })
           .map((device) => {
             return (
-              <Link
-                key={device.deviceId}
-                className={`rounded p-3 flex items-center justify-between bg-muted-surface`}
-                href={`/toggle/${device.deviceId}`}
-              >
-                <div className="flex gap-2 items-center">
-                  <div
-                    className={`w-2 h-2 rounded-full ${roleClass(device.role)}`}
+              <React.Fragment key={device.deviceId}>
+                <Link
+                  className={`rounded p-3 flex items-center justify-between bg-muted-surface`}
+                  href={`/toggle/${device.deviceId}`}
+                >
+                  <div className="flex gap-2 items-center">
+                    <div
+                      className={`w-2 h-2 rounded-full ${roleClass(device.role)}`}
+                    />
+                    <p className="font-medium">
+                      {devices.get(device.deviceId ?? "")?.name ||
+                        device.deviceId}
+                    </p>
+                  </div>
+                  <p className="text-lg font-semibold">{device.points}</p>
+                </Link>
+                {isTestGroup && (
+                  <Switch
+                    isOn={device.state === "on"}
+                    onChange={async () => {
+                      // Make a POST request to /device/:id with a JSON payload of the new state
+                      await toggleDevice({
+                        deviceId: device.deviceId,
+                        state: device.state === "on" ? "off" : "on",
+                      });
+                    }}
                   />
-                  <p className="font-medium">
-                    {devices.get(device.deviceId ?? "")?.name ||
-                      device.deviceId}
-                  </p>
-                </div>
-                <p className="text-lg font-semibold">{device.points}</p>
-              </Link>
+                )}
+              </React.Fragment>
             );
           })}
       </ul>
