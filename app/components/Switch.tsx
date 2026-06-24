@@ -5,10 +5,7 @@ function Switch({ isOn, onChange }: { isOn?: boolean; onChange?: () => void }) {
         <input
           type="checkbox"
           checked={isOn}
-          onChange={() => {
-            console.log("onchange!!!");
-            onChange?.();
-          }}
+          onChange={onChange}
           className="sr-only peer"
           aria-checked={isOn}
         />
