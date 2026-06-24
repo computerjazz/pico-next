@@ -4,7 +4,7 @@ import z from "zod";
 
 const CommandSchema = z.object({
   targetId: z.string(),
-  command: z.string(),
+  command: z.union([z.string(), z.record(z.string(), z.any())]),
 });
 
 export const ClientRegisterSchema = z.object({
@@ -101,7 +101,9 @@ export function sendMessage({ message }: { message?: string | null }) {
     console.error("sendMessage: parse failed", message);
     return;
   }
-  const { targetId, command } = parsed.data;
+  const { targetId, command: commandRaw } = parsed.data;
+  const command =
+    typeof commandRaw === "string" ? commandRaw : JSON.stringify(commandRaw);
   getClients({ targetId }).forEach((socket) => {
     if (socket.readyState === WebSocket.OPEN) {
       console.log(`Sending message to target ${targetId}`);
