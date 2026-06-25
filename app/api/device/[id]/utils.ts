@@ -8,6 +8,7 @@ import {
   ToggleGroupScore,
 } from "@/lib/toggle-score";
 import { isTruthy } from "@/lib/utils";
+import { eq } from "drizzle-orm";
 import z from "zod";
 
 const ShortwaveDevicePostBodySchema = z.object({
@@ -45,9 +46,12 @@ export async function onShortwaveDevicePost({
   const { volume } = parsed.data;
 
   if (volume !== undefined) {
-    await db.update(devices).set({
-      volume: String(volume),
-    });
+    await db
+      .update(devices)
+      .set({
+        volume: String(volume),
+      })
+      .where(eq(devices.deviceId, deviceId));
 
     await redis.publish(
       "ws:commands",
@@ -159,8 +163,16 @@ export async function onToggleDevicePost({
 
   // Update db after websocket event so that ws can be as snappy as possible
   const togglePromises = parsedToggles.map((parsedToggle) => {
-    const { id: _id, updatedAt: _updatedAt, ...rest } = parsedToggle;
-    return db.insert(toggles).values(rest);
+    const { id: _id, deviceId, ...rest } = parsedToggle;
+    if (!deviceId) return;
+    return db
+      .update(toggles)
+      .set({
+        ...rest,
+        deviceId,
+        updatedAt: new Date(),
+      })
+      .where(eq(toggles.deviceId, deviceId));
   });
   await Promise.all(togglePromises);
 

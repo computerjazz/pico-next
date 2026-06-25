@@ -142,7 +142,7 @@ export function parseToggles({ toggles }: { toggles: Toggle[] }) {
       return {
         ...t,
         scoreSnapshot: String(Number(t.scoreSnapshot) + latestScore), // TODO: how to fix discrepency between auto-gen types from db (string) and actual intent (number)?
-        scoringSince: isScoring ? t.scoringSince || new Date() : null,
+        scoringSince: isScoring ? new Date() : null,
       };
     } else {
       // device wasn't scoring and is still in unscoring state
