@@ -72,51 +72,53 @@ function Leaderboard({
     );
   }
 
-  const leader = score.devices.reduce((acc, cur) => {
-    return cur.points > acc.points ? cur : acc;
-  }, score.devices[0]);
+  const sortedDevices = [...score.devices].sort((a, b) => {
+    return a.points > b.points ? -1 : 1;
+  });
 
-  const diffSeconds = score.devices.reduce((acc, cur) => {
-    return Math.abs(acc - cur.points);
-  }, 0);
+  const leader = sortedDevices[0];
+  const secondPlace = sortedDevices[1];
+
+  const diffSeconds = (leader?.points || 0) - (secondPlace?.points || 0);
 
   const diff = getHrsMinSecFromMillis({ millis: diffSeconds * 1000 });
   return (
-    <div className="p-4 space-y-4">
-      <p className="text-sm text-muted-foreground">
-        {`${devices.get(leader?.deviceId ?? "")?.name ?? leader?.deviceId} is ahead by ${diff.hours}hrs ${diff.minutes}min ${diff.seconds}sec`}
-      </p>
-      <ul className="space-y-2">
-        {score.devices
-          .sort((a, b) => {
-            return a.points > b.points ? -1 : 1;
-          })
-          .map((device) => {
-            return (
-              <motion.div
-                key={device.deviceId}
-                layout
-                transition={{
-                  type: "spring",
-                  stiffness: 500,
-                  damping: 30,
-                }}
+    <div className="p-4 space-y-4 flex flex-1 flex-col">
+      <div className="text-sm text-muted-foreground">
+        <p>
+          {`${devices.get(leader?.deviceId ?? "")?.name ?? leader?.deviceId} is ahead by:`}
+        </p>
+        <p>{`${diff.hours}hrs ${diff.minutes}min ${diff.seconds}sec`}</p>
+      </div>
+      <ul className="space-y-2 flex flex-1 flex-col">
+        {sortedDevices.map((device) => {
+          return (
+            <motion.div
+              key={device.deviceId}
+              layout
+              className="flex flex-col"
+              transition={{
+                type: "spring",
+                stiffness: 500,
+                damping: 30,
+              }}
+            >
+              <div
+                className={`rounded p-3 flex items-center justify-between bg-muted-surface`}
               >
                 <Link
-                  className={`rounded p-3 flex items-center justify-between bg-muted-surface`}
+                  className="flex gap-2 items-center"
                   href={`/toggle/${device.deviceId}`}
                 >
-                  <div className="flex gap-2 items-center">
-                    <div
-                      className={`w-2 h-2 rounded-full ${roleClass(device.role)}`}
-                    />
-                    <p className="font-medium">
-                      {devices.get(device.deviceId ?? "")?.name ||
-                        device.deviceId}
-                    </p>
-                  </div>
-                  <p className="text-lg font-semibold">{device.points}</p>
+                  <div
+                    className={`w-2 h-2 rounded-full ${roleClass(device.role)}`}
+                  />
+                  <p className="font-medium">
+                    {devices.get(device.deviceId ?? "")?.name ||
+                      device.deviceId}
+                  </p>
                 </Link>
+                <p className="text-lg font-semibold">{device.points}</p>
                 {isTestGroup && (
                   <Switch
                     isOn={device.state === "on"}
@@ -129,9 +131,10 @@ function Leaderboard({
                     }}
                   />
                 )}
-              </motion.div>
-            );
-          })}
+              </div>
+            </motion.div>
+          );
+        })}
       </ul>
     </div>
   );

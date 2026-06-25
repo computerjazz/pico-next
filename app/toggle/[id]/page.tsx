@@ -105,9 +105,9 @@ export default async function TogglePage({
           </div>
         </div>
       </PageHeader>
-      <div className="flex flex-col max-w-2xl mx-auto p-4">
+      <div className="flex flex-col flex-1 p-4 items-center">
         {groupId && (
-          <div className="mt-10">
+          <div className="mt-10 flex flex-1 flex-col max-w-2xl w-full">
             <h1 className="text-3xl font-bold">Leaderboard</h1>
 
             <Leaderboard
