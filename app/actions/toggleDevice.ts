@@ -12,7 +12,6 @@ export async function toggleDevice({
   deviceId: string | null;
   state: "on" | "off";
 }) {
-  console.log("toggle device!!", deviceId, state);
   const session = await auth();
   const sessionUserId = session?.user?.id;
   if (!sessionUserId) {

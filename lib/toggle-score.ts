@@ -133,22 +133,16 @@ export function scoreFromEvents({
 export function parseToggles({ toggles }: { toggles: Toggle[] }) {
   const parsedToggles = toggles.map((t) => {
     const isScoring = t.state === t.targetState;
-    if (isScoring) {
+    if (isScoring || t.scoringSince) {
+      const now = Date.now();
+      const latestScore = Math.floor(
+        (now - (t.scoringSince?.getTime() || now)) / 1000,
+      );
       // Device is scoring
       return {
         ...t,
-        scoringSince: t.scoringSince || new Date(),
-      };
-    } else if (t.scoringSince) {
-      // Device _was_ scoring but is no longer
-      // calculate score and null out scoringSince
-      const latestScore = Math.floor(
-        (Date.now() - t.scoringSince.getTime()) / 1000,
-      );
-      return {
-        ...t,
-        scoringSince: null,
         scoreSnapshot: String(Number(t.scoreSnapshot) + latestScore), // TODO: how to fix discrepency between auto-gen types from db (string) and actual intent (number)?
+        scoringSince: isScoring ? t.scoringSince || new Date() : null,
       };
     } else {
       // device wasn't scoring and is still in unscoring state
