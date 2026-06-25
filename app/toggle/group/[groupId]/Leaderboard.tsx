@@ -10,6 +10,7 @@ import { ToggleGroupScore } from "@/lib/toggle-score";
 import { getHrsMinSecFromMillis } from "@/lib/utils";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 
 function roleClass(role: "idle" | "active" | "challenger") {
   if (role === "active") return "bg-blue-400";
@@ -92,7 +93,15 @@ function Leaderboard({
           })
           .map((device) => {
             return (
-              <React.Fragment key={device.deviceId}>
+              <motion.div
+                key={device.deviceId}
+                layout
+                transition={{
+                  type: "spring",
+                  stiffness: 500,
+                  damping: 30,
+                }}
+              >
                 <Link
                   className={`rounded p-3 flex items-center justify-between bg-muted-surface`}
                   href={`/toggle/${device.deviceId}`}
@@ -120,7 +129,7 @@ function Leaderboard({
                     }}
                   />
                 )}
-              </React.Fragment>
+              </motion.div>
             );
           })}
       </ul>
