@@ -126,11 +126,12 @@ export async function onToggleDevicePost({
     await Promise.all(
       itemsToInit.map(async (dId) => {
         // initialize any devices that don't already have a result
+        const isToggledDevice = dId === deviceId;
         const [toggle] = await db
           .insert(toggles)
           .values({
-            deviceId,
-            state: deviceId === dId ? newState : "off",
+            deviceId: dId,
+            state: isToggledDevice ? newState : "off",
             groupId,
           })
           .returning();

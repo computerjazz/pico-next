@@ -221,6 +221,33 @@ export async function getTogglesFromGroupId({ groupId }: { groupId: string }) {
     ),
   ).then((results) => results.filter(isTruthy));
 
+  const devicesWithResults = latestToggleResults.reduce((acc, cur) => {
+    if (cur.deviceId) acc.add(cur.deviceId);
+    return acc;
+  }, new Set<string>());
+
+  const itemsToInit = groupDeviceIds.filter(
+    (deviceId) => !devicesWithResults.has(deviceId),
+  );
+
+  if (itemsToInit.length) {
+    await Promise.all(
+      itemsToInit.map(async (dId) => {
+        // initialize any devices that don't already have a result
+
+        const [toggle] = await db
+          .insert(toggles)
+          .values({
+            deviceId: dId,
+            state: "off",
+            groupId,
+          })
+          .returning();
+        latestToggleResults.push(toggle);
+      }),
+    );
+  }
+
   return latestToggleResults;
 }
 
