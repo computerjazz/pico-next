@@ -113,6 +113,32 @@ export async function onToggleDevicePost({
     }),
   );
 
+  const devicesWithResults = latestToggleResults.reduce((acc, cur) => {
+    if (cur.deviceId) acc.add(cur.deviceId);
+    return acc;
+  }, new Set<string>());
+
+  const itemsToInit = groupDeviceIds.filter(
+    (deviceId) => !devicesWithResults.has(deviceId),
+  );
+
+  if (itemsToInit.length) {
+    await Promise.all(
+      itemsToInit.map(async (dId) => {
+        // initialize any devices that don't already have a result
+        const [toggle] = await db
+          .insert(toggles)
+          .values({
+            deviceId,
+            state: deviceId === dId ? newState : "off",
+            groupId,
+          })
+          .returning();
+        latestToggleResults.push(toggle);
+      }),
+    );
+  }
+
   const initialItem = latestToggleResults[0];
   const firstState = initialItem?.state;
   const isAllSameState =
@@ -168,16 +194,6 @@ export async function onToggleDevicePost({
     return db.insert(toggles).values(rest);
   });
   await Promise.all(togglePromises);
-
-  const isInit = !parsedToggles.find((pt) => pt.deviceId === deviceId);
-  if (isInit) {
-    await db.insert(toggles).values({
-      deviceId,
-      groupId,
-      state: newState,
-      targetState,
-    });
-  }
 
   return { success: true };
 }
