@@ -205,7 +205,13 @@ export function getScoreFromToggles({
   };
 }
 
-export async function getTogglesFromGroupId({ groupId }: { groupId: string }) {
+export async function getTogglesFromGroupId({
+  groupId,
+  overrides = {},
+}: {
+  groupId: string;
+  overrides?: Record<string, string>;
+}) {
   const groupDeviceIds = await db.query.deviceGroups
     .findMany({
       where: (t, { eq }) => eq(t.groupId, groupId),
@@ -219,7 +225,13 @@ export async function getTogglesFromGroupId({ groupId }: { groupId: string }) {
         orderBy: (t, { desc }) => desc(t.updatedAt),
       }),
     ),
-  ).then((results) => results.filter(isTruthy));
+  ).then((results) =>
+    results.filter(isTruthy).map((r) => {
+      const state =
+        r.deviceId && overrides[r.deviceId] ? overrides[r.deviceId] : r.state;
+      return { ...r, state };
+    }),
+  );
 
   const devicesWithResults = latestToggleResults.reduce((acc, cur) => {
     if (cur.deviceId) acc.add(cur.deviceId);
@@ -239,7 +251,7 @@ export async function getTogglesFromGroupId({ groupId }: { groupId: string }) {
           .insert(toggles)
           .values({
             deviceId: dId,
-            state: "off",
+            state: overrides[dId] ?? "off",
             groupId,
           })
           .returning();

@@ -3,6 +3,7 @@ import { devices, toggles } from "@/db/schema";
 import { getRedis } from "@/lib/redis";
 import {
   getScoreFromToggles,
+  getTogglesFromGroupId,
   parseToggles,
   ToggleGroupScore,
 } from "@/lib/toggle-score";
@@ -79,6 +80,10 @@ export async function onToggleDevicePost({
   const { state: newState } = parsed.data;
   let { groupId } = parsed.data;
 
+  const overrides: Record<string, string> = {
+    [deviceId]: newState,
+  };
+
   if (!groupId) {
     // A toggle can only be a member of one group
     const group = await db.query.deviceGroups.findFirst({
@@ -94,51 +99,14 @@ export async function onToggleDevicePost({
     };
   }
 
-  const groupDeviceIds = await db.query.deviceGroups
-    .findMany({
-      where: (t, { eq }) => eq(t.groupId, groupId),
-    })
-    .then((result) => result.map((dg) => dg.deviceId));
+  const latestToggleResults = await getTogglesFromGroupId({
+    groupId,
+    overrides,
+  });
 
-  const latestToggleResults = await Promise.all(
-    groupDeviceIds.map((deviceId) =>
-      db.query.toggles.findFirst({
-        where: (t, { eq }) => eq(t.deviceId, deviceId),
-        orderBy: (t, { desc }) => desc(t.updatedAt),
-      }),
-    ),
-  ).then((results) =>
-    results.filter(isTruthy).map((r) => {
-      return r.deviceId === deviceId ? { ...r, state: newState } : r;
-    }),
-  );
-
-  const devicesWithResults = latestToggleResults.reduce((acc, cur) => {
-    if (cur.deviceId) acc.add(cur.deviceId);
-    return acc;
-  }, new Set<string>());
-
-  const itemsToInit = groupDeviceIds.filter(
-    (deviceId) => !devicesWithResults.has(deviceId),
-  );
-
-  if (itemsToInit.length) {
-    await Promise.all(
-      itemsToInit.map(async (dId) => {
-        // initialize any devices that don't already have a result
-        const isToggledDevice = dId === deviceId;
-        const [toggle] = await db
-          .insert(toggles)
-          .values({
-            deviceId: dId,
-            state: isToggledDevice ? newState : "off",
-            groupId,
-          })
-          .returning();
-        latestToggleResults.push(toggle);
-      }),
-    );
-  }
+  const groupDeviceIds = latestToggleResults
+    .map((r) => r.deviceId)
+    .filter(isTruthy);
 
   const initialItem = latestToggleResults[0];
   const firstState = initialItem?.state;
