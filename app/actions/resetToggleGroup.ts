@@ -5,7 +5,6 @@ import { db } from "@/db";
 import { toggles } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { onToggleDevicePost } from "../api/device/[id]/utils";
 
 export async function resetToggleGroup({ groupId }: { groupId: string }) {
   const session = await auth();
@@ -31,18 +30,6 @@ export async function resetToggleGroup({ groupId }: { groupId: string }) {
 
   // delete all events in group
   await db.delete(toggles).where(eq(toggles.groupId, groupId)).execute();
-  await Promise.all(
-    groups.map(async ({ deviceId }) => {
-      // Re-initialize all devices to "off" state
-      return onToggleDevicePost({
-        deviceId,
-        json: {
-          state: "off",
-          groupId,
-        },
-      });
-    }),
-  );
 
   revalidatePath(`/toggle/${groupId}`);
 }

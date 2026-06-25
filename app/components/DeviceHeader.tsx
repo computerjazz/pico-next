@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useConfirm } from "./ConfirmDialog";
 import ArrowUTurnLeft from "./icons/ArrowUturnLeft";
 import { resetToggleGroup } from "../actions/resetToggleGroup";
+import { useRouter } from "next/navigation";
 
 function DeviceHeader({
   device,
@@ -22,6 +23,7 @@ function DeviceHeader({
 }) {
   const [isEditingDeviceName, setIsEditingDeviceName] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
+  const router = useRouter();
 
   async function _shareDevice() {
     const ok = await confirm({
@@ -61,6 +63,8 @@ function DeviceHeader({
 
     if (!ok) return;
     await resetToggleGroup({ groupId });
+
+    router.refresh();
     toast.success("Group reset");
   }
 

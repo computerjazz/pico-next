@@ -10,6 +10,7 @@ import Moon from "./icons/Moon";
 import Sun from "./icons/Sun";
 import { useConfirm } from "./ConfirmDialog";
 import Switch from "./Switch";
+import { useRouter } from "next/navigation";
 
 function ProfileMenuItem({
   label,
@@ -43,6 +44,7 @@ function ProfileButton({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDark, setIsDark] = useState(theme === "dark");
   const { confirm, ConfirmDialog } = useConfirm();
+  const router = useRouter();
 
   useEffect(() => {
     setTheme(isDark ? "dark" : "light");
@@ -129,9 +131,7 @@ function ProfileButton({
                     <ProfileMenuItem
                       key={d.deviceId}
                       label={d.name ?? d.deviceId}
-                      onClick={() =>
-                        window.location.assign(`/${d.type}/${d.deviceId}`)
-                      }
+                      onClick={() => router.push(`/${d.type}/${d.deviceId}`)}
                     />
                   );
                 })}
