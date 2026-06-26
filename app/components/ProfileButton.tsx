@@ -104,7 +104,7 @@ function ProfileButton({
         {user.image ? (
           <Image
             alt="pfp"
-            className="rounded-full"
+            className="rounded-full aspect-square min-w-6"
             width="30"
             height="30"
             src={user.image}

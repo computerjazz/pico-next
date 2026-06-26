@@ -80,7 +80,7 @@ export default async function DevicePage({
         scope="/shortwave/"
       />
       <PageHeader>
-        <div className="flex flex-col justify-center">
+        <div className="flex flex-col">
           <div className="flex flex-row gap-4">
             <DeviceHeader device={device} disabled={!isOwner} />
             <ClaimButton device={device} />

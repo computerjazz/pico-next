@@ -90,7 +90,7 @@ function DeviceHeader({
   ].filter((item) => item.deviceType.includes(device.type));
 
   return (
-    <div className="flex items-center gap-2 justify-center">
+    <div className="flex gap-2 items-start">
       <DeviceNameInput
         device={device}
         isEditing={isEditingDeviceName}

@@ -45,7 +45,7 @@ function VolumeInput({
         max={100}
         step={1}
         defaultValue={optimisticVolume}
-        className="w-48 accent-muted-foreground"
+        className="flex-1 max-w-48 accent-muted-foreground"
         autoComplete="off"
         disabled={disabled}
         onChange={({ target }) => {

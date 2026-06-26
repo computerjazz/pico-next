@@ -8,11 +8,11 @@ function PageHeader({ children }: { children: React.ReactNode }) {
       <div className="flex flex-row gap-4">
         <Link href="/">
           <Image
-            width={48}
-            height={48}
+            width={30}
+            height={30}
             src="/img/icons/icon-192.png"
             alt="Shortwave Logo"
-            className="rounded-full aspect-1"
+            className="rounded-full aspect-1 aspect-square min-w-6"
           />
         </Link>
         {children}

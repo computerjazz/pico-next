@@ -58,7 +58,7 @@ function DeviceMenu({
   }, [isMenuOpen]);
 
   return (
-    <div className="relative flex" ref={containerRef}>
+    <div className="relative flex p-1" ref={containerRef}>
       {!disabled && (
         <button
           type="button"

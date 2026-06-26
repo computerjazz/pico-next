@@ -66,11 +66,7 @@ function DeviceNameInput({
     <div
       ref={containerRef}
       className="flex items-center gap-2 font-bold text-2xl relative"
-      style={
-        rowHeight !== undefined
-          ? { minHeight: rowHeight, height: rowHeight }
-          : undefined
-      }
+      style={rowHeight !== undefined ? { minHeight: rowHeight } : undefined}
     >
       {!isEditing ? (
         <>
