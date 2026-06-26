@@ -1,16 +1,19 @@
 "use client";
-import React from "react";
+import { useLayoutEffect, useRef } from "react";
 import { fetchGroupScoreAction } from "@/app/actions/fetchGroupScore";
 import { toggleDevice } from "@/app/actions/toggleDevice";
 import Switch from "@/app/components/Switch";
 import { useSocket } from "@/app/hooks/useSocket";
 import { useStableCallback } from "@/app/hooks/useStableCallback";
 import { Device } from "@/db/schema";
-import { ToggleGroupScore } from "@/lib/toggle-score";
 import { getHrsMinSecFromMillis } from "@/lib/utils";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
+import {
+  ToggleGroupScore,
+  ToggleGroupScoreSerializableSchema,
+} from "@/lib/types";
 
 function roleClass(role: "idle" | "active" | "challenger") {
   if (role === "active") return "bg-blue-400";
@@ -26,14 +29,14 @@ function Leaderboard({
   devices: Map<string, Device>;
 }) {
   const [score, setScore] = useState<ToggleGroupScore | null>(null);
-  const allIdle = score?.devices.every((d) => d.role === "idle");
-
   const isTestGroup = groupId === process.env.NEXT_PUBLIC_VIRTUAL_GROUP_ID; // TODO: cleanup
+  const scoreRef = useRef(score);
 
   const updateScore = useStableCallback(async function reloadScore() {
     try {
       const latestScore = await fetchGroupScoreAction({ groupId });
       setScore(latestScore);
+      scoreRef.current = null;
     } catch {
       // ignore
     }
@@ -41,8 +44,28 @@ function Leaderboard({
 
   useSocket({
     groupId,
-    onMessage: updateScore,
+    onMessage: (msgStr) => {
+      const msg = JSON.parse(msgStr);
+      const parsed = ToggleGroupScoreSerializableSchema.safeParse(msg);
+      if (parsed.success) {
+        const _score = {
+          ...parsed.data,
+          devices: parsed.data.devices.map((d) => {
+            return {
+              ...d,
+              updatedAt: d.updatedAt ? new Date(d.updatedAt) : null,
+            };
+          }),
+        };
+        setScore(_score);
+        scoreRef.current = null;
+      }
+    },
   });
+
+  useLayoutEffect(() => {
+    scoreRef.current = score;
+  }, [score]);
 
   useEffect(() => {
     // update initial score
@@ -50,19 +73,26 @@ function Leaderboard({
   }, [updateScore]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (!allIdle) {
-      interval = setInterval(() => {
-        updateScore();
-      }, 5000);
-    }
+    const interval = setInterval(() => {
+      const _score = scoreRef.current;
+      if (!_score || _score.devices.every((d) => d.role !== "active")) return;
+      const newScore = {
+        ..._score,
+        devices: _score.devices.map((d) => {
+          if (d.role !== "active") return d;
+          return {
+            ...d,
+            points: d.points + 1,
+          };
+        }),
+      };
+      setScore(newScore);
+    }, 1000);
 
     return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
+      clearInterval(interval);
     };
-  }, [allIdle, updateScore]);
+  }, []);
 
   if (!score) {
     return (

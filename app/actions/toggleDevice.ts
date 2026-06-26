@@ -9,7 +9,7 @@ export async function toggleDevice({
   deviceId,
   state,
 }: {
-  deviceId: string | null;
+  deviceId?: string | null;
   state: "on" | "off";
 }) {
   const session = await auth();
