@@ -5,8 +5,8 @@ import {
   getScoreFromToggles,
   getTogglesFromGroupId,
   parseToggles,
-  ToggleGroupScore,
 } from "@/lib/toggle-score";
+import { ToggleGroupScore } from "@/lib/types";
 import { isTruthy } from "@/lib/utils";
 import { eq } from "drizzle-orm";
 import z from "zod";
