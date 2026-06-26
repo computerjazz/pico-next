@@ -72,10 +72,9 @@ function Leaderboard({
     }
 
     reset();
-    if (!score) return;
+    if (!score || score.devices.every((d) => d.role !== "active")) return;
 
     const interval = setInterval(() => {
-      if (score.devices.every((d) => d.role !== "active")) return;
       setModifiers((prev) => {
         const _mods = score.devices.reduce(
           (acc, cur) => {
