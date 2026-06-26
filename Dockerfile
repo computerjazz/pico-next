@@ -13,4 +13,5 @@ WORKDIR /app
 RUN apk add --no-cache ffmpeg
 COPY --from=builder /app ./
 EXPOSE 3000
+ENV NODE_ENV=production
 CMD ["node", "dist/server.js"]

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "dev:server": "tsx --import ./scripts/env.ts server.ts",
+    "dev:server": "tsup server.ts --format esm --out-dir dist --tsconfig tsconfig.server.json && tsx watch --clear-screen=false --import ./scripts/env.ts dist/server.js",
     "build": "next build",
     "build:release": "next build && npx dotenv-cli -e .env.local -- node dist/server.js",
     "build:server": "tsup server.ts --format esm --out-dir dist  --tsconfig tsconfig.server.json",

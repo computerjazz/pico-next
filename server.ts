@@ -15,7 +15,7 @@ import {
 
 const dev = process.env.NODE_ENV !== "production";
 console.log("dev?", dev, process.env.NODE_ENV);
-const app = next({ dev: false });
+const app = next({ dev });
 const handle = app.getRequestHandler();
 
 async function main() {
