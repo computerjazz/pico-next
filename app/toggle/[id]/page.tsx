@@ -34,7 +34,6 @@ function DeviceDetails({
   return (
     <>
       <DeviceStatRow label="Device ID:" value={device.deviceId} />
-      <DeviceStatRow label="Type:" value={device.type} />
       {device.firmwareVersion && (
         <DeviceStatRow
           label="Firmware Version:"

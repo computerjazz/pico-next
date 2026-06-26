@@ -114,12 +114,6 @@ function Leaderboard({
   const diff = getHrsMinSecFromMillis({ millis: diffSeconds * 1000 });
   return (
     <div className="p-4 space-y-4 flex flex-1 flex-col">
-      <div className="text-sm text-muted-foreground">
-        <p>
-          {`${devices.get(leader?.deviceId ?? "")?.name ?? leader?.deviceId} is ahead by:`}
-        </p>
-        <p>{`${diff.hours}hrs ${diff.minutes}min ${diff.seconds}sec`}</p>
-      </div>
       <ul className="space-y-2 flex flex-1 flex-col">
         {sortedDevices.map((device) => {
           return (
@@ -148,7 +142,10 @@ function Leaderboard({
                       device.deviceId}
                   </p>
                 </Link>
-                <p className="text-lg font-semibold">{device.points}</p>
+                <p className="text-lg font-semibold">
+                  {device.points.toLocaleString()}
+                </p>
+
                 {isTestGroup && (
                   <Switch
                     isOn={device.state === "on"}
@@ -166,6 +163,15 @@ function Leaderboard({
           );
         })}
       </ul>
+      <div className="text-sm text-muted-foreground">
+        <p>
+          {`1 point is awarded each second a toggle is in scoring position (blue)`}
+        </p>
+        <p>
+          {`${devices.get(leader?.deviceId ?? "")?.name ?? leader?.deviceId} is ahead by:`}
+        </p>
+        <p>{`${diffSeconds.toLocaleString()} (${diff.hours}hrs ${diff.minutes}min ${diff.seconds}sec)`}</p>
+      </div>
     </div>
   );
 }
