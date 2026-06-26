@@ -29,14 +29,13 @@ function Leaderboard({
   devices: Map<string, Device>;
 }) {
   const [score, setScore] = useState<ToggleGroupScore | null>(null);
+  const [modifiers, setModifiers] = useState<Record<string, number>>({});
   const isTestGroup = groupId === process.env.NEXT_PUBLIC_VIRTUAL_GROUP_ID; // TODO: cleanup
-  const scoreRef = useRef(score);
 
   const updateScore = useStableCallback(async function reloadScore() {
     try {
       const latestScore = await fetchGroupScoreAction({ groupId });
       setScore(latestScore);
-      scoreRef.current = null;
     } catch {
       // ignore
     }
@@ -58,14 +57,9 @@ function Leaderboard({
           }),
         };
         setScore(_score);
-        scoreRef.current = null;
       }
     },
   });
-
-  useLayoutEffect(() => {
-    scoreRef.current = score;
-  }, [score]);
 
   useEffect(() => {
     // update initial score
@@ -73,26 +67,36 @@ function Leaderboard({
   }, [updateScore]);
 
   useEffect(() => {
+    function reset() {
+      setModifiers({});
+    }
+
+    reset();
+    if (!score) return;
+
     const interval = setInterval(() => {
-      const _score = scoreRef.current;
-      if (!_score || _score.devices.every((d) => d.role !== "active")) return;
-      const newScore = {
-        ..._score,
-        devices: _score.devices.map((d) => {
-          if (d.role !== "active") return d;
-          return {
-            ...d,
-            points: d.points + 1,
-          };
-        }),
-      };
-      setScore(newScore);
+      if (score.devices.every((d) => d.role !== "active")) return;
+      setModifiers((prev) => {
+        const _mods = score.devices.reduce(
+          (acc, cur) => {
+            const deviceId = cur.deviceId;
+            if (!deviceId) return acc;
+            const isActive = cur.role === "active";
+            const prevMod = prev[deviceId] ?? 0;
+            const newModifier = isActive ? prevMod + 1 : 0;
+            acc[deviceId] = newModifier;
+            return acc;
+          },
+          {} as Record<string, number>,
+        );
+        return _mods;
+      });
     }, 1000);
 
     return () => {
       clearInterval(interval);
     };
-  }, []);
+  }, [score]);
 
   if (!score) {
     return (
@@ -102,9 +106,18 @@ function Leaderboard({
     );
   }
 
-  const sortedDevices = [...score.devices].sort((a, b) => {
-    return a.points > b.points ? -1 : 1;
-  });
+  const sortedDevices = score.devices
+    .map((d) => {
+      const deviceId = d.deviceId;
+      const mod = deviceId ? modifiers[deviceId] || 0 : 0;
+      return {
+        ...d,
+        points: d.points + mod,
+      };
+    })
+    .sort((a, b) => {
+      return a.points > b.points ? -1 : 1;
+    });
 
   const leader = sortedDevices[0];
   const secondPlace = sortedDevices[1];
