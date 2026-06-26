@@ -1,5 +1,4 @@
 "use client";
-import { useLayoutEffect, useRef } from "react";
 import { fetchGroupScoreAction } from "@/app/actions/fetchGroupScore";
 import { toggleDevice } from "@/app/actions/toggleDevice";
 import Switch from "@/app/components/Switch";
@@ -14,6 +13,7 @@ import {
   ToggleGroupScore,
   ToggleGroupScoreSerializableSchema,
 } from "@/lib/types";
+import { useIsFocused } from "@/app/hooks/useIsFocused";
 
 function roleClass(role: "idle" | "active" | "challenger") {
   if (role === "active") return "bg-blue-400";
@@ -31,6 +31,7 @@ function Leaderboard({
   const [score, setScore] = useState<ToggleGroupScore | null>(null);
   const [modifiers, setModifiers] = useState<Record<string, number>>({});
   const isTestGroup = groupId === process.env.NEXT_PUBLIC_VIRTUAL_GROUP_ID; // TODO: cleanup
+  const { isFocused } = useIsFocused();
 
   const updateScore = useStableCallback(async function reloadScore() {
     try {
@@ -62,9 +63,10 @@ function Leaderboard({
   });
 
   useEffect(() => {
-    // update initial score
-    updateScore();
-  }, [updateScore]);
+    if (isFocused) {
+      updateScore();
+    }
+  }, [updateScore, isFocused]);
 
   useEffect(() => {
     function reset() {
