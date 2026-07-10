@@ -44,7 +44,7 @@
 #define DEVICE_INFO_POLL_INTERVAL_MS  80000UL
 
 #define OTA_CHECK_INTERVAL_MS  600000UL
-#define RECORD_HOLD_MS         300UL   // hold longer than this to record; tap shorter for playback
+#define RECORD_HOLD_MS         250UL   // hold longer than this to record; tap shorter for playback
 #define SHORT_PRESS_MIN_MS     40      // debounce: ignore taps shorter than this
 #define DOUBLE_BLINK_PERIOD_MS 2000UL
 #define BUTTON_ACTIVE_STATE    HIGH
@@ -76,6 +76,61 @@ static float g_gain = 0.1f;
 static unsigned long lastWsMessageMs    = 0;
 static bool wsReady = false;
 static bool g_wsRunning = false;
+
+enum LedMode { LED_OFF, LED_BREATHING, LED_RECORDING, LED_DOUBLE_BLINK };
+static volatile LedMode ledMode = LED_OFF;
+static volatile bool    ledAckRequest = false; // one-shot tap acknowledgment
+
+static void ledTask(void*) {
+  float phase = 0;
+  int blinkPhase = 0;
+  unsigned long nextBlinkMs = 0;
+
+  for (;;) {
+    if (ledAckRequest) {
+      ledAckRequest = false;
+      for (int i = 0; i < 2; i++) {
+        analogWrite(LED_PIN, 255); vTaskDelay(pdMS_TO_TICKS(60));
+        analogWrite(LED_PIN, 0);   vTaskDelay(pdMS_TO_TICKS(60));
+      }
+      continue; // re-check mode fresh next loop
+    }
+
+    switch (ledMode) {
+      case LED_BREATHING: {
+        float normalized = (sinf(phase) + 1.0f) * 0.5f;
+        int val = (int)(powf(normalized, 2.2f) * 255.0f + 0.5f); // gamma-correct, matches your boot pulse
+        analogWrite(LED_PIN, val);
+        phase += 0.12f;
+        if (phase > TWO_PI) phase -= TWO_PI;
+        vTaskDelay(pdMS_TO_TICKS(20));
+        break;
+      }
+      case LED_RECORDING:
+        analogWrite(LED_PIN, 255);
+        vTaskDelay(pdMS_TO_TICKS(50));
+        break;
+      case LED_DOUBLE_BLINK: {
+        unsigned long now = millis();
+        if (nextBlinkMs == 0) nextBlinkMs = now;
+        if (now >= nextBlinkMs) {
+          switch (blinkPhase) {
+            case 0: analogWrite(LED_PIN, 255); nextBlinkMs = now + 80;                     blinkPhase = 1; break;
+            case 1: analogWrite(LED_PIN, 0);   nextBlinkMs = now + 120;                    blinkPhase = 2; break;
+            case 2: analogWrite(LED_PIN, 255); nextBlinkMs = now + 80;                     blinkPhase = 3; break;
+            case 3: analogWrite(LED_PIN, 0);   nextBlinkMs = now + DOUBLE_BLINK_PERIOD_MS; blinkPhase = 0; break;
+          }
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+        break;
+      }
+      default: // LED_OFF
+        analogWrite(LED_PIN, 0);
+        phase = 0; blinkPhase = 0; nextBlinkMs = 0;
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+  }
+}
 
 static void loadDeviceIdFromPrefs() {
   devicePrefs.begin("device", false);
@@ -470,7 +525,7 @@ static volatile bool uploadStreamActive = false;
 static volatile bool stopPlayback       = false;
 
 static bool          playbackPending    = false;
-static bool          playbackActive     = false;
+static volatile bool playbackActive     = false;
 static unsigned long lastPollMs         = 0;
 static unsigned long lastOtaCheckMs     = 0;
 static unsigned long lastDeviceInfoCheckMs = 0;
@@ -1088,37 +1143,17 @@ void setup() {
     Serial.println("Saved Wi-Fi credentials cleared.");
   }
 
+  xTaskCreatePinnedToCore(ledTask, "led", 2048, nullptr, 1, nullptr, 0);
+
+  ledMode = LED_BREATHING;
   loadDeviceIdFromPrefs();
   loadGainFromPrefs();
-  connectWifiWithPortal();
+  connectWifiWithPortal();   // now breathes through the real WiFi connect wait
   loadMessageStateFromPrefs();
   phoneHome();
   getDeviceInfo();
-  checkForOtaUpdate();
-  // Smoothly ramp LED brightness up and back down three times, adjusting for perceived (logarithmic) brightness
-  // Uses a gamma correction curve for smoother "apparent" brightness
-  const float gamma = 2.2; // Typical gamma for LEDs
-  const int steps = 48;    // More steps = smoother
-
-  for (int j = 0; j < 3; j++) {
-    // Ramp up perceived brightness
-    for (int step = 0; step <= steps; step++) {
-      float normalized = (float)step / steps;
-      int ledVal = (int)(pow(normalized, gamma) * 255.0f + 0.5f);
-      analogWrite(LED_PIN, ledVal);
-      delay(8);
-    }
-    // Ramp down perceived brightness
-    for (int step = steps; step >= 0; step--) {
-      float normalized = (float)step / steps;
-      int ledVal = (int)(pow(normalized, gamma) * 255.0f + 0.5f);
-      analogWrite(LED_PIN, ledVal);
-      delay(8);
-    }
-    delay(50);
-  }
-  analogWrite(LED_PIN, 0); // Ensure LED is off at end
-
+  checkForOtaUpdate();       // and through the OTA check/download
+  ledMode = LED_OFF;
 
   
   configTime(0, 0, "pool.ntp.org");
@@ -1246,16 +1281,14 @@ void loop() {
 
   // Button: release edge
   if (!isPressed && prevPressed) {
+    int pressTime = millis() - pressStart;
+    Serial.println("Press time: " + String(pressTime));
     if (holdingToRecord) {
       recording     = false;
       stopRequested = true;
       Serial.println("Recording stopped");
-    } else if (millis() - pressStart >= SHORT_PRESS_MIN_MS) {
-      // Double-blink to acknowledge
-      analogWrite(LED_PIN, 255); delay(60);
-      analogWrite(LED_PIN, 0);   delay(60);
-      analogWrite(LED_PIN, 255); delay(60);
-      analogWrite(LED_PIN, 0);
+    } else if (pressTime >= SHORT_PRESS_MIN_MS) {
+      ledAckRequest = true;   // was: 4x analogWrite/delay(60), 240ms blocking loop()
       Serial.println("[PLAYBACK] Button tap: queuing playback");
       playbackPending = true;
     }
@@ -1279,26 +1312,10 @@ void loop() {
     }
   }
 
-  // LED
-  if (recording) {
-    analogWrite(LED_PIN, 255);
-    doubleBlinkPhase = 0; nextDoubleBlinkMs = 0;
-  } else if (playbackActive) {
-    analogWrite(LED_PIN, 0);
-  } else if (hasUnlistenedMessages()) {
-    if (nextDoubleBlinkMs == 0) nextDoubleBlinkMs = now;
-    if (now >= nextDoubleBlinkMs) {
-      switch (doubleBlinkPhase) {
-        case 0: analogWrite(LED_PIN, 255); nextDoubleBlinkMs = now + 80;                     doubleBlinkPhase = 1; break;
-        case 1: analogWrite(LED_PIN, 0);   nextDoubleBlinkMs = now + 120;                    doubleBlinkPhase = 2; break;
-        case 2: analogWrite(LED_PIN, 255); nextDoubleBlinkMs = now + 80;                     doubleBlinkPhase = 3; break;
-        case 3: analogWrite(LED_PIN, 0);   nextDoubleBlinkMs = now + DOUBLE_BLINK_PERIOD_MS; doubleBlinkPhase = 0; break;
-      }
-    }
-  } else {
-    analogWrite(LED_PIN, 0);
-    doubleBlinkPhase = 0; nextDoubleBlinkMs = 0;
-  }
+  if (recording)                     ledMode = LED_RECORDING;
+  else if (playbackActive)           ledMode = LED_BREATHING; // buffering/streaming is blocking work too
+  else if (hasUnlistenedMessages())  ledMode = LED_DOUBLE_BLINK;
+  else                                ledMode = LED_OFF;
 
   delay(5);
 }
