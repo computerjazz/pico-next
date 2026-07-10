@@ -4,6 +4,7 @@ import { Device } from "@/db/schema";
 import { useState, useRef, useLayoutEffect, useEffect } from "react";
 import XCircle from "./icons/XCircle";
 import CheckCircle from "./icons/CheckCircle";
+import { renameDevice } from "../actions/renameDevice";
 
 function DeviceNameInput({
   device,
@@ -44,12 +45,11 @@ function DeviceNameInput({
     onEditComplete();
   }
 
-  // Accept changes, trigger form submit
-  function acceptEdit() {
-    setName(draft.trim());
+  async function acceptEdit() {
+    const newName = draft.trim();
+    setName(newName);
+    renameDevice({ deviceId: device.deviceId, name: newName });
     onEditComplete();
-    // find and submit the surrounding form
-    inputRef.current?.form?.requestSubmit();
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
