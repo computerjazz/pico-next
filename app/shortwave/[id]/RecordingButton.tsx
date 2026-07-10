@@ -89,10 +89,13 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
       <div className="relative">
         <button
           onPointerDown={() => {
+            console.log("haptic!!!");
             haptic();
             startRecording();
           }}
           onTouchEnd={stopRecording}
+          onTouchCancel={stopRecording}
+          onPointerCancel={stopRecording}
           onMouseDown={startRecording}
           onMouseLeave={stopRecording}
           onMouseUp={stopRecording}
