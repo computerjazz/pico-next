@@ -86,31 +86,41 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
       tabIndex={-1}
       draggable={false}
     >
-      <button
-        onPointerDown={() => {
-          haptic();
-          startRecording();
-        }}
-        onTouchEnd={stopRecording}
-        onMouseDown={startRecording}
-        onMouseLeave={stopRecording}
-        onMouseUp={stopRecording}
-        onContextMenu={(e) => e.preventDefault()}
-        className={`${isRecording ? "border-accent" : "border-accent-surface"} flex border-4 rounded-full cursor-pointer w-24 h-24 select-none active:outline-none focus:outline-none overflow-hidden transition-transform duration-150 hover:scale-105`}
-        tabIndex={0}
-        draggable={false}
-        style={{
-          WebkitUserSelect: "none",
-          userSelect: "none",
-          WebkitTapHighlightColor: "transparent",
-        }}
-      >
-        <div
-          className={`flex flex-1 m-1 pointer-none:*: text-accent-foreground select-none ${isRecording ? "bg-accent" : "bg-accent-surface"} rounded-full items-center`}
+      <div className="relative">
+        <button
+          onPointerDown={() => {
+            haptic();
+            startRecording();
+          }}
+          onTouchEnd={stopRecording}
+          onMouseDown={startRecording}
+          onMouseLeave={stopRecording}
+          onMouseUp={stopRecording}
+          onContextMenu={(e) => e.preventDefault()}
+          className={`${isRecording ? "border-accent" : "border-accent-surface"} flex border-4 rounded-full cursor-pointer w-24 h-24 select-none active:outline-none focus:outline-none overflow-hidden transition-transform duration-150 hover:scale-105`}
+          tabIndex={0}
+          draggable={false}
+          style={{
+            WebkitUserSelect: "none",
+            userSelect: "none",
+            WebkitTapHighlightColor: "transparent",
+          }}
         >
-          <span className="select-none text-xs">Leave a message</span>
-        </div>
-      </button>
+          <div
+            className={`flex flex-1 m-1 pointer-none:*: text-accent-foreground select-none ${isRecording ? "bg-accent" : "bg-accent-surface"} rounded-full items-center`}
+          >
+            <span className="select-none text-xs">Leave a message</span>
+          </div>
+        </button>
+        {isRecording && (
+          <div
+            className="absolute top-0 bottom-0 left-0 right-0 flex -ml-12 pointer-events-none"
+            aria-label="Recording"
+          >
+            <div className="w-6 h-6 rounded-full bg-accent self-center"></div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
