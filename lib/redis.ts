@@ -33,5 +33,6 @@ export const REDIS_KEYS = {
   LATEST_GMAIL_HISTORY_ID: "latestGmailHistoryId",
   LATEST_TELEGRAM_MESSAGE: "latestTelegramMessage",
   ACTIVE_JOBS: "activeJobs",
+  JOB_QUEUE: "jobQueue",
   DEVICE_LOGS_PREFIX: "deviceLogs",
 };

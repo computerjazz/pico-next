@@ -6,7 +6,52 @@ const ActiveJobsSchema = z.record(
   z.object({ timestamp: z.number() }),
 );
 
+const JobSchema = z.object({
+  type: z.string(),
+  id: z.string(),
+  payload: z
+    .object({
+      recordingId: z.string().optional(),
+    })
+    .optional(),
+});
+
 type ActiveJobsRecord = z.infer<typeof ActiveJobsSchema>;
+type Job = z.infer<typeof JobSchema>;
+
+async function getJobQueue() {
+  const redis = await getRedis();
+  const jobQueueStr = await redis.get(REDIS_KEYS.JOB_QUEUE);
+  const jobQueue: unknown[] = JSON.parse(jobQueueStr || "[]");
+  return jobQueue.filter((j): j is Job => {
+    const isValidJob = JobSchema.safeParse(j).success;
+    return isValidJob;
+  });
+}
+
+async function setJobQueue({ jobQueue }: { jobQueue: Job[] }) {
+  const redis = await getRedis();
+  redis.set(REDIS_KEYS.JOB_QUEUE, JSON.stringify(jobQueue));
+  return jobQueue;
+}
+
+export async function addToJobQueue(job: Job) {
+  const jobQueue = await getJobQueue();
+  jobQueue.push(job);
+  return setJobQueue({ jobQueue });
+}
+
+export async function removeFromQueue(job: Job) {
+  const jobQueue = await getJobQueue();
+  const updatedQueue = jobQueue.filter((j) => j.id !== job.id);
+  return setJobQueue({ jobQueue: updatedQueue });
+}
+
+export async function getNextJob() {
+  const jobQueue = await getJobQueue();
+  const nextJob = jobQueue.shift();
+  return nextJob;
+}
 
 export async function getActiveJobs() {
   const redis = await getRedis();
