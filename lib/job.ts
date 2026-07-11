@@ -8,7 +8,7 @@ const ActiveJobsSchema = z.record(
 
 type ActiveJobsRecord = z.infer<typeof ActiveJobsSchema>;
 
-async function getActiveJobs() {
+export async function getActiveJobs() {
   const redis = await getRedis();
   const jobsStr = await redis.get(REDIS_KEYS.ACTIVE_JOBS);
   const jobs = JSON.parse(jobsStr || "{}");

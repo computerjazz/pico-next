@@ -4,7 +4,7 @@ import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import { getRedisSubscriber } from "./lib/redis";
 import { validateTokenDefault } from "./lib/auth";
-import { cleanupActiveJobs, getIsAnyJobActive } from "./lib/job";
+import { cleanupActiveJobs, getActiveJobs, getIsAnyJobActive } from "./lib/job";
 import {
   addClient,
   ClientRegisterSchema,
@@ -150,10 +150,12 @@ async function main() {
   server.listen(3000, () => console.log("Ready on port 3000"));
 
   setInterval(async () => {
-    const isJobActive = await getIsAnyJobActive();
-    // Don't do expensive server work if there's already an expensive job in flight
-    if (isJobActive) return;
     try {
+      const activeJobs = await getActiveJobs();
+      // Don't do expensive server work if there's already an expensive job in flight
+      if (Object.keys(activeJobs).length) {
+        throw new Error("Job is active", activeJobs);
+      }
       const processNextUrl = `${process.env.API_BASE_URL}/api/recording/process-next`;
       await fetch(processNextUrl, {
         method: "POST",
