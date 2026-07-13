@@ -77,6 +77,26 @@ static unsigned long lastWsMessageMs    = 0;
 static bool wsReady = false;
 static bool g_wsRunning = false;
 
+static unsigned long lastPollMs         = 0;
+static unsigned long lastOtaCheckMs     = 0;
+static unsigned long lastDeviceInfoCheckMs = 0;
+
+static volatile bool buttonPressedShared = false;
+static volatile unsigned long buttonEdgeMs = 0;
+
+static void buttonTask(void*) {
+  bool lastState = false;
+  for (;;) {
+    bool pressed = getIsButtonPressed(); // time-based version above
+    if (pressed != lastState) {
+      buttonEdgeMs = millis();
+      lastState = pressed;
+    }
+    buttonPressedShared = pressed;
+    vTaskDelay(pdMS_TO_TICKS(5));
+  }
+}
+
 enum LedMode { LED_OFF, LED_BREATHING, LED_RECORDING, LED_DOUBLE_BLINK };
 static volatile LedMode ledMode = LED_OFF;
 static volatile bool    ledAckRequest = false; // one-shot tap acknowledgment
@@ -526,9 +546,7 @@ static volatile bool stopPlayback       = false;
 
 static bool          playbackPending    = false;
 static volatile bool playbackActive     = false;
-static unsigned long lastPollMs         = 0;
-static unsigned long lastOtaCheckMs     = 0;
-static unsigned long lastDeviceInfoCheckMs = 0;
+
 static unsigned long nextDoubleBlinkMs  = 0;
 static int           doubleBlinkPhase   = 0;
 
@@ -703,6 +721,7 @@ static bool installOtaFromUrl(const String& url) {
 static bool checkForOtaUpdate() {
   String otaVersion;
   String firmwareUrl;
+  lastOtaCheckMs = millis();
 
   // Scope the first TLS connection so it fully destructs before the download
   {
@@ -755,6 +774,8 @@ static bool checkForOtaUpdate() {
 static bool pollAnsweringMachine() {
   WiFiClientSecure client; client.setInsecure();
   HTTPClient http;
+  lastPollMs = millis();
+
   if (!http.begin(client, String("https://") + serverHost + "/api/device/" + deviceId + "/answering-machine")) return false;
   http.addHeader("Authorization", String("Bearer ") + authToken);
   http.addHeader("x-device-id", deviceId);
@@ -823,6 +844,8 @@ static bool phoneHome() {
 }
 
 static bool getDeviceInfo() {
+  lastDeviceInfoCheckMs = millis();
+
   WiFiClientSecure client;
   client.setInsecure();
 
@@ -1100,12 +1123,19 @@ static void networkTask(void*) {
 
 static bool getIsButtonPressed() {
   static bool stableState = (BUTTON_ACTIVE_STATE == HIGH) ? LOW : HIGH;
-  static bool lastReading = (BUTTON_ACTIVE_STATE == HIGH) ? LOW : HIGH;
-  static int  stableCount = 0;
+  static bool lastReading  = (BUTTON_ACTIVE_STATE == HIGH) ? LOW : HIGH;
+  static unsigned long lastChangeMs = 0;
+  const unsigned long DEBOUNCE_MS = 15;
+
   bool reading = digitalRead(BUTTON_PIN);
-  if (reading == lastReading) stableCount++; else stableCount = 0;
-  if (stableCount >= 5) stableState = reading;
-  lastReading = reading;
+  unsigned long now = millis();
+
+  if (reading != lastReading) {
+    lastReading   = reading;
+    lastChangeMs  = now;
+  } else if (now - lastChangeMs >= DEBOUNCE_MS) {
+    stableState = reading;
+  }
   return stableState == BUTTON_ACTIVE_STATE;
 }
 
@@ -1173,6 +1203,7 @@ void setup() {
   if (!micEnable()) Serial.println("setup: mic enable failed");
 
   xTaskCreatePinnedToCore(audioTask,      "audio", 8192,  nullptr, 2, nullptr,       0);
+  xTaskCreatePinnedToCore(buttonTask,     "button", 2048,  nullptr, 2, nullptr,       0);
   xTaskCreatePinnedToCore(networkTask,    "net",   16384, nullptr, 1, nullptr,       1);
   xTaskCreatePinnedToCore(playbackWorker, "play",  16384, nullptr, 1, &playbackTask, 1);
 
@@ -1199,7 +1230,15 @@ void loop() {
   static unsigned long pressStart     = 0;
   static bool          holdingToRecord = false;
 
-  bool isPressed = getIsButtonPressed();
+  bool isPressed = buttonPressedShared;
+    // Button: press edge
+  if (isPressed && !prevPressed) {
+    pressStart       = millis();
+    holdingToRecord  = false;
+  } 
+
+  int buttonPressDuration = millis() - pressStart;
+
   bool wsBusy    = recording || uploadStreamActive || playbackActive || playbackPending;
 
   bool httpDue = !isPressed && !wsBusy && (
@@ -1225,15 +1264,12 @@ void loop() {
   // HTTP polls — only runs when WS is confirmed down (!g_wsRunning)
   if (httpDue) {
     if (lastPollMs == 0 || now - lastPollMs >= ANSWERING_MACHINE_POLL_INTERVAL_MS) {
-      lastPollMs = now;
       pollAnsweringMachine();
     }
     if (lastOtaCheckMs == 0 || now - lastOtaCheckMs >= OTA_CHECK_INTERVAL_MS) {
-      lastOtaCheckMs = now;
       checkForOtaUpdate();
     }
     if (lastDeviceInfoCheckMs == 0 || now - lastDeviceInfoCheckMs >= DEVICE_INFO_POLL_INTERVAL_MS) {
-      lastDeviceInfoCheckMs = now;
       getDeviceInfo();
     }
   }
@@ -1245,17 +1281,11 @@ void loop() {
     setGain(newGain);
   }
 
-  // Button: press edge
-  if (isPressed && !prevPressed) {
-    pressStart       = millis();
-    holdingToRecord  = false;
-    if (playbackActive) stopPlayback = true;
-  }
 
   // Button: hold threshold — arm recording
   if (isPressed && !holdingToRecord && !recording &&
       !uploadStreamActive && !stopRequested &&
-      millis() - pressStart >= RECORD_HOLD_MS) {
+      buttonPressDuration >= RECORD_HOLD_MS) {
     holdingToRecord = true;
     playbackPending = false;
     stopPlayback    = true;
@@ -1281,14 +1311,17 @@ void loop() {
 
   // Button: release edge
   if (!isPressed && prevPressed) {
-    int pressTime = millis() - pressStart;
-    Serial.println("Press time: " + String(pressTime));
+    if (playbackActive) {
+      Serial.println("stopping playback...");
+      stopPlayback = true;
+    }
+    Serial.println("Press time: " + String(buttonPressDuration));
     if (holdingToRecord) {
       recording     = false;
       stopRequested = true;
       Serial.println("Recording stopped");
-    } else if (pressTime >= SHORT_PRESS_MIN_MS) {
-      ledAckRequest = true;   // was: 4x analogWrite/delay(60), 240ms blocking loop()
+    } else if (buttonPressDuration >= SHORT_PRESS_MIN_MS && !playbackActive) {
+      ledAckRequest = true;
       Serial.println("[PLAYBACK] Button tap: queuing playback");
       playbackPending = true;
     }
@@ -1303,7 +1336,7 @@ void loop() {
     playbackActive  = true;
     stopPlayback    = false;
     wsPause();
-    pollAnsweringMachine();
+    // pollAnsweringMachine();
     if (playbackTask) {
       xTaskNotifyGive(playbackTask);
     } else {
