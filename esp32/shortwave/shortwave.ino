@@ -1183,7 +1183,6 @@ void setup() {
   phoneHome();
   getDeviceInfo();
   checkForOtaUpdate();       // and through the OTA check/download
-  ledMode = LED_OFF;
 
   
   configTime(0, 0, "pool.ntp.org");
@@ -1217,6 +1216,7 @@ void setup() {
     wsClient.enableHeartbeat(15000, 5000, 3); // ping every 15s, 5s timeout, 3 retries
     wsResume();
   }
+  ledMode = LED_OFF;
 }
 
 // ============================================================
