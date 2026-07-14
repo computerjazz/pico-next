@@ -950,6 +950,8 @@ static bool streamAnsweringMachineMp3() {
     unsigned long t0 = millis();
     while (g_mp3.available() > 0 && millis() - t0 < 5000UL) yield();
   } else {
+    Serial.println("stopping...");
+    g_mp3.pause();   // stop pump() touching the raw buffer before flush()
     g_mp3.flush();
   }
 
@@ -975,6 +977,7 @@ static void playAnsweringMachineAudio() {
     g_mp3Started = true;
 
   }
+  g_mp3.unpause();  // undo pause() from a prior interrupted playback
 
   float curGain = getGain();
   Serial.printf("Playing with gain %f\n", curGain);
@@ -1007,6 +1010,7 @@ static void playbackWorker(void*) {
     Serial.println("[PLAYBACK] worker: starting");
     playAnsweringMachineAudio();
     Serial.println("[PLAYBACK] worker: finished, clearing active");
+    delay(150);
     playbackActive = false;
   }
 }
@@ -1286,6 +1290,7 @@ void loop() {
   if (isPressed && !holdingToRecord && !recording &&
       !uploadStreamActive && !stopRequested &&
       buttonPressDuration >= RECORD_HOLD_MS) {
+
     holdingToRecord = true;
     playbackPending = false;
     stopPlayback    = true;
@@ -1302,7 +1307,9 @@ void loop() {
     if (playbackActive) {
       unsigned long t0 = millis();
       while (playbackActive && millis() - t0 < 800) delay(10);
+      Serial.println("teardown " + String(millis() - t0));
     }
+
     micDisable();
     micEnable(true);
     recording = true;
