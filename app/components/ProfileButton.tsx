@@ -10,7 +10,6 @@ import Moon from "./icons/Moon";
 import Sun from "./icons/Sun";
 import { useConfirm } from "./ConfirmDialog";
 import Switch from "./Switch";
-import { useRouter } from "next/navigation";
 import BarsThree from "./icons/BarsThree";
 import XMark from "./icons/XMark";
 import { motion } from "motion/react";
@@ -18,20 +17,23 @@ import Link from "next/link";
 
 function ProfileMenuItem({
   label,
+  href,
   onClick,
+  children,
 }: {
-  label: string;
-  onClick: () => void;
+  label?: string;
+  href: string;
+  onClick?: () => void;
+  children?: React.ReactNode;
 }) {
   return (
-    <button
+    <Link
       className="w-full text-right px-4 py-2 hover:bg-accent hover:text-accent-foreground rounded cursor-pointer"
+      href={href}
       onClick={onClick}
-      tabIndex={0}
-      type="button"
     >
-      {label}
-    </button>
+      {children || label}
+    </Link>
   );
 }
 
@@ -48,7 +50,6 @@ function ProfileButton({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDark, setIsDark] = useState(theme === "dark");
   const { confirm, ConfirmDialog } = useConfirm();
-  const router = useRouter();
 
   useEffect(() => {
     setTheme(isDark ? "dark" : "light");
@@ -122,41 +123,49 @@ function ProfileButton({
           >
             <XMark className="size-6" />
           </button>
-          <div className="flex flex-row items-center">
-            <div className="w-6 h-6">
-              {user.image ? (
-                <Image
-                  alt="pfp"
-                  className="rounded-full aspect-square min-w-6"
-                  width="24"
-                  height="24"
-                  src={user.image}
-                />
-              ) : (
-                <span className="font-bold">
-                  {user.name?.[0] || user.email?.[0]}
-                </span>
-              )}
+          <ProfileMenuItem href="/profile">
+            <div className="flex flex-row items-center gap-4 justify-end">
+              <div className="w-6 h-6">
+                {user.image ? (
+                  <Image
+                    alt="pfp"
+                    className="rounded-full aspect-square min-w-6"
+                    width="24"
+                    height="24"
+                    src={user.image}
+                  />
+                ) : (
+                  <span className="font-bold">
+                    {user.name?.[0] || user.email?.[0]}
+                  </span>
+                )}
+              </div>
+              <div className="text-sm self-end font-bold">{user.name}</div>
             </div>
-            <div className="text-sm self-end px-4 font-bold mt-2 mb-2">
-              {user.name}
-            </div>
-          </div>
+          </ProfileMenuItem>
           {[...devicesGrouped.entries()].map(([type, devicesInGroup]) => {
             return (
               <React.Fragment key={type}>
-                <Link href={`/${type}`} className="font-bold mt-2 px-4">
-                  {type}
-                </Link>
-                {devicesInGroup.map((d) => {
-                  return (
-                    <ProfileMenuItem
-                      key={d.deviceId}
-                      label={d.name ?? d.deviceId}
-                      onClick={() => router.push(`/${d.type}/${d.deviceId}`)}
-                    />
-                  );
-                })}
+                <ProfileMenuItem href={`/${type}`}>
+                  <Link href={`/${type}`} className="font-bold mt-4 underline">
+                    {type}
+                  </Link>
+                </ProfileMenuItem>
+                {devicesInGroup
+                  .sort((a, b) => {
+                    const aName = a.name || a.deviceId;
+                    const bName = b.name || b.deviceId;
+                    return aName < bName ? -1 : 1;
+                  })
+                  .map((d) => {
+                    return (
+                      <ProfileMenuItem
+                        key={d.deviceId}
+                        label={d.name ?? d.deviceId}
+                        href={`/${d.type}/${d.deviceId}`}
+                      />
+                    );
+                  })}
               </React.Fragment>
             );
           })}
@@ -172,6 +181,7 @@ function ProfileButton({
           </div>
           <ProfileMenuItem
             label="Sign out"
+            href="#"
             onClick={async () => {
               const ok = await confirm({
                 description: "Are you sure you want to sign out?",
