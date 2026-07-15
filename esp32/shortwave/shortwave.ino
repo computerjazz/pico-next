@@ -997,6 +997,14 @@ static void playAnsweringMachineAudio() {
   if (ok) {
     setLastListenedMsgKey(getLatestMsgKey());
     Serial.println("play: finished");
+  } else {
+    // Interrupted (record-arm set stopPlayback). The shared BCLK/WS pins are
+    // about to be reassigned to the mic as master in loop()'s record-arm
+    // path, while I2S_NUM_0 is still live. Empirically ~150ms is needed
+    // here for output to actually settle before that pin handoff, or it
+    // produces a burst of static. Only applied on the interrupted path so
+    // normal playback-finish latency is unaffected.
+    vTaskDelay(pdMS_TO_TICKS(150));
   }
 }
 
@@ -1010,7 +1018,6 @@ static void playbackWorker(void*) {
     Serial.println("[PLAYBACK] worker: starting");
     playAnsweringMachineAudio();
     Serial.println("[PLAYBACK] worker: finished, clearing active");
-    delay(150);
     playbackActive = false;
   }
 }

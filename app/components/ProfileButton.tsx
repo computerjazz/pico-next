@@ -11,6 +11,10 @@ import Sun from "./icons/Sun";
 import { useConfirm } from "./ConfirmDialog";
 import Switch from "./Switch";
 import { useRouter } from "next/navigation";
+import BarsThree from "./icons/BarsThree";
+import XMark from "./icons/XMark";
+import { motion } from "motion/react";
+import Link from "next/link";
 
 function ProfileMenuItem({
   label,
@@ -92,40 +96,58 @@ function ProfileButton({
   }, new Map<string, Device[]>());
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div ref={containerRef}>
       <button
-        className="bg-gray-800 rounded-full outline-1 cursor-pointer select-none"
+        className="cursor-pointer select-none"
         tabIndex={0}
         type="button"
         aria-haspopup="true"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(true)}
       >
-        {user.image ? (
-          <Image
-            alt="pfp"
-            className="rounded-full aspect-square min-w-6"
-            width="30"
-            height="30"
-            src={user.image}
-          />
-        ) : (
-          <div className="w-6 h-6">
-            <span className="font-bold">
-              {user.name?.[0] || user.email?.[0]}
-            </span>
-          </div>
-        )}
+        <BarsThree className="size-6" />
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-60 rounded shadow-lg z-50 bg-surface p-2 flex flex-col items-end">
-          <span className="text-sm self-end px-4 font-bold mt-2 mb-2">
-            {user.name}
-          </span>
+        <motion.div
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="absolute top-0 bottom-0 h-dvh right-0 w-60 rounded shadow-lg z-50 bg-surface p-2 flex flex-col items-end overflow-y-scroll"
+        >
+          <button
+            className="cursor-pointer select-none p-2"
+            type="button"
+            onClick={() => setOpen(false)}
+          >
+            <XMark className="size-6" />
+          </button>
+          <div className="flex flex-row items-center">
+            <div className="w-6 h-6">
+              {user.image ? (
+                <Image
+                  alt="pfp"
+                  className="rounded-full aspect-square min-w-6"
+                  width="24"
+                  height="24"
+                  src={user.image}
+                />
+              ) : (
+                <span className="font-bold">
+                  {user.name?.[0] || user.email?.[0]}
+                </span>
+              )}
+            </div>
+            <div className="text-sm self-end px-4 font-bold mt-2 mb-2">
+              {user.name}
+            </div>
+          </div>
           {[...devicesGrouped.entries()].map(([type, devicesInGroup]) => {
             return (
               <React.Fragment key={type}>
-                <span className="font-bold mt-2 px-4">{type}</span>
+                <Link href={`/${type}`} className="font-bold mt-2 px-4">
+                  {type}
+                </Link>
                 {devicesInGroup.map((d) => {
                   return (
                     <ProfileMenuItem
@@ -139,7 +161,6 @@ function ProfileButton({
             );
           })}
           <hr className="w-full border-t border-gray-700 my-2" />
-
           <div className="w-full flex justify-end gap-2 px-4 mt-4">
             <button onClick={() => setIsDark(false)} className="cursor-pointer">
               <Sun />
@@ -149,7 +170,6 @@ function ProfileButton({
               <Moon />
             </button>
           </div>
-
           <ProfileMenuItem
             label="Sign out"
             onClick={async () => {
@@ -163,7 +183,7 @@ function ProfileButton({
               signOut();
             }}
           />
-        </div>
+        </motion.div>
       )}
       {ConfirmDialog}
     </div>
