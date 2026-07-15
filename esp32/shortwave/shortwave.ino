@@ -199,6 +199,54 @@ static bool connectToWifi(const char* ssid, const char* password, unsigned long 
   return false;
 }
 
+String buildNetworkListHtml() {
+  int n = WiFi.scanNetworks();
+  if (n <= 0) {
+    return "<p style='color:#7e869a;font-size:.95rem;'>No networks found nearby. Try scanning again or enter your network manually below.</p>";
+  }
+
+  // Dedupe by SSID, keep strongest RSSI, sort by signal strength
+  struct Net { String ssid; int32_t rssi; bool secure; };
+  std::vector<Net> nets;
+  for (int i = 0; i < n; i++) {
+    String ssid = WiFi.SSID(i);
+    if (ssid.length() == 0) continue;
+    bool secure = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
+    int32_t rssi = WiFi.RSSI(i);
+
+    bool found = false;
+    for (auto &net : nets) {
+      if (net.ssid == ssid) {
+        found = true;
+        if (rssi > net.rssi) net.rssi = rssi;
+        break;
+      }
+    }
+    if (!found) nets.push_back({ssid, rssi, secure});
+  }
+  std::sort(nets.begin(), nets.end(), [](const Net &a, const Net &b) {
+    return a.rssi > b.rssi;
+  });
+
+  String html = "<div class='net-list'>";
+  for (auto &net : nets) {
+    // Signal bars: 4 tiers based on RSSI
+    int bars = net.rssi > -55 ? 4 : net.rssi > -65 ? 3 : net.rssi > -75 ? 2 : 1;
+    String escapedSsid = net.ssid;
+    escapedSsid.replace("'", "&#39;");
+    escapedSsid.replace("\"", "&quot;");
+
+    html += "<div class='net-item' onclick='selectNet(\"" + escapedSsid + "\"," + String(net.secure ? "true" : "false") + ")'>";
+    html += "<span class='net-name'>" + net.ssid + "</span>";
+    html += "<span class='net-meta'>";
+    if (net.secure) html += "<svg class='lock' viewBox='0 0 24 24' width='15' height='15'><path fill='currentColor' d='M12 17a2 2 0 002-2 2 2 0 00-2-2 2 2 0 00-2 2 2 2 0 002 2zm6-9a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V10a2 2 0 012-2h1V6a5 5 0 0110 0v2h1zM12 3a3 3 0 00-3 3v2h6V6a3 3 0 00-3-3z'/></svg>";
+    html += "<span class='bars bars-" + String(bars) + "'><i></i><i></i><i></i><i></i></span>";
+    html += "</span></div>";
+  }
+  html += "</div>";
+  return html;
+}
+
 static void startWifiPortal() {
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(portalSsid);
@@ -208,34 +256,105 @@ static void startWifiPortal() {
 
   portalServer.on("/", HTTP_GET, []() {
     String page =
-      "<!DOCTYPE html><html><head>"
-      "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-      "<title>sh0rtwave setup</title>"
-      "<style>"
-        "body{font-family:sans-serif;max-width:440px;margin:2.5rem auto;padding:2rem 1.4rem 1rem;background:#f4f6fa;color:#222;box-shadow:0 4px 16px #0001;border-radius:18px;}"
-        "h2{margin-top:0;font-size:2rem;font-weight:700;letter-spacing:-1px;}"
-        "form{margin:2.2rem 0 .5rem 0;}"
-        "label{display:block;margin-bottom:.85rem;font-weight:600;font-size:1rem;}"
-        "input[type='text'],input[type='password']{width:100%;padding:.65rem .8rem;border:1.5px solid #ccd2e3;border-radius:10px;font-size:1.05rem;box-sizing:border-box;margin-top:.2em;margin-bottom:.4em;}"
-        "button{padding:.8rem 1.7rem;border:none;border-radius:10px;background:#3367d6;color:white;font-weight:600;font-size:1.05rem;letter-spacing:.03em;box-shadow:0 2px 6px #0002;cursor:pointer;margin-top:.8rem;transition:.1s background;}"
-        "button:hover{background:#254b9c;}"
-        ".device-id{margin-top:2.3rem;padding:1rem .9rem;background:#eef0f5;border-radius:10px;color:#444;font-size:.97rem;word-break:break-all;}"
-      "</style></head>"
-      "<body>"
-      "<h2>Connect sh0rtwave</h2>"
-      "<div class='device-id'><b>Device ID:</b><br>" + deviceId + "</div>"
-      "<p style='margin-top:2.1rem;'>"
-      "Enter your Wi-Fi credentials to connect your device:"
-      "</p>"
-      "<form action='/save' method='POST'>"
-      "<label>SSID<br><input name='ssid' type='text' autocomplete='username wifi-ssid'></label>"
-      "<label>Password<br><input name='password' type='password' autocomplete='current-password wifi-password'></label>"
-      "<button type='submit'>Connect</button>"
-      "</form>"
-      "<p style='color:#7e869a;margin-top:2.2rem;font-size:.97rem;'>"
-      "If your Wi-Fi is hidden or does not show up, type its name (SSID) and password manually."
-      "</p>"
-      "</body></html>";
+       "<!DOCTYPE html><html><head>"
+  "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+  "<title>sh0rtwave setup</title>"
+  "<style>"
+    "body{font-family:sans-serif;max-width:440px;margin:2.5rem auto;padding:2rem 1.4rem 1rem;background:#f4f6fa;color:#222;box-shadow:0 4px 16px #0001;border-radius:18px;}"
+    "h2{margin-top:0;font-size:2rem;font-weight:700;letter-spacing:-1px;}"
+    "form{margin:2.2rem 0 .5rem 0;}"
+    "label{display:block;margin-bottom:.85rem;font-weight:600;font-size:1rem;}"
+    "input[type='text'],input[type='password']{width:100%;padding:.65rem .8rem;border:1.5px solid #ccd2e3;border-radius:10px;font-size:1.05rem;box-sizing:border-box;margin-top:.2em;margin-bottom:.4em;}"
+    "button{padding:.8rem 1.7rem;border:none;border-radius:10px;background:#3367d6;color:white;font-weight:600;font-size:1.05rem;letter-spacing:.03em;box-shadow:0 2px 6px #0002;cursor:pointer;margin-top:.8rem;transition:.1s background;}"
+    "button:hover{background:#254b9c;}"
+    "button.secondary{background:#eef0f5;color:#3367d6;box-shadow:none;}"
+    "button.secondary:hover{background:#e2e5ee;}"
+    ".device-id{margin-top:2.3rem;padding:1rem .9rem;background:#eef0f5;border-radius:10px;color:#444;font-size:.97rem;word-break:break-all;}"
+    ".net-list{border:1.5px solid #e1e5f0;border-radius:10px;overflow:hidden;margin-top:.6rem;max-height:260px;overflow-y:auto;}"
+    ".net-item{display:flex;justify-content:space-between;align-items:center;padding:.75rem .9rem;cursor:pointer;border-bottom:1px solid #eef0f5;font-size:.98rem;transition:.1s background;}"
+    ".net-item:last-child{border-bottom:none;}"
+    ".net-item:hover{background:#eef2fb;}"
+    ".net-item.selected{background:#dde6fb;font-weight:600;}"
+    ".net-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;margin-right:.6rem;}"
+    ".net-meta{display:flex;align-items:center;gap:.4rem;color:#7e869a;flex-shrink:0;}"
+    ".lock{opacity:.75;}"
+    ".bars{display:inline-flex;align-items:flex-end;gap:1.5px;height:12px;}"
+    ".bars i{display:block;width:3px;background:#c7cede;border-radius:1px;}"
+    ".bars i:nth-child(1){height:3px;} .bars i:nth-child(2){height:6px;} .bars i:nth-child(3){height:9px;} .bars i:nth-child(4){height:12px;}"
+    ".bars-1 i:nth-child(1){background:#3367d6;}"
+    ".bars-2 i:nth-child(1),.bars-2 i:nth-child(2){background:#3367d6;}"
+    ".bars-3 i:nth-child(1),.bars-3 i:nth-child(2),.bars-3 i:nth-child(3){background:#3367d6;}"
+    ".bars-4 i{background:#3367d6;}"
+    ".manual-toggle{color:#3367d6;font-size:.92rem;cursor:pointer;display:inline-block;margin-top:.8rem;text-decoration:underline;}"
+    "#manualFields{display:none;margin-top:1rem;}"
+    "#manualFields.show{display:block;}"
+    "#ssidHidden{display:none;}"
+    ".pw-wrap{position:relative;}"
+    ".pw-wrap input{padding-right:2.6rem;}"
+    ".pw-toggle{position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;box-shadow:none;padding:.2rem;margin:0;cursor:pointer;color:#7e869a;display:flex;align-items:center;justify-content:center;line-height:0;}"    ".pw-toggle:hover{background:none;color:#3367d6;}"
+    ".pw-toggle svg{width:20px;height:20px;}"
+  "</style></head>"
+  "<body>"
+  "<h2>Connect sh0rtwave</h2>"
+  "<div class='device-id'><b>Device ID:</b><br>" + deviceId + "</div>"
+  "<p style='margin-top:2.1rem;'>Choose your Wi-Fi network:</p>"
+  + buildNetworkListHtml() +
+  "<span class='manual-toggle' onclick='toggleManual()'>My network isn't listed / hidden SSID</span>"
+  "<form action='/save' method='POST' id='wifiForm'>"
+  "<div id='manualFields'>"
+  "<label style='margin-top:1rem;'>SSID<br><input name='ssid_manual' id='ssidManual' type='text' autocomplete='username wifi-ssid'></label>"
+  "</div>"
+  "<input type='hidden' name='ssid' id='ssidHidden'>"
+  "<label style='margin-top:1rem;'>Password<br>"
+  "<div class='pw-wrap'>"
+  "<input name='password' id='password' type='password' autocomplete='current-password wifi-password'>"
+  "<button type='button' class='pw-toggle' onclick='togglePw()' aria-label='Show password'>"
+  "<svg id='eyeIcon' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>"
+  "<path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'></path>"
+  "<circle cx='12' cy='12' r='3'></circle>"
+  "</svg>"
+  "</button>"
+  "</div>"
+  "</label>"  
+  "<button type='submit'>Connect</button>"
+  "</form>"
+  "<script>"
+    "var manualMode=false;"
+    "function selectNet(ssid,secure){"
+      "manualMode=false;"
+      "document.getElementById('manualFields').classList.remove('show');"
+      "document.getElementById('ssidHidden').value=ssid;"
+      "document.querySelectorAll('.net-item').forEach(function(el){el.classList.remove('selected');});"
+      "event.currentTarget.classList.add('selected');"
+      "document.getElementById('password').focus();"
+    "}"
+    "function toggleManual(){"
+      "manualMode=true;"
+      "document.getElementById('manualFields').classList.add('show');"
+      "document.querySelectorAll('.net-item').forEach(function(el){el.classList.remove('selected');});"
+      "document.getElementById('ssidManual').focus();"
+    "}"
+    "document.getElementById('wifiForm').addEventListener('submit',function(e){"
+      "if(manualMode){"
+        "document.getElementById('ssidHidden').value=document.getElementById('ssidManual').value;"
+      "}"
+      "if(!document.getElementById('ssidHidden').value){"
+        "e.preventDefault();alert('Please select or enter a Wi-Fi network.');"
+      "}"
+    "});"
+    "function togglePw(){"
+      "var pw=document.getElementById('password');"
+      "var icon=document.getElementById('eyeIcon');"
+      "if(pw.type==='password'){"
+        "pw.type='text';"
+        "icon.innerHTML='<path d=\"M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a20.6 20.6 0 015.06-6.06M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a20.6 20.6 0 01-2.16 3.19M14.12 14.12a3 3 0 11-4.24-4.24\"></path><line x1=\"1\" y1=\"1\" x2=\"23\" y2=\"23\"></line>';"
+      "}else{"
+        "pw.type='password';"
+        "icon.innerHTML='<path d=\"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\"></path><circle cx=\"12\" cy=\"12\" r=\"3\"></circle>';"
+      "}"
+    "}"
+  "</script>"
+  "</body></html>";
  
     portalServer.send(200, "text/html", page);
   });
