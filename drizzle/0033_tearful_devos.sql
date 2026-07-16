@@ -1,0 +1,1 @@
+ALTER TABLE "pico_next_db"."user" ADD COLUMN "role" text DEFAULT 'user' NOT NULL;

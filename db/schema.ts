@@ -27,6 +27,9 @@ export const users = pico.table("user", {
   email: text("email").unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
+  role: text("role", { enum: ["user", "admin"] })
+    .notNull()
+    .default("user"),
 });
 
 // authjs schema
