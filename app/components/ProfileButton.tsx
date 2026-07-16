@@ -147,9 +147,7 @@ function ProfileButton({
             return (
               <React.Fragment key={type}>
                 <ProfileMenuItem href={`/${type}`}>
-                  <Link href={`/${type}`} className="font-bold mt-4 underline">
-                    {type}
-                  </Link>
+                  <span className="font-bold mt-4 underline">{type}</span>
                 </ProfileMenuItem>
                 {devicesInGroup
                   .sort((a, b) => {

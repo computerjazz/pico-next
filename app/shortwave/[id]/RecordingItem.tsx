@@ -75,11 +75,13 @@ type Props = {
   recording: Recording;
   className?: string;
   enabledActions?: ("delete" | "share" | "download")[];
+  onDelete?: (r: Recording) => void;
 };
 
 export default function RecordingItem({
   recording,
   enabledActions = ["delete", "share", "download"],
+  onDelete,
 }: Props) {
   const { createdAt, durationMillis } = recording;
   const { confirm, ConfirmDialog } = useConfirm();
@@ -108,6 +110,7 @@ export default function RecordingItem({
     if (shouldDelete) {
       await deleteRecording({ recordingId: recording.id });
     }
+    onDelete?.(recording);
   }
 
   async function onSharePress() {

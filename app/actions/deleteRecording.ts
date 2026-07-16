@@ -39,5 +39,5 @@ export async function deleteRecording({
     })
     .where(eq(recordings.id, recordingId));
 
-  revalidatePath("/device");
+  revalidatePath(`/shortwave/${recording.device.deviceId}`);
 }

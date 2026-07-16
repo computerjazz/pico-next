@@ -60,6 +60,10 @@ export function RecordingsList({
   const [isVisible, setIsVisible] = useState(false);
   const socketGroupId = recordings[0]?.deviceId;
 
+  useEffect(() => {
+    setRecordings(initialRecordings);
+  }, [initialRecordings]);
+
   // useEffect(() => {
   //   setInterval(() => {
   //     setRecordings((prev) => [...prev, createDummyRecording()]);
@@ -102,7 +106,17 @@ export function RecordingsList({
         className={`flex flex-col flex-1 gap-2 transition-opacity duration-500 ${isVisible ? "opacity-100" : "opacity-0"}`}
       >
         {recordings.map((r) => {
-          return <RecordingItem key={r.id} recording={r} />;
+          return (
+            <RecordingItem
+              key={r.id}
+              recording={r}
+              onDelete={(delR) => {
+                setRecordings((prev) => {
+                  return prev.filter((prevR) => prevR.id !== delR.id);
+                });
+              }}
+            />
+          );
         })}
         <div ref={bottomRef} />
       </div>
