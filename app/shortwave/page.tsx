@@ -4,6 +4,7 @@ import RecordingsChat from "../components/RecordingsChat";
 import HeroImage from "../components/HeroImage";
 import { asc } from "drizzle-orm";
 import { recordings } from "@/db/schema";
+import ShortwaveSetupInstructions from "./SetupInstructions";
 
 export default async function ShortwaveLandingPage() {
   const recordingItems = await db.query.recordings.findMany({
@@ -28,16 +29,17 @@ export default async function ShortwaveLandingPage() {
         <div className="flex flex-col items-center">
           <div className="gap-4 max-w-lg flex flex-col p-4">
             <p>
-              {`Press the big button on top of the little wooden box to send a voice message to a
-              parent or a friend. When the "answering machine" light starts
+              {`Press the big button on top to send a voice message to a
+              family member or a friend. When the "answering machine" light starts
               to blink, they've sent you a message back!`}
             </p>
             <p>
-              {`Log into your account to listen to all of your messages and send messages back:`}
+              {`Parents—listen to all of your loved ones' transcribed recordings and send new answering machine messages from the app.`}
             </p>
             <div className="max-h-96 flex">
               <RecordingsChat recordings={recordingItems} autoScroll={false} />
             </div>
+            <ShortwaveSetupInstructions />
           </div>
         </div>
       </main>

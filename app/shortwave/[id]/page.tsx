@@ -11,6 +11,7 @@ import RecordingsChat from "@/app/components/RecordingsChat";
 import DeviceHeader from "@/app/components/DeviceHeader";
 import { getDeviceAccess } from "@/lib/access";
 import Welcome from "./Welcome";
+import ShortwaveSetupInstructions from "../SetupInstructions";
 
 function DeviceStatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -103,30 +104,12 @@ export default async function DevicePage({
         <>
           {!recordingItems.length && (
             <div className="p-4 max-w-2xl text-center flex self-center flex-col gap-4">
-              <h1 className="font-bold text-2xl">No recordings yet</h1>
+              <h1 className="font-bold text-2xl">No recordings (yet)</h1>
               <p>
-                Record a message on your device, or leave an answering machine
-                message using the button below!
+                Record a message on your sh0rtwave, or leave an answering
+                machine message with the button below 👇
               </p>
-              <div className="text-left">
-                <h2 className="font-bold">Device setup:</h2>
-                <ul>
-                  <li>
-                    • Plug in your sh0rtwave (the status light will begin
-                    pulsing)
-                  </li>
-                  <li>
-                    • Connect to the <i>sh0rtwave-setup</i> wifi network and tap
-                    the notification to open the setup page
-                  </li>
-                  <li>• Select your wifi network and enter your password</li>
-                  <li>
-                    • When the status light stops pulsing, the device has
-                    successfully connected
-                  </li>
-                  <li>• Record your first message!</li>
-                </ul>
-              </div>
+              <ShortwaveSetupInstructions />
             </div>
           )}
           <RecordingsChat recordings={recordingItems} />

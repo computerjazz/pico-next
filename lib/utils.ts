@@ -26,3 +26,14 @@ export function formatAudioDuration({
   const seconds = totalSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
+
+export function getProductNameFromDeviceType({
+  type,
+}: {
+  type?: string | null;
+}) {
+  if (!type) return "";
+  if (type === "shortwave") return "sh0rtwave";
+  if (type === "toggle") return "Toggle";
+  return type;
+}

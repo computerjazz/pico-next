@@ -12,8 +12,9 @@ import { useConfirm } from "./ConfirmDialog";
 import Switch from "./Switch";
 import BarsThree from "./icons/BarsThree";
 import XMark from "./icons/XMark";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
+import { getProductNameFromDeviceType } from "@/lib/utils";
 
 function ProfileMenuItem({
   label,
@@ -108,91 +109,115 @@ function ProfileButton({
       >
         <BarsThree className="size-6" />
       </button>
-      {open && (
-        <motion.div
-          initial={{ x: "100%" }}
-          animate={{ x: 0 }}
-          exit={{ x: "100%" }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="absolute top-0 bottom-0 h-dvh right-0 w-60 rounded shadow-lg z-50 bg-surface p-2 flex flex-col items-end overflow-y-scroll"
-        >
-          <button
-            className="cursor-pointer select-none p-2"
-            type="button"
-            onClick={() => setOpen(false)}
-          >
-            <XMark className="size-6" />
-          </button>
-          <ProfileMenuItem href="/profile">
-            <div className="flex flex-row items-center gap-4 justify-end">
-              <div className="w-6 h-6">
-                {user.image ? (
-                  <Image
-                    alt="pfp"
-                    className="rounded-full aspect-square min-w-6"
-                    width="24"
-                    height="24"
-                    src={user.image}
-                  />
-                ) : (
-                  <span className="font-bold">
-                    {user.name?.[0] || user.email?.[0]}
-                  </span>
-                )}
-              </div>
-              <div className="text-sm self-end font-bold">{user.name}</div>
-            </div>
-          </ProfileMenuItem>
-          {[...devicesGrouped.entries()].map(([type, devicesInGroup]) => {
-            return (
-              <React.Fragment key={type}>
-                <ProfileMenuItem href={`/${type}`}>
-                  <span className="font-bold mt-4 underline">{type}</span>
+      <div className={`absolute top-0 bottom-0 right-0 z-50`}>
+        <AnimatePresence>
+          {open && (
+            <>
+              <motion.div
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.3}
+                onDragEnd={(_, info) => {
+                  // If dragged more than 100 pixels to the right, dismiss (close menu)
+                  if (info.offset.x > 100) setOpen(false);
+                }}
+                className="h-dvh w-60 rounded shadow-lg bg-surface p-2 flex flex-col items-end overflow-y-scroll touch-pan-x"
+                style={{ touchAction: "pan-x" }}
+              >
+                <button
+                  className="cursor-pointer select-none p-2"
+                  type="button"
+                  onClick={() => setOpen(false)}
+                >
+                  <XMark className="size-6" />
+                </button>
+                <ProfileMenuItem href="/profile">
+                  <div className="flex flex-row items-center gap-4 justify-end">
+                    <div className="w-6 h-6">
+                      {user.image ? (
+                        <Image
+                          alt="pfp"
+                          className="rounded-full aspect-square min-w-6"
+                          width="24"
+                          height="24"
+                          src={user.image}
+                        />
+                      ) : (
+                        <span className="font-bold">
+                          {user.name?.[0] || user.email?.[0]}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm self-end font-bold">
+                      {user.name}
+                    </div>
+                  </div>
                 </ProfileMenuItem>
-                {devicesInGroup
-                  .sort((a, b) => {
-                    const aName = a.name || a.deviceId;
-                    const bName = b.name || b.deviceId;
-                    return aName < bName ? -1 : 1;
-                  })
-                  .map((d) => {
-                    return (
-                      <ProfileMenuItem
-                        key={d.deviceId}
-                        label={d.name ?? d.deviceId}
-                        href={`/${d.type}/${d.deviceId}`}
-                      />
-                    );
-                  })}
-              </React.Fragment>
-            );
-          })}
-          <hr className="w-full border-t border-gray-700 my-2" />
-          <div className="w-full flex justify-end gap-2 px-4 mt-4">
-            <button onClick={() => setIsDark(false)} className="cursor-pointer">
-              <Sun />
-            </button>
-            <Switch isOn={isDark} onChange={toggleTheme} />
-            <button onClick={() => setIsDark(true)} className="cursor-pointer">
-              <Moon />
-            </button>
-          </div>
-          <ProfileMenuItem
-            label="Sign out"
-            href="#"
-            onClick={async () => {
-              const ok = await confirm({
-                description: "Are you sure you want to sign out?",
-                destructive: true,
-                confirmText: "Leave",
-                cancelText: "Stay",
-              });
-              if (!ok) return;
-              signOut();
-            }}
-          />
-        </motion.div>
-      )}
+                {[...devicesGrouped.entries()].map(([type, devicesInGroup]) => {
+                  return (
+                    <React.Fragment key={type}>
+                      <ProfileMenuItem href={`/${type}`}>
+                        <span className="font-bold mt-4 underline">
+                          {getProductNameFromDeviceType({ type })}
+                        </span>
+                      </ProfileMenuItem>
+                      {devicesInGroup
+                        .sort((a, b) => {
+                          const aName = a.name || a.deviceId;
+                          const bName = b.name || b.deviceId;
+                          return aName < bName ? -1 : 1;
+                        })
+                        .map((d) => {
+                          return (
+                            <ProfileMenuItem
+                              key={d.deviceId}
+                              label={d.name ?? d.deviceId}
+                              href={`/${d.type}/${d.deviceId}`}
+                            />
+                          );
+                        })}
+                    </React.Fragment>
+                  );
+                })}
+                <hr className="w-full border-t border-gray-700 my-2" />
+                <div className="w-full flex justify-end gap-2 px-4 mt-4">
+                  <button
+                    onClick={() => setIsDark(false)}
+                    className="cursor-pointer"
+                  >
+                    <Sun />
+                  </button>
+                  <Switch isOn={isDark} onChange={toggleTheme} />
+                  <button
+                    onClick={() => setIsDark(true)}
+                    className="cursor-pointer"
+                  >
+                    <Moon />
+                  </button>
+                </div>
+                <ProfileMenuItem
+                  label="Sign out"
+                  href="#"
+                  onClick={async () => {
+                    const ok = await confirm({
+                      description: "Are you sure you want to sign out?",
+                      destructive: true,
+                      confirmText: "Leave",
+                      cancelText: "Stay",
+                    });
+                    if (!ok) return;
+                    signOut();
+                  }}
+                />
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </div>
       {ConfirmDialog}
     </div>
   );

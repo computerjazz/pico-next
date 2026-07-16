@@ -34,7 +34,7 @@ function VolumeInput({
   return (
     <>
       <div className="flex flex-row font-semibold text-muted-foreground text-xs gap-2">
-        <div>Volume:</div>
+        <div>Device volume:</div>
         <div className="w-5">{optimisticVolume}%</div>
       </div>
       <input
