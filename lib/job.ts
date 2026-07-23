@@ -3,7 +3,10 @@ import z from "zod";
 
 const ActiveJobsSchema = z.record(
   z.string(),
-  z.object({ timestamp: z.number() }),
+  z.object({
+    timestamp: z.number(),
+    description: z.string().optional().nullable(),
+  }),
 );
 
 const JobSchema = z.object({
@@ -19,7 +22,7 @@ const JobSchema = z.object({
 type ActiveJobsRecord = z.infer<typeof ActiveJobsSchema>;
 type Job = z.infer<typeof JobSchema>;
 
-async function getJobQueue() {
+export async function getJobQueue() {
   const redis = await getRedis();
   const jobQueueStr = await redis.get(REDIS_KEYS.JOB_QUEUE);
   const jobQueue: unknown[] = JSON.parse(jobQueueStr || "[]");
@@ -61,12 +64,12 @@ export async function getActiveJobs() {
   return curRecordings.data ?? {};
 }
 
-export async function setActiveJob(key: string) {
+export async function setActiveJob(job: Job) {
   const redis = await getRedis();
   const curData = await getActiveJobs();
   const updated: ActiveJobsRecord = {
     ...curData,
-    [key]: { timestamp: Date.now() },
+    [job.id]: { timestamp: Date.now(), description: job.type },
   };
   await redis.set(REDIS_KEYS.ACTIVE_JOBS, JSON.stringify(updated));
 }
@@ -95,7 +98,7 @@ export async function cleanupActiveJobs() {
   const curData = await getActiveJobs();
   const updated = Object.entries(curData).reduce((acc, [id, val]) => {
     const diffMillis = Date.now() - val.timestamp;
-    if (diffMillis < STALE_THRESHOLD) {
+    if (diffMillis < STALE_THRESHOLD && id !== "undefined" && id !== "") {
       acc[id] = val;
     }
     return acc;

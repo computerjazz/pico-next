@@ -1,6 +1,6 @@
 "use client";
 import { Device } from "@/db/schema";
-import DeviceMenu from "./DeviceMenu";
+import DeviceMenu, { ItemConfig } from "./DeviceMenu";
 import DeviceNameInput from "./DeviceNameInput";
 import { shareDevice } from "../actions/shareDevice";
 import { useState } from "react";
@@ -11,6 +11,8 @@ import { useConfirm } from "./ConfirmDialog";
 import ArrowUTurnLeft from "./icons/ArrowUturnLeft";
 import { resetToggleGroup } from "../actions/resetToggleGroup";
 import { useRouter } from "next/navigation";
+import { wipeDevice } from "../actions/wipeDevice";
+import { useSession } from "next-auth/react";
 
 function DeviceHeader({
   device,
@@ -24,6 +26,8 @@ function DeviceHeader({
   const [isEditingDeviceName, setIsEditingDeviceName] = useState(false);
   const { confirm, ConfirmDialog } = useConfirm();
   const router = useRouter();
+  const session = useSession();
+  const userRole = session.data?.user.role ?? "";
 
   async function _shareDevice() {
     const ok = await confirm({
@@ -68,7 +72,24 @@ function DeviceHeader({
     toast.success("Group reset");
   }
 
-  const items = [
+  async function _wipeDevice() {
+    const ok = await confirm({
+      title: `Wipe ${device.name ?? "device"}?`,
+      description:
+        "This will delete all messages and remove this device from your account.",
+      confirmText: "Wipe",
+      cancelText: "Cancel",
+      destructive: true,
+    });
+
+    if (!ok) return;
+    await wipeDevice({ deviceId: device.deviceId });
+
+    router.refresh();
+    toast.success("Device wiped");
+  }
+
+  const items: ItemConfig[] = [
     {
       label: "Edit name",
       onClick: () => setIsEditingDeviceName(true),
@@ -87,7 +108,18 @@ function DeviceHeader({
       Icon: ArrowUTurnLeft,
       deviceType: ["toggle"],
     },
-  ].filter((item) => item.deviceType.includes(device.type));
+    {
+      label: "Wipe device",
+      onClick: _wipeDevice,
+      Icon: ArrowUTurnLeft,
+      deviceType: ["shortwave"],
+      roles: ["admin"],
+    },
+  ].filter((item) => {
+    const matchesDevice = item.deviceType.includes(device.type);
+    const matchesRole = item.roles ? item.roles.includes(userRole) : true;
+    return matchesDevice && matchesRole;
+  });
 
   return (
     <div className="flex gap-2 items-start">

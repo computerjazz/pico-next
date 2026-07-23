@@ -18,7 +18,7 @@ export async function claimDevice({ deviceId }: { deviceId: string }) {
     })
     .where(and(eq(devices.deviceId, deviceId), isNull(devices.userId)));
 
-  revalidatePath(`/device/${deviceId}`);
+  revalidatePath(`/shortwave/${deviceId}`);
 
   return { success: true };
 }

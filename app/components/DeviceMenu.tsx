@@ -9,7 +9,7 @@ function MenuItem({
   title,
   onClick,
 }: {
-  Icon: (props: IconProps) => ReactNode;
+  Icon?: (props: IconProps) => ReactNode;
   title: string;
   onClick: () => void;
 }) {
@@ -18,16 +18,16 @@ function MenuItem({
       className="w-full flex gap-2 items-start text-sm px-4 py-2 hover:bg-accent hover:text-accent-foreground rounded cursor-pointer"
       onClick={onClick}
     >
-      <Icon className="size-5" />
+      {!!Icon && <Icon className="size-5" />}
       {title}
     </button>
   );
 }
 
-type ItemConfig = {
+export type ItemConfig = {
   label: string;
   onClick: () => void;
-  Icon: (props: IconProps) => ReactNode;
+  Icon?: (props: IconProps) => ReactNode;
 };
 
 function DeviceMenu({

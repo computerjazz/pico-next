@@ -4,7 +4,7 @@ import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import { getRedisSubscriber } from "./lib/redis";
 import { validateTokenDefault } from "./lib/auth";
-import { cleanupActiveJobs, getActiveJobs, getIsAnyJobActive } from "./lib/job";
+import { cleanupActiveJobs, getActiveJobs, getJobQueue } from "./lib/job";
 import {
   addClient,
   ClientRegisterSchema,
@@ -154,9 +154,12 @@ async function main() {
       const activeJobs = await getActiveJobs();
       // Don't do expensive server work if there's already an expensive job in flight
       if (Object.keys(activeJobs).length) {
+        const jobQueue = await getJobQueue();
+        console.log("found active jobs", activeJobs, jobQueue);
         throw new Error("Job is active", activeJobs);
       }
       const processNextUrl = `${process.env.API_BASE_URL}/api/recording/process-next`;
+      if (dev) throw new Error("cannot process jobs locally");
       await fetch(processNextUrl, {
         method: "POST",
         headers: {

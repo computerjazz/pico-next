@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     });
 
     if (recording) {
-      await setActiveJob(jobId);
+      await setActiveJob({ id: jobId, type: "transcribe" });
     } else {
       return Response.json({
         transcript: _transcript,

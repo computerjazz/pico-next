@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     const audioFilename = `${audioBaseFilename}.mp3`;
     const audioProcessedFilename = `${audioBaseFilename}-processed.mp3`;
     console.log(`Recording started: ${recordingId}`);
-    await setActiveJob(jobKey);
+    await setActiveJob({ id: jobKey, type: "stream-audio" });
 
     const audioDir = path.join(
       process.cwd(),
