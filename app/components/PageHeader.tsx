@@ -4,7 +4,7 @@ import Image from "next/image";
 
 function PageHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div className="p-4 flex flex-row justify-between gap-4">
+    <div className="p-4 flex flex-row justify-between gap-4 sticky top-0 z-50 bg-background">
       <div className="flex flex-row gap-4">
         <Link href="/">
           <Image
