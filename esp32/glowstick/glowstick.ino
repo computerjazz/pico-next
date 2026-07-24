@@ -49,7 +49,7 @@ void setup() {
   rc.setRepeatTransmit(1); 
   
   // Standard pulse window for a 750k resistor on 5V logic
-  rc.setPulseLength(240); 
+  rc.setPulseLength(275); 
   
   Serial.begin(115200); 
   Serial.println("Ready. Instant-on continuous mode.");

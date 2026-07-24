@@ -1,10 +1,11 @@
 import type { NextConfig } from "next";
-
+import withMDX from "@next/mdx";
 const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/**/*": ["./node_modules/tesseract.js/**"],
   },
   // productionBrowserSourceMaps: true,
+  pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
   serverExternalPackages: ["tesseract.js"],
   productionBrowserSourceMaps: false,
   experimental: {
@@ -24,4 +25,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withMDX({
+  extension: /\.mdx?$/,
+  options: {
+    remarkPlugins: [],
+    rehypePlugins: [],
+  },
+})(nextConfig);

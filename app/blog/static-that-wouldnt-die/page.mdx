@@ -1,0 +1,35 @@
+import Image from "next/image";
+import pinout from "./i2s-pinout.png";
+
+export const metadata = {
+  title: "The Static That Wouldn't Die",
+  date: "2026-07-24",
+  excerpt:
+    "How a shared BCLK/WS pin between mic and speaker caused static on interrupted playback.",
+  tags: ["esp32", "i2s", "firmware"],
+  thumbnail: pinout,
+};
+
+# The Static That Wouldn't Die
+
+For weeks, Shortwave had an intermittent static burst whenever playback got
+interrupted mid-message. My first theory was a buffer underrun in the I2S
+DMA — classic audio glitch territory. It wasn't that.
+
+<Image
+  src={pinout}
+  alt="I2S pinout diagram showing the mic and speaker sharing BCLK and WS lines"
+/>
+
+The mic (INMP441) and the speaker's I2S DAC were wired to the **same BCLK
+and WS lines**, just on separate data pins. That's normally fine for
+simultaneous read/write — until playback gets interrupted and the RX task
+is torn down while the clock lines are still toggling mid-word-select
+cycle. The DAC would latch a partial frame, and out came static.
+
+Here's the scope trace once I isolated it — you can see the WS line glitch
+right at the interruption point:
+
+The fix was ensuring both I2S peripherals fully drain and reset their DMA
+buffers before either task restarts, rather than just killing the FreeRTOS
+task outright.
