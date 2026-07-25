@@ -7,7 +7,7 @@ function ShortwaveSetupInstructions() {
     <div className="text-left">
       <h2 className="font-bold underline">Setup</h2>
       <ul className="text-sm">
-        <Item>Plug in your sh0rtwave</Item>
+        <Item>Plug in your Shortwave</Item>
         <Item>
           Connect to the <i>sh0rtwave-setup</i> wifi network on your phone
         </Item>

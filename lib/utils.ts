@@ -35,7 +35,7 @@ export function getProductNameFromDeviceType({
   type?: string | null;
 }) {
   if (!type) return "";
-  if (type === "shortwave") return "sh0rtwave";
+  if (type === "shortwave") return "Shortwave";
   if (type === "toggle") return "Toggle";
   return type;
 }

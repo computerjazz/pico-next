@@ -2,7 +2,7 @@
 
 import { getPicopiO } from "@/lib/utils";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { isTruthy } from "../../lib/utils";
 
@@ -42,7 +42,7 @@ function PageHeaderMenu({ title }: { title?: string | null }) {
   const picopiName = `pic${getPicopiO()}pi`;
   const menuRoutes = [
     {
-      name: "sh0rtwave",
+      name: "Shortwave",
       pathname: "/shortwave",
     },
     {

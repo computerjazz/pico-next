@@ -16,10 +16,10 @@ export default async function ShortwaveLandingPage() {
   return (
     <div className="min-h-screen">
       <main className="flex flex-col">
-        <PageHeader title="sh0rtwave" />
+        <PageHeader title="Shortwave" />
         <HeroImage
           src="/img/hero-shortwave.jpg"
-          alt="sh0rtwave hero"
+          alt="Shortwave hero"
           text={`Trade voice messages, no screens attached`}
         />
         <div className="flex flex-col items-center">

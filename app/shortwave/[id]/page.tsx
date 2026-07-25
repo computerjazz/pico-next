@@ -106,7 +106,7 @@ export default async function DevicePage({
             <div className="p-4 max-w-2xl text-center flex self-center flex-col gap-4">
               <h1 className="font-bold text-2xl">No recordings (yet)</h1>
               <p>
-                Record a message on your sh0rtwave, or leave an answering
+                Record a message on your Shortwave, or leave an answering
                 machine message with the button below 👇
               </p>
               <ShortwaveSetupInstructions />

@@ -2,8 +2,8 @@ import { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "sh0rtwave",
-    short_name: "sh0rtwave",
+    name: "Shortwave",
+    short_name: "shortwave",
     start_url: "/shortwave",
     display: "standalone",
     background_color: "#f4f1ea",

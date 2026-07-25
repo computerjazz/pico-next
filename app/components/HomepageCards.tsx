@@ -21,7 +21,7 @@ export type Card = {
 export const HOMEPAGE_CARDS: Card[] = [
   {
     href: "/shortwave",
-    title: "/sh0rtwave",
+    title: "/shortwave",
     description: "push a button",
     Icon: RadioButtonOn,
     HoverIcon: SchematicPushbutton,
