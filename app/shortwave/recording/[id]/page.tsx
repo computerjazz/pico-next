@@ -62,15 +62,7 @@ export default async function RecordingPage({ params }: Props) {
 
   return (
     <div className="flex flex-col h-svh">
-      <PageHeader>
-        <div className="flex flex-col justify-center">
-          <div className="flex flex-col gap-4 items-center justify-center">
-            <h1 className="flex text-2xl font-bold">
-              {recording.device?.name || "sh0rtwave"}
-            </h1>
-          </div>
-        </div>
-      </PageHeader>
+      <PageHeader title={recording.device?.name} />
       <div className="flex items-center justify-center p-4">
         <div className="max-w-lg">
           <RecordingItemSingle

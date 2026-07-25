@@ -16,11 +16,7 @@ export default async function ShortwaveLandingPage() {
   return (
     <div className="min-h-screen">
       <main className="flex flex-col">
-        <PageHeader>
-          <div className="flex flex-row gap-4 items-center">
-            <h1 className="text-3xl font-bold text-accent mb-2">sh0rtwave</h1>
-          </div>
-        </PageHeader>
+        <PageHeader title="sh0rtwave" />
         <HeroImage
           src="/img/hero-shortwave.jpg"
           alt="sh0rtwave hero"

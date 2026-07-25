@@ -47,9 +47,7 @@ export default async function ProfilePage() {
 
   return (
     <div>
-      <PageHeader>
-        <h1 className="text-3xl font-bold text-accent mb-2">{name}</h1>
-      </PageHeader>
+      <PageHeader title={name} />
       <div className="p-4">
         <h1 className="font-bold text-xl">Devices</h1>
         <div className="flex flex-col">

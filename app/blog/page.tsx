@@ -12,9 +12,7 @@ export default async function BlogIndex() {
 
   return (
     <div>
-      <PageHeader>
-        <h1 className="text-3xl font-bold text-accent">Blog</h1>
-      </PageHeader>
+      <PageHeader title="Blog" />
       <div className="p-4">
         <ul>
           {posts.map((post) => {
