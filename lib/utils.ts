@@ -1,3 +1,5 @@
+import { PICOPI_O_OPTIONS } from "./constants";
+
 export function getJsonSizeBytes(value: unknown) {
   return Buffer.byteLength(JSON.stringify(value), "utf8");
 }
@@ -36,4 +38,10 @@ export function getProductNameFromDeviceType({
   if (type === "shortwave") return "sh0rtwave";
   if (type === "toggle") return "Toggle";
   return type;
+}
+
+export function getPicopiO() {
+  const minute = new Date().getMinutes();
+  const oIdx = minute % PICOPI_O_OPTIONS.length;
+  return PICOPI_O_OPTIONS[oIdx];
 }

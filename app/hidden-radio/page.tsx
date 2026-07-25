@@ -5,7 +5,7 @@ function HiddenRadioPage() {
   return (
     <div className="min-h-screen">
       <main className="flex flex-col">
-        <PageHeader title="Hidden Radio" />
+        <PageHeader />
         <HeroImage
           src="/img/hero-hidden-radio.jpg"
           alt="hero hidden radio"

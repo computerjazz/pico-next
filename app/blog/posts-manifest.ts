@@ -9,11 +9,11 @@ export interface PostMeta {
   thumbnail?: StaticImageData;
 }
 
-const slugs = ["static-that-wouldnt-die"];
+const slugs = ["designing-for-fun"];
 
 export const posts: PostMeta[] = await Promise.all(
   slugs.map(async (slug) => {
-    const post = await import(`./${slug}/page.mdx`);
+    const post = await import(`./(post)/${slug}/page.mdx`);
     return {
       ...post.metadata,
       slug,

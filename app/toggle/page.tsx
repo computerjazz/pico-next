@@ -5,7 +5,7 @@ function TogglePage() {
   return (
     <div className="min-h-screen">
       <main className="flex flex-col">
-        <PageHeader title="Toggle" />
+        <PageHeader />
         <HeroImage
           src="/video/hero-toggle.jpg"
           alt="toggle hero"

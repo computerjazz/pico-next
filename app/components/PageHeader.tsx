@@ -1,7 +1,8 @@
 import Link from "next/link";
 import ProfileSignInButton from "./ProfileSignInButton";
 import Image from "next/image";
-
+import PageHeaderMenu from "./PageHeaderMenu";
+import PageHeaderBackground from "./PageHeaderBackground";
 function PageHeader({
   children,
   title,
@@ -10,7 +11,7 @@ function PageHeader({
   title?: string | null;
 }) {
   return (
-    <div className="p-4 flex flex-row justify-between gap-4 sticky top-0 z-50 bg-background">
+    <PageHeaderBackground>
       <div className="flex flex-row gap-4">
         <Link href="/">
           <Image
@@ -21,13 +22,12 @@ function PageHeader({
             className="rounded-full aspect-1 aspect-square min-w-6"
           />
         </Link>
-        {!!title && <h1 className="text-3xl font-bold text-accent">{title}</h1>}
-        {children}
+        {children || <PageHeaderMenu title={title} />}
       </div>
       <div className="flex justify-end items-top">
         <ProfileSignInButton />
       </div>
-    </div>
+    </PageHeaderBackground>
   );
 }
 
