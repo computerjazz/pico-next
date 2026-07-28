@@ -6,11 +6,15 @@ import toaster from './toaster.jpg'
 import {RecordingItemSingle} from '../../../shortwave/[id]/RecordingItem'
 
 import RecordingItem from '../../../components/'
+
 export const metadata = {
-  title: "Designing for fun",
   date: "2026-07-25",
-  excerpt: "Building a gadget or a toy can feel a bit like coming up with a joke.",
-  tags: ["design", "hardware", "toys"],
+  title: "Designing for fun",
+  description: "Building a gadget or a toy can feel a bit like coming up with a joke.",
+  keywords: ["design", "hardware", "toys"],
+  openGraph: {
+      images: ["/img/logo-shortwave.png"],
+  },
   thumbnail,
 };
 

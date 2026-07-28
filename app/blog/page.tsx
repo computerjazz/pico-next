@@ -42,12 +42,12 @@ export default async function BlogIndex() {
                     />
                   )}
 
-                  <p>{post.excerpt}</p>
+                  <p>{post.description}</p>
                 </div>
-                {/* {post.tags && (
+                {/* {post.keywords && (
                   <div className="flex gap-2 text-muted-foreground">
-                    {post.tags.map((tag) => (
-                      <span key={tag}>{tag}</span>
+                    {post.keywords.map((kw) => (
+                      <span key={kw}>{kw}</span>
                     ))}
                   </div>
                 )} */}

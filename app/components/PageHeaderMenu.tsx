@@ -17,8 +17,16 @@ function PageHeaderMenu({ title }: { title?: string | null }) {
   const pathname = usePathname();
   const { screenWidth } = useScreenWidth();
   const shouldShowMenu = screenWidth >= breakpoints.lg;
-  const _title =
-    (title || menuRoutes.find((r) => r.pathname === pathname)?.name) ?? "";
+  const thisPathname = menuRoutes.find((r) => {
+    return r.pathname === pathname;
+  })?.name;
+
+  const parentPathname = menuRoutes.find((r) => {
+    return (
+      getInitialPathSegment(r.pathname) === getInitialPathSegment(pathname)
+    );
+  })?.name;
+  const _title = title || thisPathname || parentPathname || "";
 
   return (
     <div className="flex flex-1 gap-4 items-center">

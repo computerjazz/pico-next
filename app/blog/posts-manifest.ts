@@ -4,8 +4,8 @@ export interface PostMeta {
   slug: string;
   title: string;
   date: string;
-  excerpt: string;
-  tags?: string[];
+  description: string;
+  keywords?: string[];
   thumbnail?: StaticImageData;
 }
 
