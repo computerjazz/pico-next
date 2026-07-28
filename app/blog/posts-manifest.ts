@@ -9,7 +9,7 @@ export interface PostMeta {
   thumbnail?: StaticImageData;
 }
 
-const slugs = ["designing-for-fun"];
+const slugs = ["building-for-fun"];
 
 export const posts: PostMeta[] = await Promise.all(
   slugs.map(async (slug) => {
