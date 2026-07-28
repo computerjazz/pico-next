@@ -209,7 +209,7 @@ export default function RecordingItem({
       <motion.div
         className={`flex flex-col gap-2 p-4 rounded-md ${isDevice ? "bg-muted-foreground text-accent-foreground" : "bg-muted-surface text-muted-foreground"} z-10 `}
         drag="x"
-        dragConstraints={{ right: 0, left: -200 }}
+        dragConstraints={{ right: 0, left: enabledActions.length ? -200 : 0 }}
         dragElastic={0.05}
       >
         <div className="flex flex-row gap-2 text-xs font-bold opacity-70">
