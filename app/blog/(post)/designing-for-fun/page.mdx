@@ -1,12 +1,46 @@
 import Image from "next/image";
-
+import porguacan from './porguacan.jpg'
+import thumbnail from './porguacan-thumb.jpg'
+import toaster from './toaster.jpg'
 export const metadata = {
   title: "Designing for fun",
   date: "2026-07-25",
-  excerpt: "",
-  tags: ["esp32", "i2s", "firmware"],
+  excerpt: "Building a gadget or a toy can feel a bit like coming up with a joke.",
+  tags: ["design", "hardware", "toys"],
+  thumbnail,
 };
 
 ## Designing for fun
 
-What do I care about? What does the world need more of? 
+Building a gadget or a toy can feel a bit like coming up with a joke. 
+The good ones express a novel idea or twist in perspective, even a small one, and deliver a surprising moment of joy.
+They both may set the stage with something familiar—a recognizeable form factor, before pulling the rug into unexpected territory with a what-if or a touch of absurdity.
+
+Now, when I say "joke", I'm using the word pretty loosely. 
+I consider the kind of flap book that lets you construct a pocupine-iguana with duck legs a "joke":
+
+<Image src={porguacan} width={400} height={400} className="max-h-[400px] w-auto rounded-md" alt="Porguacan book" />
+
+When I was in college I built a MIDI music controller into a toaster for a final project, and it's STILL the main thing many people remember about me from back then.
+It wasn't groundbreaking or complex tech, but it was functional and whimsical, didn't take itself seriously, and had some fun visual gags. 
+The levers that usually pull down the bread were replaced with audio faders, and the knobs that control toastiness were replaced with volume pots, all mapped to various musical parameters in a very "weird and out there" FM synthesis program I wrote.
+There was also a hidden switch inside that transitioned the piece into a climactic, cacophonous musical loop, and in the middle of the performance I jammed a metal fork into the toaster to flip it, to audible gasps of horror from the audience. 
+
+In retrospect, it's no wonder that's what people have remembered, it was one of the most _memorable_ things I've done.
+Everyone had their own idea about _why_ it was funny or interesting, or what it was supposed to mean, and I let them (read: I don't know either).
+
+<Image src={toaster} width={400} height={400} className="max-h-[400px] w-auto rounded-md" alt="toaster" />
+
+Looking back, I think it planted a seed (that has taken a very long time to germinate) that making gadgets that are fun and silly or absurd can deliver outsized experiences. 
+I feel a little buzz of excitement when I start to uncover another one of these ideas, and that's what I'm chasing with the toys and gadgets here.
+
+I built Shortwave with a single, simple, interaction in mind: I wanted my 3 year old to be able to send me voice messages by pressing a shiny red arcade button.
+It evolved into something much larger, which I'll get to in a future post, but the first prototype was FUN, and I thought, "maybe there's a pattern I can follow here".
+
+So I decided to build a series of toys, or 'gadgets', or whatever these things are, in order to try to find the most fun, satisfying, and meaningful interaction given the following constraints:
+- One single user input control 
+- No screens
+
+I didn't explicitly set out to build toys that connect people, but that's what happened. Turns out it's really hard to think of something fun to do all by yourself with only a single toggle switch.
+Jokes are funnier with others. More on that later, but for now, glad you're here.
+

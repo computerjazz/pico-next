@@ -1,67 +1,18 @@
 "use client";
 
-import { getPicopiO } from "@/lib/utils";
+import { getMenuRoutes, getPicopiName } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { isTruthy } from "../../lib/utils";
-
-const breakpoints = {
-  xs: 340,
-  sm: 640,
-  md: 768,
-  lg: 1024,
-  xl: 1280,
-  "2xl": 1536,
-};
-
-function useScreenWidth() {
-  const [screenWidth, setScreenWidth] = useState(
-    typeof window !== "undefined" ? window.innerWidth : 0,
-  );
-
-  useEffect(() => {
-    function handleResize() {
-      setScreenWidth(window.innerWidth);
-    }
-    window.addEventListener("resize", handleResize);
-    // Set on mount in case SSR mismatch
-    handleResize();
-
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  return { screenWidth };
-}
+import { useScreenWidth, breakpoints } from "../hooks/useScreenWidth";
 
 function getInitialPathSegment(pathname: string) {
   return pathname.split("/").filter(isTruthy)[0];
 }
 
 function PageHeaderMenu({ title }: { title?: string | null }) {
-  const picopiName = `pic${getPicopiO()}pi`;
-  const menuRoutes = [
-    {
-      name: "Shortwave",
-      pathname: "/shortwave",
-    },
-    {
-      name: "Toggle",
-      pathname: "/toggle",
-    },
-    {
-      name: "Hidden Radio",
-      pathname: "/hidden-radio",
-    },
-    // {
-    //   name: "Blog",
-    //   pathname: "/blog",
-    // },
-    {
-      name: picopiName,
-      pathname: "/",
-    },
-  ];
+  const picopiName = getPicopiName();
+  const { routes: menuRoutes } = getMenuRoutes();
 
   const pathname = usePathname();
   const { screenWidth } = useScreenWidth();

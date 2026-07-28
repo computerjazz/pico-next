@@ -45,3 +45,38 @@ export function getPicopiO() {
   const oIdx = minute % PICOPI_O_OPTIONS.length;
   return PICOPI_O_OPTIONS[oIdx];
 }
+
+export function getPicopiName() {
+  return `pic${getPicopiO()}pi`;
+}
+
+export function getMenuRoutes() {
+  const picopiName = getPicopiName();
+  const routes = [
+    {
+      name: "Shortwave",
+      pathname: "/shortwave",
+      deviceType: "shortwave",
+    },
+    {
+      name: "Toggle",
+      pathname: "/toggle",
+      deviceType: "toggle",
+    },
+    // {
+    //   name: "Hidden Radio",
+    //   pathname: "/hidden-radio",
+    //  deviceType: 'hidden-radio',
+    // },
+    {
+      name: "Blog",
+      pathname: "/blog",
+    },
+    {
+      name: picopiName,
+      pathname: "/",
+    },
+  ];
+
+  return { routes };
+}

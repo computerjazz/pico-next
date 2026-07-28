@@ -35,14 +35,14 @@ export const HOMEPAGE_CARDS: Card[] = [
     HoverIcon: SchematicToggle,
     src: "/img/component/component-switch.jpg",
   },
-  {
-    href: "/hidden-radio",
-    title: "/hidden-radio",
-    description: "turn a knob",
-    Icon: Knob,
-    HoverIcon: SchematicPotentiometer,
-    src: "/img/component/component-knob.jpg",
-  },
+  // {
+  //   href: "/hidden-radio",
+  //   title: "/hidden-radio",
+  //   description: "turn a knob",
+  //   Icon: Knob,
+  //   HoverIcon: SchematicPotentiometer,
+  //   src: "/img/component/component-knob.jpg",
+  // },
 ];
 
 function HomepageCards({

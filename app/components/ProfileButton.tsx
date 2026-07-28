@@ -14,7 +14,7 @@ import BarsThree from "./icons/BarsThree";
 import XMark from "./icons/XMark";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
-import { getProductNameFromDeviceType } from "@/lib/utils";
+import { getMenuRoutes } from "@/lib/utils";
 
 function ProfileMenuItem({
   label,
@@ -97,6 +97,8 @@ function ProfileButton({
     return acc;
   }, new Map<string, Device[]>());
 
+  const { routes: menuRoutes } = getMenuRoutes();
+
   return (
     <div ref={containerRef}>
       <button
@@ -157,32 +159,36 @@ function ProfileButton({
                     </div>
                   </div>
                 </ProfileMenuItem>
-                {[...devicesGrouped.entries()].map(([type, devicesInGroup]) => {
-                  return (
-                    <React.Fragment key={type}>
-                      <ProfileMenuItem href={`/${type}`}>
-                        <span className="font-bold mt-4 underline">
-                          {getProductNameFromDeviceType({ type })}
-                        </span>
-                      </ProfileMenuItem>
-                      {devicesInGroup
-                        .sort((a, b) => {
-                          const aName = a.name || a.deviceId;
-                          const bName = b.name || b.deviceId;
-                          return aName < bName ? -1 : 1;
-                        })
-                        .map((d) => {
-                          return (
-                            <ProfileMenuItem
-                              key={d.deviceId}
-                              label={d.name ?? d.deviceId}
-                              href={`/${d.type}/${d.deviceId}`}
-                            />
-                          );
-                        })}
-                    </React.Fragment>
-                  );
-                })}
+                {menuRoutes
+                  .filter((r) => r.pathname !== "/")
+                  .map((route) => {
+                    const type = route.deviceType ?? "";
+                    const devicesInGroup = devicesGrouped.get(type) ?? [];
+                    return (
+                      <React.Fragment key={type}>
+                        <ProfileMenuItem href={route.pathname}>
+                          <span className="font-bold mt-4 underline">
+                            {route.name}
+                          </span>
+                        </ProfileMenuItem>
+                        {devicesInGroup
+                          .sort((a, b) => {
+                            const aName = a.name || a.deviceId;
+                            const bName = b.name || b.deviceId;
+                            return aName < bName ? -1 : 1;
+                          })
+                          .map((d) => {
+                            return (
+                              <ProfileMenuItem
+                                key={d.deviceId}
+                                label={d.name ?? d.deviceId}
+                                href={`/${d.type}/${d.deviceId}`}
+                              />
+                            );
+                          })}
+                      </React.Fragment>
+                    );
+                  })}
                 <hr className="w-full border-t border-gray-700 my-2" />
                 <div className="w-full flex justify-end gap-2 px-4 mt-4">
                   <button
