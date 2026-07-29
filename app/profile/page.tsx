@@ -55,7 +55,10 @@ export default async function ProfilePage() {
             return (
               <React.Fragment key={type}>
                 <ListItem href={`/${type}`}>
-                  <Link href={`/${type}`} className="font-bold mt-4 underline">
+                  <Link
+                    href={`/${type}`}
+                    className="font-bold mt-4 underline capitalize"
+                  >
                     {type}
                   </Link>
                 </ListItem>

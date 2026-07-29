@@ -52,11 +52,11 @@ I started getting messages like this:
 enabledActions={[]}
 recording={{
     "id": "ae76d525-e711-4462-b6ca-0e42f7bf3a11",
-    "deviceId": "sh0rtwave-alpha-batt",
+    "deviceId": "fake-id",
     "createdAt": new Date("2026-05-14T01:36:16.448Z"),
-    "filepath": "/app/uploads/sh0rtwave/sh0rtwave-alpha-batt/outbound/sh0rtwave-alpha-batt-2026-05-14T01:36:14.277Z-20260514_013553.mp3",
-    "filepathProcessed": "/app/uploads/sh0rtwave/sh0rtwave-alpha-batt/outbound/sh0rtwave-alpha-batt-2026-05-14T01:36:14.277Z-20260514_013553-processed.mp3",
-    "name": "sh0rtwave-alpha-batt-2026-05-14T01:36:14.277Z-20260514_013553.mp3",
+    "filepath": "fake-path.mp3",
+    "filepathProcessed": "fake-path-processed.mp3",
+    "name": "fake-name.mp3",
     "contentType": "audio/mpeg",
     "source": "shortwave-device",
     "transcript": "I want mac and cheese today and tomorrow and today and tomorrow and every day and every day. Bye! Bye!",
@@ -64,19 +64,19 @@ recording={{
     "durationMillis": "16736",
     "deletedAt": null,
     "device": {
-        "deviceId": "sh0rtwave-alpha-batt",
+        "deviceId": "fake-id",
         "name": "Layla & Meera's sh0rtwave",
         "volume": "17",
         "isPublic": false,
         "type": "shortwave",
         "firmwareVersion": "shortwave-2026-07-15",
-        "userId": "3c33e6fa-adb3-4e67-a5ae-dc6c53bcb56a",
+        "userId": "fake-user-id",
         "createdAt": new Date("2026-04-25T20:07:01.606Z"),
         "lastSeenAt": new Date("2026-07-28T17:46:42.944Z")
     }
 }} />
 
-And I thought, "maybe there's a pattern I can follow here".
+Getting a transcribed voice message from my daughter about mac and cheese was a totally new, goofy-as-hell experience, wrapped in the familiar form factor of the million messaging apps we use daily. I thought, "maybe there's a pattern I can follow here".
 
 So I decided to build a series of toys, or 'gadgets', or whatever these things are, in order to find the most fun, satisfying, and memorable interactions given the following constraints:
 - One single user input control 
