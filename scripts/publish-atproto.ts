@@ -20,6 +20,8 @@ import remarkMdx from "remark-mdx";
 import { toString as mdastToString } from "mdast-util-to-string";
 import * as acorn from "acorn";
 
+import { slugs } from "../app/blog/posts-manifest";
+
 // ---- ADJUST to match your real project structure ----
 
 // Where your colocated per-post folders live, relative to repo root.
@@ -36,7 +38,7 @@ const PUBLICATION_URI = `at://${process.env.ATPROTO_IDENTIFIER}/site.standard.pu
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
-function parseMdx(raw) {
+function parseMdx(raw: unknown) {
   return unified()
     .use(remarkParse)
     .use(remarkMdx, { acorn, acornOptions: { sourceType: "module" } })
@@ -55,7 +57,7 @@ const NON_PROSE_NODE_TYPES = new Set([
   "mdxTextExpression",
 ]);
 
-function stripNonProseNodes(node) {
+function stripNonProseNodes(node: unknown) {
   if (!node.children) return node;
   return {
     ...node,
@@ -65,7 +67,7 @@ function stripNonProseNodes(node) {
   };
 }
 
-function mdxToPlainText(tree) {
+function mdxToPlainText(tree: unknown) {
   const stripped = stripNonProseNodes(tree);
   // Join each top-level block (heading, paragraph, etc.) with a space,
   // since mdast-util-to-string concatenates with no separator by default —
@@ -82,7 +84,7 @@ function mdxToPlainText(tree) {
 // literal values (strings, numbers, arrays/objects of literals). Anything
 // referencing an identifier — like an imported image — is safely skipped,
 // since we can't resolve it outside Next.js's own loaders anyway.
-function literalValue(node) {
+function literalValue(node: unknown) {
   if (!node) return undefined;
   if (node.type === "Literal") return node.value;
   if (node.type === "ArrayExpression") {
@@ -100,7 +102,7 @@ function literalValue(node) {
   return undefined; // Identifier, TemplateLiteral, etc. — not resolvable statically
 }
 
-function extractMetadata(tree) {
+function extractMetadata(tree: unknown) {
   for (const node of tree.children) {
     if (node.type !== "mdxjsEsm" || !node.data?.estree) continue;
     for (const stmt of node.data.estree.body) {
@@ -117,11 +119,6 @@ function extractMetadata(tree) {
 }
 
 function loadPosts() {
-  const slugs = fs
-    .readdirSync(POSTS_DIR, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name);
-
   return slugs.map((slug) => {
     const filePath = path.join(POSTS_DIR, slug, POST_FILENAME);
     const raw = fs.readFileSync(filePath, "utf-8");

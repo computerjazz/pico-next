@@ -8,7 +8,7 @@ export const metadata = {
 };
 
 export default async function BlogIndex() {
-  const posts = getAllPosts();
+  const posts = await getAllPosts();
 
   return (
     <div>
