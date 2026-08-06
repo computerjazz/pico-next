@@ -8,7 +8,7 @@ import { db } from "@/db";
 import { deviceChannels, messages, recordings } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { CHANNEL_TYPE } from "@/lib/constants";
-import { getAudioDuration, processAudio } from "@/lib/audio";
+import { getAudioDuration, processAudio, transcribeAudio } from "@/lib/audio";
 import { clearActiveJob, setActiveJob } from "@/lib/job";
 import { randomUUID } from "crypto";
 import { sendWebPush } from "@/lib/push";
@@ -124,16 +124,22 @@ export async function POST(req: Request) {
         });
       }
 
-      const [{ filepath: outputProcessedPath }, { durationMillis }] =
-        await Promise.all([
-          processAudio({
-            filepath: outputMp3Path,
-            outputPath: path.join(audioDir, audioProcessedFilename),
-          }),
-          getAudioDuration({
-            filepath: outputMp3Path,
-          }),
-        ]);
+      const [
+        { filepath: outputProcessedPath },
+        { durationMillis },
+        { transcript },
+      ] = await Promise.all([
+        processAudio({
+          filepath: outputMp3Path,
+          outputPath: path.join(audioDir, audioProcessedFilename),
+        }),
+        getAudioDuration({
+          filepath: outputMp3Path,
+        }),
+        transcribeAudio({
+          filepath: outputMp3Path,
+        }),
+      ]);
 
       console.log("sending as voice ", outputProcessedPath);
       const channels = await db.query.deviceChannels.findMany({
@@ -159,6 +165,7 @@ export async function POST(req: Request) {
           name: audioFilename,
           source: "shortwave-device",
           durationMillis: String(durationMillis),
+          transcript: transcript || null,
         })
         .returning();
 
@@ -180,8 +187,8 @@ export async function POST(req: Request) {
         }),
         sendWebPush({
           deviceId,
-          title: device?.name ?? "sh0rtwave",
-          body: "New message!",
+          title: device?.name ?? "Shortwave",
+          body: transcript || "New message!",
         }),
       ]);
       console.log("voice resp", resp);

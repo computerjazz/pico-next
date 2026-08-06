@@ -17,7 +17,7 @@
     "generate-token": "tsx scripts/generate-token.ts",
     "test-connection": "tsx scripts/test-connection.ts",
     "migrate:toggles": "tsx scripts/db-migrate-toggles.ts",
-    "publish:atproto": "tsx scripts/publish-atproto.ts --dry-run"
+    "publish:atproto": "tsx scripts/publish-atproto.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",

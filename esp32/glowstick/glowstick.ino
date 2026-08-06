@@ -2,11 +2,11 @@
 
 RCSwitch rc = RCSwitch();
 
-#define PIN_UP    5
-#define PIN_DOWN  3
-#define PIN_LEFT  2
+#define PIN_UP    1
+#define PIN_DOWN  2
+#define PIN_LEFT  3
 #define PIN_RIGHT 4
-#define TX_PIN    10
+#define TX_PIN    5
 
 #define UP_CODE    "FFFFFFFFFFFF"
 #define DOWN_CODE  "0FFFFFFFFFFF"
@@ -49,7 +49,7 @@ void setup() {
   rc.setRepeatTransmit(1); 
   
   // Standard pulse window for a 750k resistor on 5V logic
-  rc.setPulseLength(275); 
+  rc.setPulseLength(290); 
   
   Serial.begin(115200); 
   Serial.println("Ready. Instant-on continuous mode.");
