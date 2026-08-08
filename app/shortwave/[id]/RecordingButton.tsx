@@ -126,14 +126,16 @@ function RecordingButton({ deviceId }: { deviceId: string }) {
       </div>
       <div
         className={`
-          absolute top-0 bottom-0 left-0 right-0 bg-accent pointer-events-none z-1000
+          absolute top-0 bottom-0 left-0 right-0 bg-accent pointer-events-none z-1000 flex items-center justify-center
           ${isRecording ? "animate-pulse-opacity" : "opacity-0 transition-opacity duration-300"}
         `}
         style={{
           // Remove transition if animating, otherwise do a fade out.
           transition: isRecording ? undefined : "opacity 0.3s",
         }}
-      ></div>
+      >
+        <h1 className="text-white text-2xl font-bold">RECORDING</h1>
+      </div>
     </div>
   );
 }
