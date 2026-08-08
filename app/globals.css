@@ -58,3 +58,12 @@ body {
   background: var(--accent);
   color: var(--accent-foreground);
 }
+
+@keyframes pulse-opacity {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.55; }
+}
+  .animate-pulse-opacity {
+  animation: pulse-opacity 1s cubic-bezier(0.4,0,0.6,1) infinite;
+  opacity: 0.5;
+}
