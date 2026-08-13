@@ -1118,7 +1118,7 @@
 		(property "Reference" "5v in"
 			(at -3.5 0.5 0)
 			(layer "F.SilkS")
-			(uuid "c3577a25-161f-4279-ad87-724747e9dff5")
+			(uuid "861cd895-aca7-418b-a4ac-862268337584")
 			(effects
 				(font
 					(size 1 1)
@@ -1129,7 +1129,7 @@
 		(property "Value" "5v"
 			(at 1 4 90)
 			(layer "F.Fab")
-			(uuid "324ec28c-8172-4fa6-b222-1e96dcbc1d9c")
+			(uuid "e219c594-7d3b-4bc9-aae7-cb089ba84824")
 			(effects
 				(font
 					(size 1 1)
@@ -1141,7 +1141,7 @@
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "cc494559-9c2c-44c6-9bbc-bb0916e01db8")
+			(uuid "4afcf34f-3487-41e6-8630-17ff03b207ed")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -1152,7 +1152,7 @@
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "b4e81cc0-7bbe-4466-9474-e3b819b19d90")
+			(uuid "49c4e5b0-3523-4d13-926e-6c9257b5b6c0")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2064,7 +2064,7 @@
 		(property "Reference" "1k"
 			(at 12.5 0 90)
 			(layer "F.SilkS")
-			(uuid "bb71ff19-e252-40c2-b9fd-1f6137d2de49")
+			(uuid "847cc13b-9066-4c76-866a-9b2c4b9947fb")
 			(effects
 				(font
 					(size 1 1)
@@ -2075,7 +2075,7 @@
 		(property "Value" "1k"
 			(at 6 2.5 90)
 			(layer "F.Fab")
-			(uuid "9e84d4fa-0402-4532-8b24-c9591191e101")
+			(uuid "12a62cb6-e40c-4cb7-827a-edfbeeba8bd0")
 			(effects
 				(font
 					(size 1 1)
@@ -2087,7 +2087,7 @@
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "a4235d42-55be-4170-83aa-7810294ae95d")
+			(uuid "0decbabf-a717-4061-95ea-10b4ffd11830")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2098,7 +2098,7 @@
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "0d46393a-6aea-45b8-9159-f529b8089440")
+			(uuid "e7adf335-6d26-4c1c-b20c-7cc6dfc0d07c")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2430,7 +2430,7 @@
 		(property "Reference" "100uF"
 			(at 1.75 -5.25 0)
 			(layer "F.SilkS")
-			(uuid "32c934ac-63e9-4aff-b219-5bde57777f93")
+			(uuid "f242264e-b1db-4580-8845-1ddfc4d69ab3")
 			(effects
 				(font
 					(size 1 1)
@@ -2441,7 +2441,7 @@
 		(property "Value" "Capacitor"
 			(at 2.5 5 0)
 			(layer "F.Fab")
-			(uuid "d6a5edd0-44d6-4e0c-9f39-153acd93831a")
+			(uuid "b86ffe00-e5d5-4a03-a52e-2f29c106ee2f")
 			(effects
 				(font
 					(size 1 1)
@@ -2453,7 +2453,7 @@
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "35cf8b31-625a-4337-9fb6-f62ec4ebb044")
+			(uuid "b58229be-d44f-4005-81c6-cb795768fa8f")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2464,7 +2464,7 @@
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "3de93208-3ee3-42fc-a25b-186eee75d696")
+			(uuid "b7ae0cc8-e052-41ce-b7e9-0d1232b6b11f")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -29242,7 +29242,7 @@
 		(uuid "c95edcf3-c0f6-4912-82c1-0eebc07367a4")
 	)
 	(gr_line
-		(start 91 52.4)
+		(start 91 51.4)
 		(end 91 93.599999)
 		(stroke
 			(width 0.05)
@@ -29250,17 +29250,6 @@
 		)
 		(layer "Edge.Cuts")
 		(uuid "9beef2a2-a209-4f7e-b695-62d84c6a1218")
-	)
-	(gr_arc
-		(start 91 52.4)
-		(mid 91.292893 51.692893)
-		(end 92 51.4)
-		(stroke
-			(width 0.05)
-			(type default)
-		)
-		(layer "Edge.Cuts")
-		(uuid "4b20f7c0-4cf7-4b28-b978-bcc965279454")
 	)
 	(gr_arc
 		(start 92 94.599999)
@@ -29285,7 +29274,7 @@
 	)
 	(gr_line
 		(start 106.305362 51.4)
-		(end 92 51.4)
+		(end 91 51.4)
 		(stroke
 			(width 0.05)
 			(type default)

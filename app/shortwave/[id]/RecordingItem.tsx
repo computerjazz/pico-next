@@ -263,7 +263,9 @@ export default function RecordingItem({
             </button>
           </div>
           <div className="flex flex-1 items-center text-start">
-            <span>{recording.transcript}</span>
+            <span className={recording.transcript ? "" : "italic"}>
+              {recording.transcript ?? "Transcribing..."}
+            </span>
           </div>
         </div>
 
