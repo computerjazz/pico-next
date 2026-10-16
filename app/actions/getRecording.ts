@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { db } from "@/db";
+import { getDeviceAccess } from "@/lib/access";
 import fs from "fs";
 
 export async function getRecording({ recordingId }: { recordingId: string }) {
@@ -19,12 +20,18 @@ export async function getRecording({ recordingId }: { recordingId: string }) {
     throw new Error(`Recording not found: ${recordingId}`);
   }
 
-  const ownerId = recording.device?.userId;
   const userId = session?.user?.id;
-  const isPublic = !!recording.device?.isPublic;
-  const isOwner = userId && userId === ownerId;
+  const deviceAccess = await getDeviceAccess({
+    device: recording.device,
+    deviceId: recording.device?.deviceId,
+    userId,
+  });
 
-  const canListen = isOwner || isPublic;
+  const canListen =
+    deviceAccess.isOwner ||
+    deviceAccess.isPublic ||
+    deviceAccess.isShare ||
+    recording.isShared;
 
   if (!canListen) {
     throw new Error("Not authorized to access this recording");

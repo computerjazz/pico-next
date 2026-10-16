@@ -44,13 +44,13 @@ export default async function RecordingPage({ params }: Props) {
 
   const recording = await getRecording({ recordingId });
 
-  const { isOwner, isShare } = await getDeviceAccess({
+  const { isOwner, isShare, isPublic } = await getDeviceAccess({
     userId: sessionUserId,
     deviceId: recording?.device?.deviceId,
     device: recording?.device,
   });
 
-  const canView = isOwner || isShare || recording?.isShared;
+  const canView = isOwner || isShare || isPublic || recording?.isShared;
 
   if (!recording) {
     notFound();

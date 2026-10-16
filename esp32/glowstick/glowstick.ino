@@ -19,7 +19,7 @@ RCSwitch rc = RCSwitch();
 #define DOWN_LEFT_CODE "F00FFFFFFFFF"
 #define DOWN_RIGHT_CODE "FF00FFFFFFFF"
 
-#define IDLE_TIMEOUT_MS 30000UL 
+#define IDLE_TIMEOUT_MS 5000UL 
 
 uint32_t lastActivityMs = 0;
 

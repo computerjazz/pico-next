@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { Device } from "@/db/schema";
 
-type Access = { isOwner: boolean; isShare: boolean };
+type Access = { isOwner: boolean; isShare: boolean; isPublic: boolean };
 
 export async function getDeviceAccess({
   deviceId,
@@ -16,6 +16,7 @@ export async function getDeviceAccess({
     return {
       isOwner: false,
       isShare: false,
+      isPublic: false,
     };
   }
 
@@ -29,6 +30,7 @@ export async function getDeviceAccess({
     return {
       isOwner: false,
       isShare: false,
+      isPublic: false,
     };
   }
 
@@ -37,6 +39,7 @@ export async function getDeviceAccess({
     return {
       isOwner: true,
       isShare: false,
+      isPublic: !!device.isPublic,
     };
   }
   const share = await db.query.deviceShares.findFirst({
@@ -47,5 +50,6 @@ export async function getDeviceAccess({
   return {
     isOwner: false,
     isShare: !!share,
+    isPublic: !!device.isPublic,
   };
 }
