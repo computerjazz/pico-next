@@ -1,9 +1,31 @@
 import { verifyAuth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
+import { writeFile, readFile, rm } from "fs/promises";
+import { preprocessBirdAudio } from "@/lib/audio";
+import { randomUUID } from "crypto";
+import path from "path";
+import os from "os";
 
 const BIRDNET_URL = process.env.BIRDNET_URL ?? "http://birdnet-api:8000";
 const BIRDNET_TOKEN = process.env.BIRDNET_API_TOKEN ?? "";
-const DEVICE_TOKEN = process.env.BIRD_DEVICE_TOKEN ?? "";
+
+async function preprocess(file: File): Promise<Blob> {
+  const inPath = path.join(os.tmpdir(), `bird_in_${randomUUID()}.wav`);
+  let outPath: string | null = null;
+  try {
+    await writeFile(inPath, Buffer.from(await file.arrayBuffer()));
+    const out = await preprocessBirdAudio({ filepath: inPath });
+    outPath = out.filepath;
+    const buf = await readFile(outPath);
+    return new Blob([new Uint8Array(buf)], { type: "audio/wav" });
+  } catch (e) {
+    console.error("[birds] preprocess failed, sending original:", e);
+    return file;
+  } finally {
+    await rm(inPath, { force: true });
+    if (outPath) await rm(outPath, { force: true });
+  }
+}
 
 function num(v: string | null, min: number, max: number): number | null {
   if (v === null || v.trim() === "") return null;
@@ -52,8 +74,9 @@ export async function POST(req: NextRequest) {
   }
   if (minConf !== null) params.set("min_conf", String(minConf));
 
+  const audio = await preprocess(file);
   const upstream = new FormData();
-  upstream.append("file", file, file.name || "clip.wav");
+  upstream.append("file", audio, "clip.wav");
 
   const res = await fetch(`${BIRDNET_URL}/analyze?${params}`, {
     method: "POST",

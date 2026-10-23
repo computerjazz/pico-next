@@ -5,6 +5,36 @@ import os from "os";
 import path from "path";
 const execAsync = promisify(exec);
 
+export async function preprocessBirdAudio({ filepath }: { filepath: string }) {
+  const outputPath = path.join(os.tmpdir(), `bird_${randomUUID()}.wav`);
+
+  // mono, 48kHz (BirdNET's native rate), 16-bit PCM.
+  // High-pass at 400 Hz strips wind/traffic rumble and any DC offset
+  // without touching the bird band.
+  await execAsync(
+    [
+      "ffmpeg",
+      "-y",
+      "-v",
+      "error",
+      "-i",
+      `"${filepath}"`,
+      "-af",
+      "highpass=f=400",
+      "-ar",
+      "48000",
+      "-ac",
+      "1",
+      "-c:a",
+      "pcm_s16le",
+      `"${outputPath}"`,
+    ].join(" "),
+    { timeout: 15_000 },
+  );
+
+  return { filepath: outputPath };
+}
+
 export async function getAudioDuration({ filepath }: { filepath: string }) {
   // Use execAsync and destructure stdout directly for clarity.
   const { stdout } = await execAsync(
