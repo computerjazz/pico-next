@@ -3,17 +3,14 @@ import z from "zod";
 
 import { useSocket } from "../hooks/useSocket";
 
-const BikeStatusSchema = z.object({
-  type: z.string(),
-  status: z.string(),
-});
+const BikeStatusSchema = z.object({});
 
 export default function BikePage() {
   useSocket({
     groupId: "bike-status",
     onMessage: (payload) => {
       const parsed = BikeStatusSchema.safeParse(JSON.parse(payload));
-      console.log("parsed!!!", parsed);
+      console.log("parsed!!!", payload, parsed);
       if (parsed.success) {
         // Handle the parsed bike status update
       }
