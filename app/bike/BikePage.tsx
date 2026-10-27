@@ -186,10 +186,13 @@ export default function BikePage({
     }
   }, 1000);
 
+  const paused = speed === 0;
+  const idle = paused && sessionSeconds === 0;
+
   return (
     <div
       data-theme="dark"
-      className="flex flex-col items-center justify-center min-h-screen py-2 bg-background"
+      className={`flex flex-col items-center justify-center min-h-screen py-2 bg-background ${idle ? "opacity-0" : ""}`}
     >
       <SessionStats sessionSeconds={sessionSeconds} speed={speed} />
       <div className="flex flex-row gap-6 mt-6" {...longpress}>
