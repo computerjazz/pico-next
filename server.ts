@@ -13,6 +13,7 @@ import {
   sendMessage,
   ToggleFlipSwitchSchema,
 } from "./lib/websocket";
+import { incrementBikePulseCount } from "./lib/bike";
 
 const dev = process.env.NODE_ENV !== "production";
 console.log("dev?", dev, process.env.NODE_ENV);
@@ -118,12 +119,14 @@ async function main() {
           console.warn(`Rejected bike status: ${msg.deviceId} (bad token)`);
           return;
         }
+        const count = await incrementBikePulseCount();
         const command = JSON.stringify({
           targetId: msg.groupId,
           command: JSON.stringify({
             type: "bike-status",
             deviceId: msg.deviceId,
             status: msg.status,
+            pulseCount: count,
           }),
         });
         sendMessage({ message: command });
