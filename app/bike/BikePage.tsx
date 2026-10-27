@@ -192,7 +192,7 @@ export default function BikePage({
   return (
     <div
       data-theme="dark"
-      className={`flex flex-col items-center justify-center min-h-screen py-2 bg-background ${idle ? "opacity-0" : ""}`}
+      className={`flex flex-col items-center justify-center min-h-screen py-2 bg-background ${idle ? "opacity-10" : ""}`}
     >
       <SessionStats sessionSeconds={sessionSeconds} speed={speed} />
       <div className="flex flex-row gap-6 mt-6" {...longpress}>
