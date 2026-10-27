@@ -4,7 +4,7 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root,
-html[data-theme="light"] {
+[data-theme="light"] {
   --background: #f4f1ea;
   --foreground: #1a1714;
   --accent: #e04420;
@@ -33,7 +33,7 @@ html[data-theme="light"] {
   --font-mono: var(--font-geist-mono);
 }
 
-html[data-theme="dark"] {
+[data-theme="dark"] {
   --background: #14110f;
   --foreground: #ede8de;
   --accent: #e04420;

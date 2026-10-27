@@ -19,6 +19,15 @@ const MPS_TO_KPH = 3.6;
 const MIN_IDLE_MS = 4000; // no pulse for at least this long => speed is 0
 const SESSION_RESET_MS = 10 * 60 * 1000;
 
+function BikeStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center bg-muted-surface p-6 rounded-lg shadow-md">
+      <div className="text-lg text-muted-foreground">{label}</div>
+      <div className="text-2xl font-bold text-foreground">{value}</div>
+    </div>
+  );
+}
+
 const formatTime = (totalSeconds: number) => {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -152,15 +161,18 @@ export default function BikePage({
   }, 1000);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-2">
+    <div
+      data-theme="dark"
+      className="flex flex-col items-center justify-center min-h-screen py-2 bg-background"
+    >
       <div className="mb-6 text-center">
-        <p className="text-sm font-medium uppercase tracking-widest text-gray-500">
+        <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
           Current Session
         </p>
-        <p className="font-mono text-6xl font-bold tabular-nums tracking-tight text-gray-900">
+        <p className="font-mono text-6xl font-bold tabular-nums tracking-tight text-foreground">
           {formatTime(sessionSeconds)}
         </p>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           {speed > 0
             ? "In motion"
             : sessionSeconds > 0
@@ -168,17 +180,17 @@ export default function BikePage({
               : "Ready to ride"}
         </p>
       </div>
-      <p className="text-lg text-gray-600">
-        Total Distance: {(distanceInMeters / 1609.344).toFixed(2)} mi (
-        {(distanceInMeters / 1000).toFixed(2)} km)
-      </p>
-      <p className="text-lg text-gray-600">
-        Current Speed: {(speed * MPS_TO_MPH).toFixed(1)} mph (
-        {(speed * MPS_TO_KPH).toFixed(1)} km/h)
-      </p>
-      <p className="text-lg text-gray-600" {...longpress}>
-        Revolutions: {pulseCount}
-      </p>
+      <div className="flex flex-row gap-6 mt-6" {...longpress}>
+        <BikeStat
+          label="Total Distance"
+          value={`${(distanceInMeters / 1609.344).toFixed(2)} mi (${(distanceInMeters / 1000).toFixed(2)} km)`}
+        />
+        <BikeStat
+          label="Current Speed"
+          value={`${(speed * MPS_TO_MPH).toFixed(1)} mph (${(speed * MPS_TO_KPH).toFixed(1)} km/h)`}
+        />
+        <BikeStat label="Revolutions" value={pulseCount.toString()} />
+      </div>
       {ConfirmDialog}
     </div>
   );
