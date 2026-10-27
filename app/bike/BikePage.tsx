@@ -8,7 +8,7 @@ const BikeStatusSchema = z.object({
   pulseCount: z.number(),
 });
 
-export default function BikePage() {
+export default function BikePage({ pulseCount }: { pulseCount?: number }) {
   useSocket({
     groupId: "bike-status",
     onMessage: (payload) => {
@@ -23,6 +23,9 @@ export default function BikePage() {
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <h1 className="text-4xl font-bold mb-4">Bike Page</h1>
       <p className="text-lg text-gray-600">Welcome to the Bike Page!</p>
+      <p className="text-lg text-gray-600">
+        Current Pulse Count: {pulseCount ?? 0}
+      </p>
     </div>
   );
 }
