@@ -44,20 +44,38 @@ function SessionStats({
   sessionSeconds: number;
   speed: number;
 }) {
+  const isPaused = sessionSeconds > 0 && speed === 0;
+
+  const [blinkOn, setBlinkOn] = useState(true);
+
+  useEffect(() => {
+    const onUnpause = () => {
+      setBlinkOn(true);
+    };
+    if (!isPaused) {
+      onUnpause();
+      return;
+    }
+
+    const id = setInterval(() => {
+      setBlinkOn((prev) => !prev);
+    }, 750);
+
+    return () => clearInterval(id);
+  }, [isPaused]);
+
   return (
     <div className="mb-6 text-center">
       <p className="text-lg font-medium uppercase tracking-widest text-muted-foreground">
         Current Session
       </p>
-      <p className="font-mono text-9xl font-bold tabular-nums tracking-tight text-accent wrap-anywhere">
+      <p
+        className={`font-mono text-9xl font-bold tabular-nums tracking-tight text-accent wrap-anywhere ${!blinkOn && isPaused ? "text-accent-surface" : ""}`}
+      >
         {formatTime(sessionSeconds)}
       </p>
       <p className="mt-1 text-lg text-muted-foreground">
-        {speed > 0
-          ? "In motion"
-          : sessionSeconds > 0
-            ? "Paused"
-            : "Ready to ride"}
+        {speed > 0 ? "In motion" : isPaused ? "Paused" : "Ready to ride"}
       </p>
     </div>
   );
