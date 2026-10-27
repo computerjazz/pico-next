@@ -191,7 +191,7 @@ export default function BikePage({
 
   return (
     <div
-      data-theme="dark"
+      {...(idle ? { "data-theme": "dark" } : {})}
       className={`flex flex-col items-center justify-center min-h-screen py-2 bg-background`}
     >
       <div className={`${idle ? "opacity-10" : ""}`}>
