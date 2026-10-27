@@ -3,6 +3,9 @@ import z from "zod";
 import { useEffect, useRef, useState } from "react";
 
 import { useSocket } from "../hooks/useSocket";
+import { useLongpress } from "../hooks/useLongpress";
+import { resetBikePulseCount } from "../actions/resetBikePulseCount";
+import { useConfirm } from "../components/ConfirmDialog";
 
 const BikeStatusSchema = z.object({
   type: z.literal("bike-status"),
@@ -133,6 +136,20 @@ export default function BikePage({
   }, []);
 
   const distanceInMeters = pulseCount * METERS_PER_PULSE;
+  const { confirm, ConfirmDialog } = useConfirm();
+
+  const longpress = useLongpress(async () => {
+    const shouldReset = await confirm({
+      description: "Are you sure you want to reset biking distance?",
+      destructive: true,
+      confirmText: "Reset",
+      cancelText: "Cancel",
+    });
+
+    if (shouldReset) {
+      await resetBikePulseCount();
+    }
+  }, 1000);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
@@ -159,7 +176,10 @@ export default function BikePage({
         Current Speed: {(speed * MPS_TO_MPH).toFixed(1)} mph (
         {(speed * MPS_TO_KPH).toFixed(1)} km/h)
       </p>
-      <p className="text-lg text-gray-600">Revolutions: {pulseCount}</p>
+      <p className="text-lg text-gray-600" {...longpress}>
+        Revolutions: {pulseCount}
+      </p>
+      {ConfirmDialog}
     </div>
   );
 }
