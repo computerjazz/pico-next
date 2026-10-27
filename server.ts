@@ -69,6 +69,7 @@ async function main() {
 
     socket.on("message", async (data: Buffer) => {
       const dataStr = data.toString();
+      console.log("socket message", dataStr);
       const dataJson = JSON.parse(dataStr);
       const clientRegisterParsed = ClientRegisterSchema.safeParse(dataJson);
       const toggleStateParsed = ToggleFlipSwitchSchema.safeParse(dataJson);
@@ -83,6 +84,7 @@ async function main() {
         clientId = msg.id;
         clientToken = msg.token;
         groupId = msg.groupId;
+        console.log(`Registered client: ${clientId} in group ${groupId}`);
         addClient({
           socket,
           clientId,
