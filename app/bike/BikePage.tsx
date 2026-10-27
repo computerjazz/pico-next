@@ -15,7 +15,6 @@ const BikeStatusSchema = z.object({
 
 const METERS_PER_PULSE = 6;
 const MPS_TO_MPH = 2.23694;
-const MPS_TO_KPH = 3.6;
 const MIN_IDLE_MS = 4000; // no pulse for at least this long => speed is 0
 const SESSION_RESET_MS = 10 * 60 * 1000;
 
@@ -50,7 +49,7 @@ function SessionStats({
       <p className="text-lg font-medium uppercase tracking-widest text-muted-foreground">
         Current Session
       </p>
-      <p className="font-mono text-9xl font-bold tabular-nums tracking-tight text-accent">
+      <p className="font-mono text-9xl font-bold tabular-nums tracking-tight text-accent wrap-anywhere">
         {formatTime(sessionSeconds)}
       </p>
       <p className="mt-1 text-lg text-muted-foreground">
@@ -72,7 +71,7 @@ export default function BikePage({
   const [pulseCount, setPulseCount] = useState<number>(pulseCountProp ?? 0);
   const [speed, setSpeed] = useState<number>(0); // meters per second
 
-  const [sessionSeconds, setSessionSeconds] = useState(0);
+  const [sessionSeconds, setSessionSeconds] = useState(10);
 
   const sessionStartMs = useRef<number | null>(null);
   const accumulatedMs = useRef(0);
@@ -192,18 +191,18 @@ export default function BikePage({
   return (
     <div
       {...(idle ? { "data-theme": "dark" } : {})}
-      className={`flex flex-col items-center justify-center min-h-screen py-2 bg-background`}
+      className={`flex flex-col items-center justify-center min-h-screen py-2 bg-background px-6`}
     >
       <div className={`${idle ? "opacity-10" : ""}`}>
         <SessionStats sessionSeconds={sessionSeconds} speed={speed} />
-        <div className="flex flex-row gap-6 mt-6" {...longpress}>
+        <div className="flex flex-row gap-6 mt-6 flex-wrap" {...longpress}>
           <BikeStat
             label="Total Distance"
-            value={`${(distanceInMeters / 1609.344).toFixed(2)} mi (${(distanceInMeters / 1000).toFixed(2)} km)`}
+            value={`${(distanceInMeters / 1609.344).toFixed(2)} mi`}
           />
           <BikeStat
             label="Current Speed"
-            value={`${(speed * MPS_TO_MPH).toFixed(1)} mph (${(speed * MPS_TO_KPH).toFixed(1)} km/h)`}
+            value={`${(speed * MPS_TO_MPH).toFixed(1)} mph`}
           />
           <BikeStat label="Revolutions" value={pulseCount.toString()} />
         </div>
