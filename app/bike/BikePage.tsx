@@ -50,7 +50,7 @@ function SessionStats({
       <p className="text-lg font-medium uppercase tracking-widest text-muted-foreground">
         Current Session
       </p>
-      <p className="font-mono text-9xl font-bold tabular-nums tracking-tight text-foreground">
+      <p className="font-mono text-9xl font-bold tabular-nums tracking-tight text-accent">
         {formatTime(sessionSeconds)}
       </p>
       <p className="mt-1 text-lg text-muted-foreground">
