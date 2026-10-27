@@ -7,6 +7,7 @@ import { validateTokenDefault } from "./lib/auth";
 import { cleanupActiveJobs, getActiveJobs, getJobQueue } from "./lib/job";
 import {
   addClient,
+  BikeStatusSchema,
   ClientRegisterSchema,
   removeClient,
   sendMessage,
@@ -73,6 +74,8 @@ async function main() {
       const dataJson = JSON.parse(dataStr);
       const clientRegisterParsed = ClientRegisterSchema.safeParse(dataJson);
       const toggleStateParsed = ToggleFlipSwitchSchema.safeParse(dataJson);
+      const bikeStatusParsed = BikeStatusSchema.safeParse(dataJson);
+
       if (clientRegisterParsed.success) {
         const msg = clientRegisterParsed.data;
         const isValid = await validateTokenDefault(msg.token);
@@ -106,6 +109,24 @@ async function main() {
           },
           body: JSON.stringify(msg),
         });
+      }
+
+      if (bikeStatusParsed.success) {
+        const msg = bikeStatusParsed.data;
+        const isValid = await validateTokenDefault(msg.token);
+        if (!isValid) {
+          console.warn(`Rejected bike status: ${msg.deviceId} (bad token)`);
+          return;
+        }
+        const command = JSON.stringify({
+          targetId: msg.groupId,
+          command: JSON.stringify({
+            type: "bike-status",
+            deviceId: msg.deviceId,
+            status: msg.status,
+          }),
+        });
+        sendMessage({ message: command });
       }
     });
 

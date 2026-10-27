@@ -21,6 +21,14 @@ export const ToggleFlipSwitchSchema = z.object({
   token: z.string(),
 });
 
+export const BikeStatusSchema = z.object({
+  type: z.literal("bike-status"),
+  deviceId: z.string(),
+  groupId: z.string(),
+  status: z.record(z.string(), z.any()).optional().nullable(),
+  token: z.string(),
+});
+
 type SocketGroup = Map<string, WebSocket>;
 const clients = new Map<string, SocketGroup>();
 
