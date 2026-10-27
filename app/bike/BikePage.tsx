@@ -22,8 +22,8 @@ const SESSION_RESET_MS = 10 * 60 * 1000;
 function BikeStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col items-center justify-center bg-muted-surface p-6 rounded-lg shadow-md">
-      <div className="text-lg text-muted-foreground">{label}</div>
-      <div className="text-2xl font-bold text-foreground">{value}</div>
+      <div className="text-2xl text-muted-foreground">{label}</div>
+      <div className="text-4xl font-bold text-foreground">{value}</div>
     </div>
   );
 }
@@ -37,6 +37,32 @@ const formatTime = (totalSeconds: number) => {
     .map((n) => String(n).padStart(2, "0"))
     .join(":");
 };
+
+function SessionStats({
+  sessionSeconds,
+  speed,
+}: {
+  sessionSeconds: number;
+  speed: number;
+}) {
+  return (
+    <div className="mb-6 text-center">
+      <p className="text-lg font-medium uppercase tracking-widest text-muted-foreground">
+        Current Session
+      </p>
+      <p className="font-mono text-9xl font-bold tabular-nums tracking-tight text-foreground">
+        {formatTime(sessionSeconds)}
+      </p>
+      <p className="mt-1 text-lg text-muted-foreground">
+        {speed > 0
+          ? "In motion"
+          : sessionSeconds > 0
+            ? "Paused"
+            : "Ready to ride"}
+      </p>
+    </div>
+  );
+}
 
 export default function BikePage({
   pulseCount: pulseCountProp,
@@ -165,21 +191,7 @@ export default function BikePage({
       data-theme="dark"
       className="flex flex-col items-center justify-center min-h-screen py-2 bg-background"
     >
-      <div className="mb-6 text-center">
-        <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
-          Current Session
-        </p>
-        <p className="font-mono text-6xl font-bold tabular-nums tracking-tight text-foreground">
-          {formatTime(sessionSeconds)}
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {speed > 0
-            ? "In motion"
-            : sessionSeconds > 0
-              ? "Paused"
-              : "Ready to ride"}
-        </p>
-      </div>
+      <SessionStats sessionSeconds={sessionSeconds} speed={speed} />
       <div className="flex flex-row gap-6 mt-6" {...longpress}>
         <BikeStat
           label="Total Distance"
