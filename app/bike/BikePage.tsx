@@ -70,7 +70,7 @@ function SessionStats({
         Current Session
       </p>
       <p
-        className={`font-mono text-9xl font-bold tabular-nums tracking-tight text-accent wrap-anywhere ${!blinkOn && isPaused ? "text-accent-surface" : ""}`}
+        className={`font-mono text-9xl font-bold tabular-nums tracking-tight wrap-anywhere ${!blinkOn && isPaused ? "text-accent-surface" : "text-accent"}`}
       >
         {formatTime(sessionSeconds)}
       </p>
