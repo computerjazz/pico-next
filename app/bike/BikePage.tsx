@@ -14,6 +14,17 @@ const METERS_PER_PULSE = 6;
 const MPS_TO_MPH = 2.23694;
 const MPS_TO_KPH = 3.6;
 const MIN_IDLE_MS = 4000; // no pulse for at least this long => speed is 0
+const SESSION_RESET_MS = 10 * 60 * 1000;
+
+const formatTime = (totalSeconds: number) => {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return [hours, minutes, seconds]
+    .map((n) => String(n).padStart(2, "0"))
+    .join(":");
+};
 
 export default function BikePage({
   pulseCount: pulseCountProp,
@@ -22,6 +33,12 @@ export default function BikePage({
 }) {
   const [pulseCount, setPulseCount] = useState<number>(pulseCountProp ?? 0);
   const [speed, setSpeed] = useState<number>(0); // meters per second
+
+  const [sessionSeconds, setSessionSeconds] = useState(0);
+
+  const sessionStartMs = useRef<number | null>(null);
+  const accumulatedMs = useRef(0);
+  const stoppedAtMs = useRef<number | null>(null);
 
   // Refs hold the previous message so the handler never reads stale state
   const last = useRef<{ count: number; ts: number } | null>(null);
@@ -60,6 +77,49 @@ export default function BikePage({
     },
   });
 
+  useEffect(() => {
+    const id = setInterval(() => {
+      const now = Date.now();
+
+      if (speed > 0) {
+        // Resume a paused session, or start a new one.
+        if (sessionStartMs.current === null) {
+          sessionStartMs.current = now;
+        }
+
+        stoppedAtMs.current = null;
+
+        setSessionSeconds(
+          Math.floor(
+            (accumulatedMs.current + (now - sessionStartMs.current)) / 1000,
+          ),
+        );
+      } else {
+        // Freeze the elapsed time when motion stops.
+        if (sessionStartMs.current !== null) {
+          accumulatedMs.current += now - sessionStartMs.current;
+          sessionStartMs.current = null;
+          stoppedAtMs.current = now;
+
+          setSessionSeconds(Math.floor(accumulatedMs.current / 1000));
+        }
+
+        // Reset after 10 minutes stopped.
+        if (
+          stoppedAtMs.current !== null &&
+          now - stoppedAtMs.current >= SESSION_RESET_MS
+        ) {
+          accumulatedMs.current = 0;
+          sessionStartMs.current = null;
+          stoppedAtMs.current = null;
+          setSessionSeconds(0);
+        }
+      }
+    }, 250);
+
+    return () => clearInterval(id);
+  }, [speed]);
+
   // No messages arrive when you stop pedaling, so decay the speed to 0 on a timer
   useEffect(() => {
     const id = setInterval(() => {
@@ -76,7 +136,21 @@ export default function BikePage({
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
-      <h1 className="text-4xl font-bold mb-4">Bike Page</h1>
+      <div className="mb-6 text-center">
+        <p className="text-sm font-medium uppercase tracking-widest text-gray-500">
+          Current Session
+        </p>
+        <p className="font-mono text-6xl font-bold tabular-nums tracking-tight text-gray-900">
+          {formatTime(sessionSeconds)}
+        </p>
+        <p className="mt-1 text-sm text-gray-500">
+          {speed > 0
+            ? "In motion"
+            : sessionSeconds > 0
+              ? "Paused"
+              : "Ready to ride"}
+        </p>
+      </div>
       <p className="text-lg text-gray-600">
         Total Distance: {(distanceInMeters / 1609.344).toFixed(2)} mi (
         {(distanceInMeters / 1000).toFixed(2)} km)
@@ -85,7 +159,7 @@ export default function BikePage({
         Current Speed: {(speed * MPS_TO_MPH).toFixed(1)} mph (
         {(speed * MPS_TO_KPH).toFixed(1)} km/h)
       </p>
-      <p className="text-lg text-gray-600">Pulse Count: {pulseCount}</p>
+      <p className="text-lg text-gray-600">Revolutions: {pulseCount}</p>
     </div>
   );
 }
