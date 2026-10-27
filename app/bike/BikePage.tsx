@@ -192,21 +192,23 @@ export default function BikePage({
   return (
     <div
       data-theme="dark"
-      className={`flex flex-col items-center justify-center min-h-screen py-2 bg-background ${idle ? "opacity-10" : ""}`}
+      className={`flex flex-col items-center justify-center min-h-screen py-2 bg-background`}
     >
-      <SessionStats sessionSeconds={sessionSeconds} speed={speed} />
-      <div className="flex flex-row gap-6 mt-6" {...longpress}>
-        <BikeStat
-          label="Total Distance"
-          value={`${(distanceInMeters / 1609.344).toFixed(2)} mi (${(distanceInMeters / 1000).toFixed(2)} km)`}
-        />
-        <BikeStat
-          label="Current Speed"
-          value={`${(speed * MPS_TO_MPH).toFixed(1)} mph (${(speed * MPS_TO_KPH).toFixed(1)} km/h)`}
-        />
-        <BikeStat label="Revolutions" value={pulseCount.toString()} />
+      <div className={`${idle ? "opacity-10" : ""}`}>
+        <SessionStats sessionSeconds={sessionSeconds} speed={speed} />
+        <div className="flex flex-row gap-6 mt-6" {...longpress}>
+          <BikeStat
+            label="Total Distance"
+            value={`${(distanceInMeters / 1609.344).toFixed(2)} mi (${(distanceInMeters / 1000).toFixed(2)} km)`}
+          />
+          <BikeStat
+            label="Current Speed"
+            value={`${(speed * MPS_TO_MPH).toFixed(1)} mph (${(speed * MPS_TO_KPH).toFixed(1)} km/h)`}
+          />
+          <BikeStat label="Revolutions" value={pulseCount.toString()} />
+        </div>
+        {ConfirmDialog}
       </div>
-      {ConfirmDialog}
     </div>
   );
 }
