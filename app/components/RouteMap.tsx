@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-//@ts-expect-error leaflet has no types for the default export, only the named exports
 import "leaflet/dist/leaflet.css";
 import { splitRouteAtDistance, useMapContext } from "./MapProvider";
 import { CircleMarker, Polyline } from "leaflet";
