@@ -1,28 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 //@ts-expect-error leaflet has no types for the default export, only the named exports
 import "leaflet/dist/leaflet.css";
 import { splitRouteAtDistance, useMapContext } from "./MapProvider";
 import { CircleMarker, Polyline } from "leaflet";
 import { useBikeSession } from "./BIkeSessionProvider";
-
-const panelStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 8,
-  right: 8,
-  zIndex: 1000,
-  width: 290,
-  maxWidth: "calc(100% - 16px)",
-  maxHeight: "calc(100% - 16px)",
-  overflowY: "auto",
-  background: "rgba(255,255,255,0.96)",
-  color: "#111",
-  padding: 10,
-  borderRadius: 6,
-  fontSize: 13,
-  boxShadow: "0 1px 6px rgba(0,0,0,0.3)",
-};
 
 const buttonStyle: React.CSSProperties = {
   padding: "5px 10px",
@@ -51,34 +34,36 @@ function SearchPanel() {
     busy,
     clearAll,
   } = useMapContext();
+
   return (
-    <div ref={panelRef} style={panelStyle}>
-      <form onSubmit={search} style={{ display: "flex" }}>
+    <div
+      ref={panelRef}
+      className="absolute top-2 right-2 z-1000 w-[290px] max-w-[calc(100%-16px)] max-h-[calc(100%-16px)] overflow-y-auto bg-background text-foreground p-2 rounded-md text-sm shadow-md"
+    >
+      <form onSubmit={search} className="flex">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search an address or place"
-          style={{
-            flex: 1,
-            minWidth: 0,
-            padding: "5px 6px",
-            fontSize: 13,
-            marginRight: 6,
-          }}
+          className="flex-1 min-w-0 p-1 text-sm mr-1"
         />
-        <button type="submit" disabled={busy} style={buttonStyle}>
+        <button
+          type="submit"
+          disabled={busy}
+          className="bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
+        >
           Search
         </button>
       </form>
 
       {results.length > 0 && (
-        <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none" }}>
+        <ul className="m-0 p-0 list-none">
           {results.map((r) => (
-            <li key={r.place_id} style={{ marginBottom: 4 }}>
+            <li key={r.place_id} className="mb-1">
               <button
                 type="button"
                 onClick={() => pickResult(r)}
-                style={{ ...buttonStyle, width: "100%", textAlign: "left" }}
+                className="text-left w-full p-1 rounded hover:bg-muted-surface transition-colors"
               >
                 {r.display_name}
               </button>
@@ -87,15 +72,17 @@ function SearchPanel() {
         </ul>
       )}
 
-      <div style={{ marginTop: 10, fontWeight: 600 }}>Route stops</div>
+      <div className="font-bold" className="mt-2">
+        Route stops
+      </div>
       {waypoints.length === 0 ? (
-        <div style={{ color: "#555", marginTop: 4 }}>
+        <div className="text-muted-foreground text-sm mt-1">
           Search for a place or click the map to add the first stop.
         </div>
       ) : (
-        <ol style={{ margin: "4px 0 0", paddingLeft: 20 }}>
+        <ol className="m-0 p-0">
           {waypoints.map((w) => (
-            <li key={w.id} style={{ marginBottom: 3 }}>
+            <li key={w.id} className="mb-1">
               <span
                 style={{
                   display: "inline-block",
@@ -143,12 +130,8 @@ function SearchPanel() {
           {(route.distanceM / 1609.344).toFixed(2)} mi)
         </div>
       )}
-      {message && (
-        <div style={{ marginTop: 8, color: "#b00020" }}>{message}</div>
-      )}
-      <div style={{ marginTop: 8, color: "#555", fontSize: 12 }}>
-        {locStatus}
-      </div>
+      {message && <div className="text-destructive">{message}</div>}
+      <div className="mt-2 text-xs text-muted-foreground">{locStatus}</div>
     </div>
   );
 }
