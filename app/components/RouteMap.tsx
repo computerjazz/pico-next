@@ -133,16 +133,20 @@ export default function RouteMap() {
 
   // --- Paint distance traveled along the route -------------------------------
   useEffect(() => {
-    console.log("painting route progress", { traveledM, route });
     const L = leafletRef.current;
     const map = mapRef.current;
-    if (!ready || !L || !map) {
-      console.log("not ready, skipping route progress paint");
-      return;
+    if (!ready || !L || !map) return;
+
+    // The map is recreated on remount (init() bumps initSentinel), so layers from a
+    // previous map instance are dead. Forget any that aren't on the current map.
+    if (progressLineRef.current && !map.hasLayer(progressLineRef.current)) {
+      progressLineRef.current = null;
+    }
+    if (riderRef.current && !map.hasLayer(riderRef.current)) {
+      riderRef.current = null;
     }
 
     if (!route) {
-      console.log("No route, clearing progress line and rider");
       progressLineRef.current?.remove();
       riderRef.current?.remove();
       progressLineRef.current = null;
@@ -154,8 +158,10 @@ export default function RouteMap() {
 
     // Update in place rather than recreating layers on every pulse
     if (progressLineRef.current) {
+      console.log("Updating progress line to", p.traveled);
       progressLineRef.current.setLatLngs(p.traveled);
     } else {
+      console.log("Creating progress line at", p.traveled);
       progressLineRef.current = L.polyline(p.traveled, {
         color: "#f97316",
         opacity: 1,
