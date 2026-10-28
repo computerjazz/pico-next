@@ -14,7 +14,6 @@ export const DEFAULT_ZOOM = 15;
 
 function useMapState({ route: initialRoute }: { route: BuiltRoute | null }) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const leafletRef = useRef<typeof import("leaflet") | null>(null);
   const waypointLayerRef = useRef<LayerGroup | null>(null);
@@ -99,18 +98,60 @@ function useMapState({ route: initialRoute }: { route: BuiltRoute | null }) {
     }
   });
 
-  // --- Map setup + live location -------------------------------------------
+  // --- Draw the built route ------------------------------------------------
   useEffect(() => {
+    const L = leafletRef.current;
+    const map = mapRef.current;
+    if (!ready || !L || !map) return;
+    routeLineRef.current?.remove();
+    routeLineRef.current = null;
+    if (!route) return;
+    const line = L.polyline(route.coordinates, {
+      color: "#2563eb",
+      weight: 5,
+      opacity: 0.5,
+    }).addTo(map);
+    routeLineRef.current = line;
+    map.fitBounds(line.getBounds(), { padding: [40, 40] });
+  }, [route, ready, initSentinel]);
+
+  // --- Draw numbered waypoint markers --------------------------------------
+  useEffect(() => {
+    const L = leafletRef.current;
+    const layer = waypointLayerRef.current;
+    if (!ready || !L || !layer) return;
+    layer.clearLayers();
+    waypoints.forEach((w, i) => {
+      L.marker(w.latlng, {
+        icon: L.divIcon({
+          className: "",
+          html: `<div style="width:24px;height:24px;line-height:24px;text-align:center;border-radius:50%;background:#111;color:#fff;border:2px solid #fff;font:600 12px sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.5)"><span>${i + 1}</span></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        }),
+      }).addTo(layer);
+    });
+  }, [waypoints, ready, initSentinel]);
+
+  const mapCleanupRef = useRef<(() => void) | null>(null);
+
+  // --- Map setup + live location -------------------------------------------
+  // React calls this with null when the div unmounts, and with the element when it mounts
+  const containerRef = useStableCallback((el: HTMLDivElement | null) => {
+    // Tear down whatever map this ref was previously attached to
+    mapCleanupRef.current?.();
+    mapCleanupRef.current = null;
+    if (!el) return;
+
+    let cancelled = false;
     let map: LeafletMap | undefined;
     let watchId: number | undefined;
-    let cancelled = false;
 
     (async () => {
-      // Imported inside the effect so Leaflet never runs during SSR
       const L = (await import("leaflet")).default;
-      if (cancelled || !containerRef.current) return;
+      if (cancelled) return; // unmounted while Leaflet was loading
 
-      map = L.map(containerRef.current).setView(FALLBACK_CENTER, DEFAULT_ZOOM);
+      map = L.map(el).setView(FALLBACK_CENTER, DEFAULT_ZOOM);
       mapRef.current = map;
       leafletRef.current = L;
 
@@ -168,51 +209,20 @@ function useMapState({ route: initialRoute }: { route: BuiltRoute | null }) {
         (err) => setLocStatus(`Location unavailable: ${err.message}`),
         { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 },
       );
+
+      setReady(true);
     })();
 
-    return () => {
+    mapCleanupRef.current = () => {
       cancelled = true;
       if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
       map?.remove();
       mapRef.current = null;
+      waypointLayerRef.current = null;
+      routeLineRef.current = null;
       setReady(false);
     };
-  }, [addWaypoint, initSentinel]);
-
-  // --- Draw the built route ------------------------------------------------
-  useEffect(() => {
-    const L = leafletRef.current;
-    const map = mapRef.current;
-    if (!ready || !L || !map) return;
-    routeLineRef.current?.remove();
-    routeLineRef.current = null;
-    if (!route) return;
-    const line = L.polyline(route.coordinates, {
-      color: "#2563eb",
-      weight: 5,
-      opacity: 0.5,
-    }).addTo(map);
-    routeLineRef.current = line;
-    map.fitBounds(line.getBounds(), { padding: [40, 40] });
-  }, [route, ready, initSentinel]);
-
-  // --- Draw numbered waypoint markers --------------------------------------
-  useEffect(() => {
-    const L = leafletRef.current;
-    const layer = waypointLayerRef.current;
-    if (!ready || !L || !layer) return;
-    layer.clearLayers();
-    waypoints.forEach((w, i) => {
-      L.marker(w.latlng, {
-        icon: L.divIcon({
-          className: "",
-          html: `<div style="width:24px;height:24px;line-height:24px;text-align:center;border-radius:50%;background:#111;color:#fff;border:2px solid #fff;font:600 12px sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.5)"><span>${i + 1}</span></div>`,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-        }),
-      }).addTo(layer);
-    });
-  }, [waypoints, ready, initSentinel]);
+  });
 
   return {
     ready,
