@@ -16,6 +16,9 @@ const MIN_IDLE_MS = 4000; // no pulse for at least this long => speed is 0
 const SESSION_RESET_MS = 10 * 60 * 1000;
 const MPS_TO_MPH = 2.23694;
 
+const IS_TESTING =
+  typeof "window" !== undefined && window.location.origin.includes("localhost");
+
 function useBikeSessionData({
   pulseCount: pulseCountProp,
 }: {
@@ -33,12 +36,37 @@ function useBikeSessionData({
 
   // Refs hold the previous message so the handler never reads stale state
   const last = useRef<{ count: number; ts: number } | null>(null);
-  const lastArrivalMs = useRef(0); // local clock, used only to detect "stopped"
   const lastIntervalMs = useRef(0);
   const pulseCountRef = useRef(pulseCount);
 
   useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (IS_TESTING) {
+      interval = setInterval(() => {
+        setPulseCount((pc) => pc + 1);
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    const prev = last.current;
+    const timestamp = Date.now();
+    last.current = { count: pulseCount, ts: timestamp };
     pulseCountRef.current = pulseCount;
+
+    // First message has nothing to compare against
+    if (!prev) return;
+
+    const seconds = (timestamp - prev.ts) / 1000; // new minus old, both from the message
+    const pulses = pulseCount - prev.count; // new minus old
+    if (seconds > 0 && pulses > 0) {
+      lastIntervalMs.current = seconds * 1000;
+      setSpeed((pulses * METERS_PER_PULSE) / seconds);
+    }
   }, [pulseCount]);
 
   useSocket({
@@ -52,24 +80,8 @@ function useBikeSessionData({
       }
       const parsed = BikeStatusSchema.safeParse(json);
       if (!parsed.success) return;
-
-      const { pulseCount: count, timestamp: ts } = parsed.data;
-      const prev = last.current;
-
-      last.current = { count, ts };
-      lastArrivalMs.current = Date.now();
+      const { pulseCount: count } = parsed.data;
       setPulseCount(count);
-
-      // First message has nothing to compare against
-      if (!prev) return;
-
-      const seconds = (ts - prev.ts) / 1000; // new minus old, both from the message
-      const pulses = count - prev.count; // new minus old
-      if (seconds > 0 && pulses > 0) {
-        lastIntervalMs.current = seconds * 1000;
-        setSpeed((pulses * METERS_PER_PULSE) / seconds);
-      }
-      // pulses <= 0 means the ESP32 restarted and its counter reset: skip
     },
   });
 
@@ -121,7 +133,7 @@ function useBikeSessionData({
   useEffect(() => {
     const id = setInterval(() => {
       if (!last.current) return;
-      const idleMs = Date.now() - lastArrivalMs.current;
+      const idleMs = Date.now() - last.current.ts;
       if (idleMs > Math.max(MIN_IDLE_MS, lastIntervalMs.current * 2)) {
         setSpeed(0);
       }
