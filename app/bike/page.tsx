@@ -1,8 +1,5 @@
-import { getRedis, REDIS_KEYS } from "@/lib/redis";
-import BikePage from "./BikePage";
+import { redirect } from "next/navigation";
 
-export default async function Page() {
-  const redis = await getRedis();
-  const pulseCount = await redis.get(REDIS_KEYS.BIKE_PULSE_COUNT);
-  return <BikePage pulseCount={parseInt(pulseCount ?? "0")} />;
+export default function BikeIndex() {
+  redirect("/bike/stats");
 }

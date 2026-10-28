@@ -1,11 +1,7 @@
-"use client";
-import z from "zod";
 import { useEffect, useRef, useState } from "react";
-
 import { useSocket } from "../hooks/useSocket";
-import { useLongpress } from "../hooks/useLongpress";
-import { resetBikePulseCount } from "../actions/resetBikePulseCount";
-import { useConfirm } from "../components/ConfirmDialog";
+import z from "zod";
+import React from "react";
 
 const BikeStatusSchema = z.object({
   type: z.literal("bike-status"),
@@ -14,74 +10,11 @@ const BikeStatusSchema = z.object({
 });
 
 const METERS_PER_PULSE = 6;
-const MPS_TO_MPH = 2.23694;
 const MIN_IDLE_MS = 4000; // no pulse for at least this long => speed is 0
 const SESSION_RESET_MS = 10 * 60 * 1000;
+const MPS_TO_MPH = 2.23694;
 
-function BikeStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center bg-muted-surface p-6 rounded-lg shadow-md">
-      <div className="text-2xl text-muted-foreground">{label}</div>
-      <div className="text-4xl font-bold text-foreground">{value}</div>
-    </div>
-  );
-}
-
-const formatTime = (totalSeconds: number) => {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  return [hours, minutes, seconds]
-    .map((n) => String(n).padStart(2, "0"))
-    .join(":");
-};
-
-function SessionStats({
-  sessionSeconds,
-  speed,
-}: {
-  sessionSeconds: number;
-  speed: number;
-}) {
-  const isPaused = sessionSeconds > 0 && speed === 0;
-
-  const [blinkOn, setBlinkOn] = useState(true);
-
-  useEffect(() => {
-    const onUnpause = () => {
-      setBlinkOn(true);
-    };
-    if (!isPaused) {
-      onUnpause();
-      return;
-    }
-
-    const id = setInterval(() => {
-      setBlinkOn((prev) => !prev);
-    }, 750);
-
-    return () => clearInterval(id);
-  }, [isPaused]);
-
-  return (
-    <div className="mb-6 text-center">
-      <p className="text-lg font-medium uppercase tracking-widest text-muted-foreground">
-        Current Session
-      </p>
-      <p
-        className={`font-mono text-9xl font-bold tabular-nums tracking-tight wrap-anywhere ${!blinkOn && isPaused ? "text-accent-surface" : "text-accent"}`}
-      >
-        {formatTime(sessionSeconds)}
-      </p>
-      <p className="mt-1 text-lg text-muted-foreground">
-        {speed > 0 ? "In motion" : isPaused ? "Paused" : "Ready to ride"}
-      </p>
-    </div>
-  );
-}
-
-export default function BikePage({
+function useBikeSessionData({
   pulseCount: pulseCountProp,
 }: {
   pulseCount?: number;
@@ -188,44 +121,44 @@ export default function BikePage({
   }, []);
 
   const distanceInMeters = pulseCount * METERS_PER_PULSE;
-  const { confirm, ConfirmDialog } = useConfirm();
 
-  const longpress = useLongpress(async () => {
-    const shouldReset = await confirm({
-      description: "Are you sure you want to reset biking distance?",
-      destructive: true,
-      confirmText: "Reset",
-      cancelText: "Cancel",
-    });
+  return {
+    distanceInMeters,
+    speedInMph: speed * MPS_TO_MPH,
+    sessionSeconds,
+    pulseCount,
+    speed,
+  };
+}
 
-    if (shouldReset) {
-      await resetBikePulseCount();
-    }
-  }, 1000);
+type BikeSessionData = ReturnType<typeof useBikeSessionData>;
 
-  const paused = speed === 0;
-  const idle = paused && sessionSeconds === 0;
+const BikeSessionContext = React.createContext<BikeSessionData | undefined>(
+  undefined,
+);
+
+export const BikeSessionProvider = ({
+  pulseCount,
+  children,
+}: {
+  pulseCount?: number;
+  children: React.ReactNode;
+}) => {
+  const sessionData = useBikeSessionData({ pulseCount });
 
   return (
-    <div
-      {...(idle ? { "data-theme": "dark" } : {})}
-      className={`flex flex-col items-center justify-center min-h-screen py-2 bg-background px-6`}
-    >
-      <div className={`${idle ? "opacity-10" : ""}`}>
-        <SessionStats sessionSeconds={sessionSeconds} speed={speed} />
-        <div className="flex flex-row gap-6 mt-6 flex-wrap" {...longpress}>
-          <BikeStat
-            label="Total Distance"
-            value={`${(distanceInMeters / 1609.344).toFixed(2)} mi`}
-          />
-          <BikeStat
-            label="Current Speed"
-            value={`${(speed * MPS_TO_MPH).toFixed(1)} mph`}
-          />
-          <BikeStat label="Revolutions" value={pulseCount.toString()} />
-        </div>
-        {ConfirmDialog}
-      </div>
-    </div>
+    <BikeSessionContext.Provider value={sessionData}>
+      {children}
+    </BikeSessionContext.Provider>
   );
+};
+
+export function useBikeSession() {
+  const ctx = React.useContext(BikeSessionContext);
+  if (!ctx) {
+    throw new Error(
+      "useBikeSession() must be called within a BikeSessionProvider!",
+    );
+  }
+  return ctx;
 }
