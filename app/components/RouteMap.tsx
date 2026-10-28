@@ -6,17 +6,6 @@ import "leaflet/dist/leaflet.css";
 import { splitRouteAtDistance, useMapContext } from "./MapProvider";
 import { CircleMarker, Polyline } from "leaflet";
 import { useBikeSession } from "./BIkeSessionProvider";
-
-const buttonStyle: React.CSSProperties = {
-  padding: "5px 10px",
-  fontSize: 13,
-  border: "1px solid #999",
-  borderRadius: 4,
-  background: "#f3f3f3",
-  color: "#111",
-  cursor: "pointer",
-};
-
 function SearchPanel() {
   const {
     panelRef,
@@ -72,9 +61,7 @@ function SearchPanel() {
         </ul>
       )}
 
-      <div className="font-bold" className="mt-2">
-        Route stops
-      </div>
+      <div className="font-bold mt-2">Route stops</div>
       {waypoints.length === 0 ? (
         <div className="text-muted-foreground text-sm mt-1">
           Search for a place or click the map to add the first stop.
@@ -83,20 +70,13 @@ function SearchPanel() {
         <ol className="m-0 p-0">
           {waypoints.map((w) => (
             <li key={w.id} className="mb-1">
-              <span
-                style={{
-                  display: "inline-block",
-                  maxWidth: 190,
-                  verticalAlign: "top",
-                }}
-              >
+              <span className="inline-block max-w-[190px] align-top">
                 {w.label}
               </span>{" "}
               <button
                 type="button"
                 onClick={() => removeWaypoint(w.id)}
                 aria-label={`Remove stop ${w.label}`}
-                style={{ ...buttonStyle, padding: "0 6px" }}
               >
                 ×
               </button>
@@ -105,12 +85,12 @@ function SearchPanel() {
         </ol>
       )}
 
-      <div style={{ marginTop: 10, display: "flex" }}>
+      <div className="flex gap-2 mt-2">
         <button
           type="button"
           onClick={buildRoute}
           disabled={busy || waypoints.length < 2}
-          style={{ ...buttonStyle, marginRight: 6 }}
+          className="bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
         >
           Build bike route
         </button>
@@ -118,7 +98,7 @@ function SearchPanel() {
           type="button"
           onClick={clearAll}
           disabled={waypoints.length === 0}
-          style={buttonStyle}
+          className="bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
         >
           Clear
         </button>
