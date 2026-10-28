@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BikeSessionProvider } from "../components/BIkeSessionProvider";
+import { MapProvider } from "../components/MapProvider";
 
 const tabs = [
   { name: "Stats", href: "/bike/stats" },
@@ -48,18 +49,19 @@ export default function BikeTabs({
   const [currentTab, setCurrentTab] = useState(path);
 
   useEffect(() => {
-    console.log("Path changed:", path);
     setCurrentTab(path);
   }, [path]);
 
   return (
     <BikeSessionProvider pulseCount={pulseCount}>
-      <div className="flex flex-1 flex-col h-full w-full min-h-screen">
-        <div className="flex flex-1">{children}</div>
-        <div className="flex justify-center border-t border-muted-surface">
-          <TabBar currentTab={currentTab} setCurrentTab={setCurrentTab} />
+      <MapProvider>
+        <div className="flex flex-1 flex-col h-full w-full min-h-screen">
+          <div className="flex flex-1">{children}</div>
+          <div className="flex justify-center border-t border-muted-surface">
+            <TabBar currentTab={currentTab} setCurrentTab={setCurrentTab} />
+          </div>
         </div>
-      </div>
+      </MapProvider>
     </BikeSessionProvider>
   );
 }
