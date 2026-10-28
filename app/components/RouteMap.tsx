@@ -85,19 +85,19 @@ function SearchPanel({
       {isExpanded && (
         <div
           ref={panelRef}
-          className={`absolute top-12 right-12 z-1000 flex flex-col w-[290px] max-w-[calc(100%-16px)] max-h-[calc(100%-16px)] overflow-y-auto bg-background shadow-md text-foreground p-2 rounded-md text-sm`}
+          className={`absolute top-14 right-16 z-1000 flex flex-col w-[290px] max-w-[calc(100%-16px)] max-h-[calc(100%-16px)] overflow-y-auto bg-background shadow-md text-foreground p-4 rounded-md text-sm`}
         >
           <form onSubmit={search} className="flex">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search an address or place"
+              placeholder="Address or place"
               className="flex-1 min-w-0 p-1 text-sm mr-1"
             />
             <button
               type="submit"
               disabled={busy}
-              className="bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
+              className="bg-background cursor-pointer text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
             >
               Search
             </button>
@@ -127,12 +127,16 @@ function SearchPanel({
           ) : (
             <ol className="m-0 p-0">
               {waypoints.map((w) => (
-                <li key={w.id} className="mb-1">
+                <li
+                  key={w.id}
+                  className="mb-1 p-4 rounded-md bg-surface flex justify-between"
+                >
                   <span className="inline-block max-w-[190px] align-top">
                     {w.label}
                   </span>{" "}
                   <button
                     type="button"
+                    className="cursor-pointer border-1 w-6 h-6 flex justify-center align-middle rounded-md aspect-square"
                     onClick={() => removeWaypoint(w.id)}
                     aria-label={`Remove stop ${w.label}`}
                   >
