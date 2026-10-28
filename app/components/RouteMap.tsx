@@ -172,7 +172,7 @@ function RouteStats() {
   const pct = totalDistanceM / routeDistanceM;
   return (
     <div>
-      <span>{`${totalDistanceM.toFixed()}m / ${routeDistanceM.toFixed()}m ${(pct * 100).toFixed(2)}%`}</span>
+      <span>{`${totalDistanceM.toFixed()}m / ${routeDistanceM.toFixed()}m (${(pct * 100).toFixed(2)}%)`}</span>
     </div>
   );
 }
