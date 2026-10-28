@@ -5,6 +5,7 @@ import { useLongpress } from "../../hooks/useLongpress";
 import { resetBikePulseCount } from "../../actions/resetBikePulseCount";
 import { useConfirm } from "../../components/ConfirmDialog";
 import { useBikeSession } from "@/app/components/BikeSessionProvider";
+import { formatTime } from "../utils";
 
 function BikeStat({ label, value }: { label: string; value: string }) {
   return (
@@ -14,16 +15,6 @@ function BikeStat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
-const formatTime = (totalSeconds: number) => {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  return [hours, minutes, seconds]
-    .map((n) => String(n).padStart(2, "0"))
-    .join(":");
-};
 
 function SessionStats({
   sessionSeconds,

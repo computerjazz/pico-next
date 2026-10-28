@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import { splitRouteAtDistance, useMapContext } from "./MapProvider";
-import { CircleMarker, Polyline } from "leaflet";
+import { CircleMarker, LeafletMouseEvent, Polyline } from "leaflet";
 import { useBikeSession } from "./BikeSessionProvider";
 
 const FOLLOW_ZOOM = 18; // OSM tiles go to 19; 17 is a bit wider
@@ -15,6 +15,7 @@ function SearchPanel({
   follow?: boolean;
   onFollow?: () => void;
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const {
     panelRef,
     query,
@@ -30,111 +31,139 @@ function SearchPanel({
     locStatus,
     busy,
     clearAll,
+    mapRef,
+    addWaypoint,
   } = useMapContext();
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const handler = (e: LeafletMouseEvent) => {
+      if (!isExpanded) return;
+      const { lat, lng } = e.latlng;
+      addWaypoint([lat, lng], `Point (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+    };
+    map?.on("click", handler);
+
+    return () => {
+      map?.removeEventListener("click", handler);
+    };
+  }, [isExpanded, mapRef, addWaypoint]);
 
   return (
     <div
       ref={panelRef}
-      className="absolute top-2 right-2 z-1000 w-[290px] max-w-[calc(100%-16px)] max-h-[calc(100%-16px)] overflow-y-auto bg-background text-foreground p-2 rounded-md text-sm shadow-md"
+      className={`absolute top-2 right-2 z-1000 max-w-[290px] max-w-[calc(100%-16px)] max-h-[calc(100%-16px)] overflow-y-auto ${isExpanded ? "bg-background" : ""} text-foreground p-2 rounded-md text-sm shadow-md`}
     >
-      <form onSubmit={search} className="flex">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search an address or place"
-          className="flex-1 min-w-0 p-1 text-sm mr-1"
-        />
-        <button
-          type="submit"
-          disabled={busy}
-          className="bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
-        >
-          Search
-        </button>
-      </form>
+      <button
+        type="button"
+        onClick={() => setIsExpanded((prev) => !prev)}
+        className="bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
+      >
+        {isExpanded ? "x" : "RTE"}
+      </button>
 
-      {results.length > 0 && (
-        <ul className="m-0 p-0 list-none">
-          {results.map((r) => (
-            <li key={r.place_id} className="mb-1">
-              <button
-                type="button"
-                onClick={() => pickResult(r)}
-                className="text-left w-full p-1 rounded hover:bg-muted-surface transition-colors"
-              >
-                {r.display_name}
-              </button>
-            </li>
-          ))}
-        </ul>
+      {isExpanded && (
+        <>
+          <form onSubmit={search} className="flex">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search an address or place"
+              className="flex-1 min-w-0 p-1 text-sm mr-1"
+            />
+            <button
+              type="submit"
+              disabled={busy}
+              className="bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
+            >
+              Search
+            </button>
+          </form>
+
+          {results.length > 0 && (
+            <ul className="m-0 p-0 list-none">
+              {results.map((r) => (
+                <li key={r.place_id} className="mb-1">
+                  <button
+                    type="button"
+                    onClick={() => pickResult(r)}
+                    className="text-left w-full p-1 rounded hover:bg-muted-surface transition-colors"
+                  >
+                    {r.display_name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="font-bold mt-2">Route stops</div>
+          {waypoints.length === 0 ? (
+            <div className="text-muted-foreground text-sm mt-1">
+              Search for a place or click the map to add the first stop.
+            </div>
+          ) : (
+            <ol className="m-0 p-0">
+              {waypoints.map((w) => (
+                <li key={w.id} className="mb-1">
+                  <span className="inline-block max-w-[190px] align-top">
+                    {w.label}
+                  </span>{" "}
+                  <button
+                    type="button"
+                    onClick={() => removeWaypoint(w.id)}
+                    aria-label={`Remove stop ${w.label}`}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          <div className="flex gap-2 mt-2">
+            <button
+              type="button"
+              onClick={buildRoute}
+              disabled={busy || waypoints.length < 2}
+              className="bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
+            >
+              Build bike route
+            </button>
+            <button
+              type="button"
+              onClick={clearAll}
+              disabled={waypoints.length === 0}
+              className="bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+
+          {route && !follow && (
+            <button
+              type="button"
+              onClick={onFollow}
+              className="mt-2 bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
+            >
+              Follow rider
+            </button>
+          )}
+
+          {route && (
+            <div style={{ marginTop: 8, fontWeight: 600 }}>
+              {(route.distanceM / 1000).toFixed(2)} km (
+              {(route.distanceM / 1609.344).toFixed(2)} mi)
+            </div>
+          )}
+          {message && <div className="text-destructive">{message}</div>}
+          <div className="mt-2 text-xs text-muted-foreground">{locStatus}</div>
+        </>
       )}
-
-      <div className="font-bold mt-2">Route stops</div>
-      {waypoints.length === 0 ? (
-        <div className="text-muted-foreground text-sm mt-1">
-          Search for a place or click the map to add the first stop.
-        </div>
-      ) : (
-        <ol className="m-0 p-0">
-          {waypoints.map((w) => (
-            <li key={w.id} className="mb-1">
-              <span className="inline-block max-w-[190px] align-top">
-                {w.label}
-              </span>{" "}
-              <button
-                type="button"
-                onClick={() => removeWaypoint(w.id)}
-                aria-label={`Remove stop ${w.label}`}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ol>
-      )}
-
-      <div className="flex gap-2 mt-2">
-        <button
-          type="button"
-          onClick={buildRoute}
-          disabled={busy || waypoints.length < 2}
-          className="bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
-        >
-          Build bike route
-        </button>
-        <button
-          type="button"
-          onClick={clearAll}
-          disabled={waypoints.length === 0}
-          className="bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
-        >
-          Clear
-        </button>
-      </div>
-
-      {route && !follow && (
-        <button
-          type="button"
-          onClick={onFollow}
-          className="mt-2 bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
-        >
-          Follow rider
-        </button>
-      )}
-
-      {route && (
-        <div style={{ marginTop: 8, fontWeight: 600 }}>
-          {(route.distanceM / 1000).toFixed(2)} km (
-          {(route.distanceM / 1609.344).toFixed(2)} mi)
-        </div>
-      )}
-      {message && <div className="text-destructive">{message}</div>}
-      <div className="mt-2 text-xs text-muted-foreground">{locStatus}</div>
     </div>
   );
 }
 
-export default function RouteMap() {
+export default function RouteMap({ children }: { children?: React.ReactNode }) {
   const progressLineRef = useRef<Polyline | null>(null);
   const riderRef = useRef<CircleMarker | null>(null);
   const followingRef = useRef(false); // true once we've applied FOLLOW_ZOOM
@@ -234,6 +263,7 @@ export default function RouteMap() {
     <div className="relative flex-1">
       <div ref={containerRef} style={{ height: "100%", width: "100%" }} />
       <SearchPanel follow={follow} onFollow={() => setFollow(true)} />
+      {children}
     </div>
   );
 }

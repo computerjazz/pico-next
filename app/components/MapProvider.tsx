@@ -4,9 +4,7 @@ import { useStableCallback } from "../hooks/useStableCallback";
 import React from "react";
 import type { Map as LeafletMap, LayerGroup, Polyline } from "leaflet";
 
-import { BuiltRoute, SearchResult } from "../bike/map/types";
-export type LatLng = [number, number]; // [lat, lon]
-export type Waypoint = { id: number; latlng: LatLng; label: string };
+import { BuiltRoute, LatLng, SearchResult, Waypoint } from "../bike/map/types";
 
 // Used until a location fix arrives (or if it's denied). Change to taste.
 const FALLBACK_CENTER: LatLng = [34.0869, -118.2702];
@@ -26,7 +24,9 @@ function useMapState({ route: initialRoute }: { route: BuiltRoute | null }) {
   const [locStatus, setLocStatus] = useState("Locating…");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
+  const [waypoints, setWaypoints] = useState<Waypoint[]>(
+    initialRoute?.waypoints || [],
+  );
   const [route, setRoute] = useState<BuiltRoute | null>(initialRoute);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -85,7 +85,7 @@ function useMapState({ route: initialRoute }: { route: BuiltRoute | null }) {
     setBusy(true);
     setMessage("");
     try {
-      const res = await buildBikeRoute(waypoints.map((w) => w.latlng));
+      const res = await buildBikeRoute({ waypoints });
       if (!res.ok) throw new Error(res.error);
       // TODO: this is the object to save (Postgres/Drizzle) so progress can later be
       // computed locally: walk `coordinates` by (pulses x ~6 m) to find the current point.
@@ -125,11 +125,6 @@ function useMapState({ route: initialRoute }: { route: BuiltRoute | null }) {
         L.DomEvent.disableClickPropagation(panelRef.current);
         L.DomEvent.disableScrollPropagation(panelRef.current);
       }
-
-      map.on("click", (e) => {
-        const { lat, lng } = e.latlng;
-        addWaypoint([lat, lng], `Point (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
-      });
 
       setReady(true);
 

@@ -1,7 +1,7 @@
 "use server";
 
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
-import { BuiltRoute, LatLng, SearchResult } from "./types";
+import { BuiltRoute, SearchResult, Waypoint } from "./types";
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -31,13 +31,15 @@ export async function searchPlaces(q: string): Promise<Result<SearchResult[]>> {
   }
 }
 
-export async function buildBikeRoute(
-  points: LatLng[],
-): Promise<Result<BuiltRoute>> {
-  // TODO: same auth check
+export async function buildBikeRoute({
+  waypoints,
+}: {
+  waypoints: Waypoint[];
+}): Promise<Result<BuiltRoute>> {
+  // TODO: same auth  check
 
   const redis = await getRedis();
-
+  const points = waypoints.map((p) => p.latlng);
   const valid =
     Array.isArray(points) &&
     points.length >= 2 &&
@@ -76,6 +78,7 @@ export async function buildBikeRoute(
       coordinates: r.geometry.coordinates.map(
         ([lon, lat]: [number, number]) => [lat, lon],
       ),
+      waypoints,
       distanceM: r.distance,
     };
     await redis.set(REDIS_KEYS.BIKE_ROUTE, JSON.stringify(routeData));
