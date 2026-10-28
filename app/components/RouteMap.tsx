@@ -1,12 +1,21 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 //@ts-expect-error leaflet has no types for the default export, only the named exports
 import "leaflet/dist/leaflet.css";
 import { splitRouteAtDistance, useMapContext } from "./MapProvider";
 import { CircleMarker, Polyline } from "leaflet";
 import { useBikeSession } from "./BIkeSessionProvider";
-function SearchPanel() {
+
+const FOLLOW_ZOOM = 18; // OSM tiles go to 19; 17 is a bit wider
+
+function SearchPanel({
+  follow,
+  onFollow,
+}: {
+  follow?: boolean;
+  onFollow?: () => void;
+}) {
   const {
     panelRef,
     query,
@@ -104,6 +113,16 @@ function SearchPanel() {
         </button>
       </div>
 
+      {route && !follow && (
+        <button
+          type="button"
+          onClick={onFollow}
+          className="mt-2 bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
+        >
+          Follow rider
+        </button>
+      )}
+
       {route && (
         <div style={{ marginTop: 8, fontWeight: 600 }}>
           {(route.distanceM / 1000).toFixed(2)} km (
@@ -119,7 +138,8 @@ function SearchPanel() {
 export default function RouteMap() {
   const progressLineRef = useRef<Polyline | null>(null);
   const riderRef = useRef<CircleMarker | null>(null);
-
+  const followingRef = useRef(false); // true once we've applied FOLLOW_ZOOM
+  const [follow, setFollow] = useState(true);
   const { distanceInMeters } = useBikeSession();
 
   const traveledM = distanceInMeters;
@@ -130,6 +150,16 @@ export default function RouteMap() {
   useEffect(() => {
     init();
   }, [init]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    const pause = () => setFollow(false);
+    map.on("dragstart", pause);
+    return () => {
+      map.off("dragstart", pause);
+    };
+  }, [ready, mapRef]);
 
   // --- Paint distance traveled along the route -------------------------------
   useEffect(() => {
@@ -188,12 +218,23 @@ export default function RouteMap() {
     // A rebuilt route draws on top of these, so lift them back up
     progressLineRef.current.bringToFront();
     riderRef.current?.bringToFront();
-  }, [route, traveledM, ready, leafletRef, mapRef]);
+
+    if (follow && p.position && traveledM > 0) {
+      map.setView(
+        p.position,
+        followingRef.current ? map.getZoom() : FOLLOW_ZOOM, // let manual zoom stick
+        { animate: false },
+      );
+      followingRef.current = true;
+    } else {
+      followingRef.current = false; // re-enabling follow snaps back to FOLLOW_ZOOM
+    }
+  }, [route, traveledM, ready, leafletRef, mapRef, follow]);
 
   return (
     <div className="relative flex-1">
       <div ref={containerRef} style={{ height: "100%", width: "100%" }} />
-      <SearchPanel />
+      <SearchPanel follow={follow} onFollow={() => setFollow(true)} />
     </div>
   );
 }
