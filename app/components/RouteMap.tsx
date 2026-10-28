@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import { useMapContext } from "./MapProvider";
 import { CircleMarker, LeafletMouseEvent, Polyline } from "leaflet";
@@ -11,6 +11,7 @@ import { getRouteDistanceM, splitRouteAtDistance } from "../bike/utils";
 import { useLongpress } from "../hooks/useLongpress";
 import Flag from "./icons/Flag";
 import { useScreenWidth } from "../hooks/useScreenWidth";
+import { useStableCallback } from "../hooks/useStableCallback";
 
 const FOLLOW_ZOOM = 18; // OSM tiles go to 19; 17 is a bit wider
 
@@ -230,6 +231,20 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
     init();
   }, [init]);
 
+  const routeProgress = useMemo(() => {
+    if (!route) return null;
+    return splitRouteAtDistance(route.coordinates, traveledM);
+  }, [route, traveledM]);
+
+  const onFollow = useStableCallback(() => {
+    const map = mapRef.current;
+    if (!map || !route || !routeProgress) return;
+    if (routeProgress.position) {
+      map.setView(routeProgress.position, FOLLOW_ZOOM, { animate: true });
+      setFollow(true);
+    }
+  });
+
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
@@ -255,7 +270,7 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
       riderRef.current = null;
     }
 
-    if (!route) {
+    if (!routeProgress) {
       progressLineRef.current?.remove();
       riderRef.current?.remove();
       progressLineRef.current = null;
@@ -263,24 +278,22 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
       return;
     }
 
-    const p = splitRouteAtDistance(route.coordinates, traveledM);
-
     // Update in place rather than recreating layers on every pulse
     if (progressLineRef.current) {
-      progressLineRef.current.setLatLngs(p.traveled);
+      progressLineRef.current.setLatLngs(routeProgress.traveled);
     } else {
-      progressLineRef.current = L.polyline(p.traveled, {
+      progressLineRef.current = L.polyline(routeProgress.traveled, {
         color: "#f97316",
         opacity: 1,
         weight: 6,
       }).addTo(map);
     }
 
-    if (p.position) {
+    if (routeProgress.position) {
       if (riderRef.current) {
-        riderRef.current.setLatLng(p.position);
+        riderRef.current.setLatLng(routeProgress.position);
       } else {
-        riderRef.current = L.circleMarker(p.position, {
+        riderRef.current = L.circleMarker(routeProgress.position, {
           radius: 9,
           color: "#111",
           weight: 3,
@@ -294,9 +307,9 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
     progressLineRef.current.bringToFront();
     riderRef.current?.bringToFront();
 
-    if (follow && p.position && traveledM > 0) {
+    if (follow && routeProgress.position && traveledM > 0) {
       map.setView(
-        p.position,
+        routeProgress.position,
         followingRef.current ? map.getZoom() : FOLLOW_ZOOM, // let manual zoom stick
         { animate: true },
       );
@@ -304,31 +317,23 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
     } else {
       followingRef.current = false; // re-enabling follow snaps back to FOLLOW_ZOOM
     }
-  }, [route, traveledM, ready, leafletRef, mapRef, follow]);
+  }, [route, traveledM, ready, leafletRef, mapRef, follow, routeProgress]);
 
   const isStandingStill = speed === 0;
 
   useEffect(() => {
     if (isStandingStill) {
       fitMapToRoute();
+    } else {
+      onFollow();
     }
-  }, [isStandingStill, fitMapToRoute]);
+  }, [isStandingStill, fitMapToRoute, onFollow]);
 
   return (
     <div className="relative flex-1">
       <div ref={containerRef} style={{ height: "100%", width: "100%" }} />
-      <SearchPanel follow={follow} onFollow={() => setFollow(true)} />
-      <RiderButton
-        onClick={() => {
-          const map = mapRef.current;
-          if (!map || !route) return;
-          const p = splitRouteAtDistance(route.coordinates, traveledM);
-          if (p.position) {
-            map.setView(p.position, FOLLOW_ZOOM, { animate: true });
-            setFollow(true);
-          }
-        }}
-      />
+      <SearchPanel follow={follow} onFollow={onFollow} />
+      <RiderButton onClick={onFollow} />
       <div className="absolute z-1000 left-2 bottom-2">
         <RouteStats />
       </div>

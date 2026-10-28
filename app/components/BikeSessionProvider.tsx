@@ -17,7 +17,7 @@ const SESSION_RESET_MS = 10 * 60 * 1000;
 const MPS_TO_MPH = 2.23694;
 
 const IS_TESTING =
-  typeof "window" !== undefined && window.location.origin.includes("localhost");
+  typeof window !== "undefined" && window.location.origin.includes("localhost");
 
 function useBikeSessionData({
   pulseCount: pulseCountProp,
