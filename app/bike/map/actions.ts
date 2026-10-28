@@ -1,13 +1,8 @@
 "use server";
 
-type LatLng = [number, number]; // [lat, lon]
-export type SearchResult = {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-};
-export type BuiltRoute = { coordinates: LatLng[]; distanceM: number };
+import { getRedis, REDIS_KEYS } from "@/lib/redis";
+import { BuiltRoute, LatLng, SearchResult } from "./types";
+
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
 const NOMINATIM = "https://nominatim.openstreetmap.org/search";
@@ -40,6 +35,9 @@ export async function buildBikeRoute(
   points: LatLng[],
 ): Promise<Result<BuiltRoute>> {
   // TODO: same auth check
+
+  const redis = await getRedis();
+
   const valid =
     Array.isArray(points) &&
     points.length >= 2 &&
@@ -73,15 +71,17 @@ export async function buildBikeRoute(
       };
     }
     const r = data.routes[0];
+    const routeData: BuiltRoute = {
+      // GeoJSON is [lon, lat]; Leaflet wants [lat, lon]
+      coordinates: r.geometry.coordinates.map(
+        ([lon, lat]: [number, number]) => [lat, lon],
+      ),
+      distanceM: r.distance,
+    };
+    await redis.set(REDIS_KEYS.BIKE_ROUTE, JSON.stringify(routeData));
     return {
       ok: true,
-      data: {
-        // GeoJSON is [lon, lat]; Leaflet wants [lat, lon]
-        coordinates: r.geometry.coordinates.map(
-          ([lon, lat]: [number, number]) => [lat, lon],
-        ),
-        distanceM: r.distance,
-      },
+      data: routeData,
     };
   } catch {
     return { ok: false, error: "Routing service unreachable" };

@@ -36,4 +36,5 @@ export const REDIS_KEYS = {
   JOB_QUEUE: "jobQueue",
   DEVICE_LOGS_PREFIX: "deviceLogs",
   BIKE_PULSE_COUNT: "bike:pulseCount",
+  BIKE_ROUTE: "bike:route",
 };

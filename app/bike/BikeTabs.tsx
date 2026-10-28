@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BikeSessionProvider } from "../components/BIkeSessionProvider";
+import { BikeSessionProvider } from "../components/BikeSessionProvider";
 import { MapProvider } from "../components/MapProvider";
+import { BuiltRoute } from "./map/types";
 
 const tabs = [
   { name: "Stats", href: "/bike/stats" },
@@ -41,9 +42,11 @@ function TabBar({
 export default function BikeTabs({
   children,
   pulseCount,
+  route,
 }: {
   children: React.ReactNode;
   pulseCount: number;
+  route: BuiltRoute | null;
 }) {
   const path = usePathname();
   const [currentTab, setCurrentTab] = useState(path);
@@ -54,7 +57,7 @@ export default function BikeTabs({
 
   return (
     <BikeSessionProvider pulseCount={pulseCount}>
-      <MapProvider>
+      <MapProvider initialRoute={route}>
         <div className="flex flex-1 flex-col h-full w-full min-h-screen">
           <div className="flex flex-1">{children}</div>
           <div className="flex justify-center border-t border-muted-surface">

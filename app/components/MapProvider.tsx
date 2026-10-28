@@ -1,14 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  buildBikeRoute,
-  BuiltRoute,
-  searchPlaces,
-  SearchResult,
-} from "../bike/map/actions";
+import { buildBikeRoute, searchPlaces } from "../bike/map/actions";
 import { useStableCallback } from "../hooks/useStableCallback";
 import React from "react";
 import type { Map as LeafletMap, LayerGroup, Polyline } from "leaflet";
 
+import { BuiltRoute, SearchResult } from "../bike/map/types";
 export type LatLng = [number, number]; // [lat, lon]
 export type Waypoint = { id: number; latlng: LatLng; label: string };
 
@@ -16,7 +12,7 @@ export type Waypoint = { id: number; latlng: LatLng; label: string };
 const FALLBACK_CENTER: LatLng = [34.0869, -118.2702];
 export const DEFAULT_ZOOM = 15;
 
-function useMapState() {
+function useMapState({ route: initialRoute }: { route: BuiltRoute | null }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -31,7 +27,7 @@ function useMapState() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
-  const [route, setRoute] = useState<BuiltRoute | null>(null);
+  const [route, setRoute] = useState<BuiltRoute | null>(initialRoute);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [initSentinel, setInitSentinel] = useState(1);
@@ -257,8 +253,14 @@ type MapState = ReturnType<typeof useMapState>;
 
 const MapContext = React.createContext<MapState | null>(null);
 
-export function MapProvider({ children }: { children: React.ReactNode }) {
-  const state = useMapState();
+export function MapProvider({
+  children,
+  initialRoute,
+}: {
+  children: React.ReactNode;
+  initialRoute: BuiltRoute | null;
+}) {
+  const state = useMapState({ route: initialRoute });
   return <MapContext.Provider value={state}>{children}</MapContext.Provider>;
 }
 

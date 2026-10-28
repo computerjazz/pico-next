@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useLongpress } from "../../hooks/useLongpress";
 import { resetBikePulseCount } from "../../actions/resetBikePulseCount";
 import { useConfirm } from "../../components/ConfirmDialog";
-import { useBikeSession } from "@/app/components/BIkeSessionProvider";
+import { useBikeSession } from "@/app/components/BikeSessionProvider";
 
 function BikeStat({ label, value }: { label: string; value: string }) {
   return (
