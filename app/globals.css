@@ -15,7 +15,7 @@
   --surface: #fffdf8;
   --muted-surface: #f7f5ee;
   /* accent-surface is a desaturated version of accent */
-  --accent-surface: color-mix(in srgb, var(--accent) 65%, white 35%);
+  --accent-surface: #eb856e; /* accent 65% + white 35% */
 }
 
 @theme inline {
@@ -43,7 +43,7 @@
   --border: #2a2521;
   --surface: #23201b;
   --muted-surface: #181613;
-  --accent-surface: color-mix(in srgb, var(--accent) 80%, white 20%);
+  --accent-surface: #eb856e; /* accent 65% + white 35% */
 }
 
 body {
