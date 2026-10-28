@@ -53,12 +53,14 @@ export default function BikeTabs({ children }: { children: React.ReactNode }) {
 
   return (
     <div {...(idle ? { "data-theme": "dark" } : {})}>
-      <div
-        className={`flex flex-1 flex-col w-full min-h-screen max-h-screen ${idle ? "opacity-10" : ""}`}
-      >
-        <div className="flex flex-1 overflow-scroll">{children}</div>
-        <div className="flex justify-center border-t border-muted-surface">
-          <TabBar currentTab={currentTab} setCurrentTab={setCurrentTab} />
+      <div className="bg-background text-foreground">
+        <div
+          className={`flex flex-1 flex-col w-full min-h-screen max-h-screen ${idle ? "opacity-10" : ""}`}
+        >
+          <div className="flex flex-1 overflow-scroll">{children}</div>
+          <div className="flex justify-center border-t border-muted-surface">
+            <TabBar currentTab={currentTab} setCurrentTab={setCurrentTab} />
+          </div>
         </div>
       </div>
     </div>

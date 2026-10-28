@@ -8,8 +8,22 @@ import { useBikeSession } from "./BikeSessionProvider";
 import XCircle from "./icons/XCircle";
 import MapPin from "./icons/MapPin";
 import { getRouteDistanceM, splitRouteAtDistance } from "../bike/utils";
+import { useLongpress } from "../hooks/useLongpress";
+import Flag from "./icons/Flag";
 
 const FOLLOW_ZOOM = 18; // OSM tiles go to 19; 17 is a bit wider
+
+function RiderButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="absolute top-16 right-2 z-1001 cursor-pointer bg-background aspect-square flex self-end items-center justify-center text-foreground border border-foreground rounded-full p-2 m-2 hover:bg-foreground hover:text-background transition-colors"
+    >
+      <Flag />
+    </button>
+  );
+}
 
 function SearchPanel({
   follow,
@@ -36,6 +50,7 @@ function SearchPanel({
     clearAll,
     mapRef,
     addWaypoint,
+    fitMapToRoute,
   } = useMapContext();
 
   useEffect(() => {
@@ -52,11 +67,17 @@ function SearchPanel({
     };
   }, [isExpanded, mapRef, addWaypoint]);
 
+  const longpresss = useLongpress(() => setIsExpanded(true), 1000);
+
   return (
     <>
       <button
         type="button"
-        onClick={() => setIsExpanded((prev) => !prev)}
+        {...longpresss}
+        onClick={() => {
+          if (isExpanded) setIsExpanded(false);
+          else fitMapToRoute();
+        }}
         className="absolute top-2 right-2 z-1001 cursor-pointer bg-background aspect-square flex self-end items-center justify-center text-foreground border border-foreground rounded-full p-2 m-2 hover:bg-foreground hover:text-background transition-colors"
       >
         {isExpanded ? <XCircle /> : <MapPin />}
@@ -241,10 +262,8 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
 
     if (p.position) {
       if (riderRef.current) {
-        console.log("Updating rider position to", p);
         riderRef.current.setLatLng(p.position);
       } else {
-        console.log("Creating rider marker at", p);
         riderRef.current = L.circleMarker(p.position, {
           radius: 9,
           color: "#111",
@@ -275,9 +294,21 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
     <div className="relative flex-1">
       <div ref={containerRef} style={{ height: "100%", width: "100%" }} />
       <SearchPanel follow={follow} onFollow={() => setFollow(true)} />
+      <RiderButton
+        onClick={() => {
+          const map = mapRef.current;
+          if (!map || !route) return;
+          const p = splitRouteAtDistance(route.coordinates, traveledM);
+          if (p.position) {
+            map.setView(p.position, FOLLOW_ZOOM, { animate: true });
+            setFollow(true);
+          }
+        }}
+      />
       <div className="absolute z-1000 left-2 bottom-2 bg-surface text-foreground p-4 rounded-md text-5xl">
         <RouteStats />
       </div>
+
       {children}
     </div>
   );

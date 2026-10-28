@@ -98,8 +98,7 @@ function useMapState({ route: initialRoute }: { route: BuiltRoute | null }) {
     }
   });
 
-  // --- Draw the built route ------------------------------------------------
-  useEffect(() => {
+  const fitMapToRoute = useStableCallback(() => {
     const L = leafletRef.current;
     const map = mapRef.current;
     if (!ready || !L || !map) return;
@@ -113,7 +112,12 @@ function useMapState({ route: initialRoute }: { route: BuiltRoute | null }) {
     }).addTo(map);
     routeLineRef.current = line;
     map.fitBounds(line.getBounds(), { padding: [40, 40] });
-  }, [route, ready, initSentinel]);
+  });
+
+  // --- Draw the built route ------------------------------------------------
+  useEffect(() => {
+    fitMapToRoute();
+  }, [route, ready, initSentinel, fitMapToRoute]);
 
   // --- Draw numbered waypoint markers --------------------------------------
   useEffect(() => {
@@ -252,6 +256,7 @@ function useMapState({ route: initialRoute }: { route: BuiltRoute | null }) {
     removeWaypoint,
     clearAll,
     buildRoute,
+    fitMapToRoute,
     init,
   };
 }
