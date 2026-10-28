@@ -6,6 +6,7 @@ import { resetBikePulseCount } from "../../actions/resetBikePulseCount";
 import { useConfirm } from "../../components/ConfirmDialog";
 import { useBikeSession } from "@/app/components/BikeSessionProvider";
 import { formatTime } from "../utils";
+import { useScreenWidth } from "@/app/hooks/useScreenWidth";
 
 function BikeStat({ label, value }: { label: string; value: string }) {
   return (
@@ -19,7 +20,7 @@ function BikeStat({ label, value }: { label: string; value: string }) {
 function SessionStats({
   sessionSeconds,
   speed,
-  timerSize = "text-9xl",
+  timerSize,
 }: {
   sessionSeconds: number;
   speed: number;
@@ -62,12 +63,10 @@ function SessionStats({
   );
 }
 
-export default function BikeStats({
-  timerSize = "text-9xl",
-}: {
-  timerSize?: string;
-}) {
+export default function BikeStats({ timerSize }: { timerSize?: string }) {
   const { confirm, ConfirmDialog } = useConfirm();
+  const { isMobile } = useScreenWidth();
+  timerSize = timerSize ?? (isMobile ? "text-6xl" : "text-9xl");
   const {
     sessionDistanceM,
     totalDistanceM,

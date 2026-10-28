@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useBikeSession } from "../components/BikeSessionProvider";
+import { useScreenWidth } from "../hooks/useScreenWidth";
 
 const tabs = [
   { name: "Stats", href: "/bike/stats" },
   { name: "Map", href: "/bike/map" },
-  { name: "Combined", href: "/bike/combined" },
+  { name: "Combined", href: "/bike/combined", mobile: false },
 ];
 
 function TabBar({
@@ -18,22 +19,28 @@ function TabBar({
   currentTab: string;
   setCurrentTab: (path: string) => void;
 }) {
+  const { isMobile } = useScreenWidth();
   return (
     <div className="flex space-x-4 border-b border-muted-surface">
-      {tabs.map((tab) => (
-        <Link
-          key={tab.name}
-          href={tab.href}
-          onClick={() => setCurrentTab(tab.href)}
-          className={`px-4 py-2 font-medium cursor-pointer ${
-            currentTab === tab.href
-              ? "border-b-2 border-accent text-accent"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {tab.name}
-        </Link>
-      ))}
+      {tabs
+        .filter((t) => {
+          const tabSupportsMobile = t.mobile !== false;
+          return isMobile ? tabSupportsMobile : true;
+        })
+        .map((tab) => (
+          <Link
+            key={tab.name}
+            href={tab.href}
+            onClick={() => setCurrentTab(tab.href)}
+            className={`px-4 py-2 font-medium cursor-pointer ${
+              currentTab === tab.href
+                ? "border-b-2 border-accent text-accent"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab.name}
+          </Link>
+        ))}
     </div>
   );
 }

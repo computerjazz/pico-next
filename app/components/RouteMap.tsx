@@ -10,6 +10,7 @@ import MapPin from "./icons/MapPin";
 import { getRouteDistanceM, splitRouteAtDistance } from "../bike/utils";
 import { useLongpress } from "../hooks/useLongpress";
 import Flag from "./icons/Flag";
+import { useScreenWidth } from "../hooks/useScreenWidth";
 
 const FOLLOW_ZOOM = 18; // OSM tiles go to 19; 17 is a bit wider
 
@@ -195,8 +196,12 @@ function RouteStats() {
   const { route } = useMapContext();
   const routeDistanceM = getRouteDistanceM(route?.coordinates);
   const pct = totalDistanceM / routeDistanceM;
+
+  const { isMobile } = useScreenWidth();
+  const textSize = isMobile ? "text-xl" : "text-5xl";
+
   return (
-    <div>
+    <div className={`bg-surface text-foreground p-4 rounded-md ${textSize}`}>
       <span>{`${totalDistanceM.toFixed()}m / ${routeDistanceM.toFixed()}m (${(pct * 100).toFixed(2)}%)`}</span>
     </div>
   );
@@ -309,7 +314,7 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
           }
         }}
       />
-      <div className="absolute z-1000 left-2 bottom-2 bg-surface text-foreground p-4 rounded-md text-5xl">
+      <div className="absolute z-1000 left-2 bottom-2">
         <RouteStats />
       </div>
 

@@ -25,5 +25,5 @@ export function useScreenWidth() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  return { screenWidth };
+  return { screenWidth, isMobile: screenWidth < breakpoints.sm };
 }
