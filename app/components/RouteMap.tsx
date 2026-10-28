@@ -212,12 +212,19 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
   const riderRef = useRef<CircleMarker | null>(null);
   const followingRef = useRef(false); // true once we've applied FOLLOW_ZOOM
   const [follow, setFollow] = useState(true);
-  const { totalDistanceM } = useBikeSession();
+  const { totalDistanceM, speed } = useBikeSession();
 
   const traveledM = totalDistanceM;
 
-  const { route, containerRef, init, mapRef, leafletRef, ready } =
-    useMapContext();
+  const {
+    route,
+    containerRef,
+    init,
+    mapRef,
+    leafletRef,
+    ready,
+    fitMapToRoute,
+  } = useMapContext();
 
   useEffect(() => {
     init();
@@ -298,6 +305,14 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
       followingRef.current = false; // re-enabling follow snaps back to FOLLOW_ZOOM
     }
   }, [route, traveledM, ready, leafletRef, mapRef, follow]);
+
+  const isStandingStill = speed === 0;
+
+  useEffect(() => {
+    if (isStandingStill) {
+      fitMapToRoute();
+    }
+  }, [isStandingStill, fitMapToRoute]);
 
   return (
     <div className="relative flex-1">

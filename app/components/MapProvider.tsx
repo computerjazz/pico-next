@@ -111,7 +111,7 @@ function useMapState({ route: initialRoute }: { route: BuiltRoute | null }) {
       opacity: 0.5,
     }).addTo(map);
     routeLineRef.current = line;
-    map.fitBounds(line.getBounds(), { padding: [40, 40] });
+    map.fitBounds(line.getBounds(), { padding: [40, 40], animate: true });
   });
 
   // --- Draw the built route ------------------------------------------------
