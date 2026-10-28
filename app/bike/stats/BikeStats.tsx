@@ -19,9 +19,11 @@ function BikeStat({ label, value }: { label: string; value: string }) {
 function SessionStats({
   sessionSeconds,
   speed,
+  timerSize = "text-9xl",
 }: {
   sessionSeconds: number;
   speed: number;
+  timerSize?: string;
 }) {
   const isPaused = sessionSeconds > 0 && speed === 0;
 
@@ -49,7 +51,7 @@ function SessionStats({
         Current Session
       </p>
       <p
-        className={`font-mono text-9xl font-bold tabular-nums tracking-tight wrap-anywhere ${!blinkOn && isPaused ? "text-accent-surface" : "text-accent"}`}
+        className={`font-mono ${timerSize} font-bold tabular-nums tracking-tight wrap-anywhere ${!blinkOn && isPaused ? "text-accent-surface" : "text-accent"}`}
       >
         {formatTime(sessionSeconds)}
       </p>
@@ -60,7 +62,11 @@ function SessionStats({
   );
 }
 
-export default function BikeStats() {
+export default function BikeStats({
+  timerSize = "text-9xl",
+}: {
+  timerSize?: string;
+}) {
   const { confirm, ConfirmDialog } = useConfirm();
   const { distanceInMeters, speed, speedInMph, sessionSeconds, pulseCount } =
     useBikeSession();
@@ -77,17 +83,20 @@ export default function BikeStats() {
     }
   }, 1000);
 
-  const paused = speed === 0;
-  const idle = paused && sessionSeconds === 0;
-
   return (
     <div
-      {...(idle ? { "data-theme": "dark" } : {})}
       className={`flex flex-1 flex-col items-center justify-center py-2 bg-background px-6`}
     >
-      <div className={`${idle ? "opacity-10" : ""}`}>
-        <SessionStats sessionSeconds={sessionSeconds} speed={speed} />
-        <div className="flex flex-row gap-6 mt-6 flex-wrap" {...longpress}>
+      <div>
+        <SessionStats
+          sessionSeconds={sessionSeconds}
+          speed={speed}
+          timerSize={timerSize}
+        />
+        <div
+          className="flex flex-row gap-6 mt-6 flex-wrap justify-center"
+          {...longpress}
+        >
           <BikeStat
             label="Total Distance"
             value={`${(distanceInMeters / 1609.344).toFixed(2)} mi`}

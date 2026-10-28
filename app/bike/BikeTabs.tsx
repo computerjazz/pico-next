@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BikeSessionProvider } from "../components/BikeSessionProvider";
-import { MapProvider } from "../components/MapProvider";
-import { BuiltRoute } from "./map/types";
+import { useBikeSession } from "../components/BikeSessionProvider";
 
 const tabs = [
   { name: "Stats", href: "/bike/stats" },
   { name: "Map", href: "/bike/map" },
+  { name: "Combined", href: "/bike/combined" },
 ];
 
 function TabBar({
@@ -39,15 +38,7 @@ function TabBar({
   );
 }
 
-export default function BikeTabs({
-  children,
-  pulseCount,
-  route,
-}: {
-  children: React.ReactNode;
-  pulseCount: number;
-  route: BuiltRoute | null;
-}) {
+export default function BikeTabs({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const [currentTab, setCurrentTab] = useState(path);
 
@@ -55,16 +46,21 @@ export default function BikeTabs({
     setCurrentTab(path);
   }, [path]);
 
+  const { speed, sessionSeconds } = useBikeSession();
+
+  const paused = speed === 0;
+  const idle = paused && sessionSeconds === 0;
+
   return (
-    <BikeSessionProvider pulseCount={pulseCount}>
-      <MapProvider initialRoute={route}>
-        <div className="flex flex-1 flex-col h-full w-full min-h-screen">
-          <div className="flex flex-1">{children}</div>
-          <div className="flex justify-center border-t border-muted-surface">
-            <TabBar currentTab={currentTab} setCurrentTab={setCurrentTab} />
-          </div>
+    <div {...(idle ? { "data-theme": "dark" } : {})}>
+      <div
+        className={`flex flex-1 flex-col w-full min-h-screen max-h-screen ${idle ? "opacity-10" : ""}`}
+      >
+        <div className="flex flex-1 overflow-scroll">{children}</div>
+        <div className="flex justify-center border-t border-muted-surface">
+          <TabBar currentTab={currentTab} setCurrentTab={setCurrentTab} />
         </div>
-      </MapProvider>
-    </BikeSessionProvider>
+      </div>
+    </div>
   );
 }

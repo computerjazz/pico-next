@@ -5,6 +5,8 @@ import "leaflet/dist/leaflet.css";
 import { splitRouteAtDistance, useMapContext } from "./MapProvider";
 import { CircleMarker, LeafletMouseEvent, Polyline } from "leaflet";
 import { useBikeSession } from "./BikeSessionProvider";
+import XCircle from "./icons/XCircle";
+import MapPin from "./icons/MapPin";
 
 const FOLLOW_ZOOM = 18; // OSM tiles go to 19; 17 is a bit wider
 
@@ -50,20 +52,19 @@ function SearchPanel({
   }, [isExpanded, mapRef, addWaypoint]);
 
   return (
-    <div
-      ref={panelRef}
-      className={`absolute top-2 right-2 z-1000 max-w-[290px] max-w-[calc(100%-16px)] max-h-[calc(100%-16px)] overflow-y-auto ${isExpanded ? "bg-background" : ""} text-foreground p-2 rounded-md text-sm shadow-md`}
-    >
+    <>
       <button
         type="button"
         onClick={() => setIsExpanded((prev) => !prev)}
-        className="bg-background text-foreground border border-foreground rounded-md py-1 px-2 hover:bg-foreground hover:text-background transition-colors"
+        className="absolute top-2 right-2 z-1001 cursor-pointer bg-background aspect-square flex self-end items-center justify-center text-foreground border border-foreground rounded-full p-2 m-2 hover:bg-foreground hover:text-background transition-colors"
       >
-        {isExpanded ? "x" : "RTE"}
+        {isExpanded ? <XCircle /> : <MapPin />}
       </button>
-
       {isExpanded && (
-        <>
+        <div
+          ref={panelRef}
+          className={`absolute top-12 right-12 z-1000 flex flex-col w-[290px] max-w-[calc(100%-16px)] max-h-[calc(100%-16px)] overflow-y-auto bg-background shadow-md text-foreground p-2 rounded-md text-sm`}
+        >
           <form onSubmit={search} className="flex">
             <input
               value={query}
@@ -157,9 +158,9 @@ function SearchPanel({
           )}
           {message && <div className="text-destructive">{message}</div>}
           <div className="mt-2 text-xs text-muted-foreground">{locStatus}</div>
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -216,10 +217,8 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
 
     // Update in place rather than recreating layers on every pulse
     if (progressLineRef.current) {
-      console.log("Updating progress line to", p.traveled);
       progressLineRef.current.setLatLngs(p.traveled);
     } else {
-      console.log("Creating progress line at", p.traveled);
       progressLineRef.current = L.polyline(p.traveled, {
         color: "#f97316",
         opacity: 1,
@@ -251,7 +250,7 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
       map.setView(
         p.position,
         followingRef.current ? map.getZoom() : FOLLOW_ZOOM, // let manual zoom stick
-        { animate: false },
+        { animate: true },
       );
       followingRef.current = true;
     } else {

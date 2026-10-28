@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useRef, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import z from "zod";

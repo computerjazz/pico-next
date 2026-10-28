@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useRef, useState } from "react";
 import { buildBikeRoute, searchPlaces } from "../bike/map/actions";
 import { useStableCallback } from "../hooks/useStableCallback";
@@ -204,7 +206,7 @@ function useMapState({ route: initialRoute }: { route: BuiltRoute | null }) {
       L.marker(w.latlng, {
         icon: L.divIcon({
           className: "",
-          html: `<div style="width:24px;height:24px;line-height:24px;text-align:center;border-radius:50%;background:#111;color:#fff;border:2px solid #fff;font:600 12px sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.5)">${i + 1}</div>`,
+          html: `<div style="width:24px;height:24px;line-height:24px;text-align:center;border-radius:50%;background:#111;color:#fff;border:2px solid #fff;font:600 12px sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.5)"><span>${i + 1}</span></div>`,
           iconSize: [24, 24],
           iconAnchor: [12, 12],
         }),
