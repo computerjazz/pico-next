@@ -169,9 +169,9 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
   const riderRef = useRef<CircleMarker | null>(null);
   const followingRef = useRef(false); // true once we've applied FOLLOW_ZOOM
   const [follow, setFollow] = useState(true);
-  const { distanceInMeters } = useBikeSession();
+  const { totalDistanceM } = useBikeSession();
 
-  const traveledM = distanceInMeters;
+  const traveledM = totalDistanceM;
 
   const { route, containerRef, init, mapRef, leafletRef, ready } =
     useMapContext();

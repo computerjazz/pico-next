@@ -68,8 +68,13 @@ export default function BikeStats({
   timerSize?: string;
 }) {
   const { confirm, ConfirmDialog } = useConfirm();
-  const { distanceInMeters, speed, speedInMph, sessionSeconds, pulseCount } =
-    useBikeSession();
+  const {
+    sessionDistanceM,
+    totalDistanceM,
+    speed,
+    speedInMph,
+    sessionSeconds,
+  } = useBikeSession();
   const longpress = useLongpress(async () => {
     const shouldReset = await confirm({
       description: "Are you sure you want to reset biking distance?",
@@ -98,14 +103,17 @@ export default function BikeStats({
           {...longpress}
         >
           <BikeStat
+            label="Session Distance"
+            value={`${(sessionDistanceM / 1609.344).toFixed(2)} mi`}
+          />
+          <BikeStat
             label="Total Distance"
-            value={`${(distanceInMeters / 1609.344).toFixed(2)} mi`}
+            value={`${(totalDistanceM / 1609.344).toFixed(2)} mi`}
           />
           <BikeStat
             label="Current Speed"
             value={`${speedInMph.toFixed(1)} mph`}
           />
-          <BikeStat label="Revolutions" value={pulseCount.toString()} />
         </div>
         {ConfirmDialog}
       </div>

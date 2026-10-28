@@ -25,6 +25,7 @@ function useBikeSessionData({
   const [speed, setSpeed] = useState<number>(0); // meters per second
 
   const [sessionSeconds, setSessionSeconds] = useState(10);
+  const [sessionPulseInit, setSessionPulseInit] = useState(pulseCount);
 
   const sessionStartMs = useRef<number | null>(null);
   const accumulatedMs = useRef(0);
@@ -34,6 +35,11 @@ function useBikeSessionData({
   const last = useRef<{ count: number; ts: number } | null>(null);
   const lastArrivalMs = useRef(0); // local clock, used only to detect "stopped"
   const lastIntervalMs = useRef(0);
+  const pulseCountRef = useRef(pulseCount);
+
+  useEffect(() => {
+    pulseCountRef.current = pulseCount;
+  }, [pulseCount]);
 
   useSocket({
     groupId: "bike-status",
@@ -103,6 +109,7 @@ function useBikeSessionData({
           sessionStartMs.current = null;
           stoppedAtMs.current = null;
           setSessionSeconds(0);
+          setSessionPulseInit(pulseCountRef.current);
         }
       }
     }, 250);
@@ -122,10 +129,14 @@ function useBikeSessionData({
     return () => clearInterval(id);
   }, []);
 
-  const distanceInMeters = pulseCount * METERS_PER_PULSE;
+  const sessionPulseCount = pulseCount - sessionPulseInit;
+
+  const totalDistanceM = pulseCount * METERS_PER_PULSE;
+  const sessionDistanceM = sessionPulseCount * METERS_PER_PULSE;
 
   return {
-    distanceInMeters,
+    totalDistanceM,
+    sessionDistanceM,
     speedInMph: speed * MPS_TO_MPH,
     sessionSeconds,
     pulseCount,
