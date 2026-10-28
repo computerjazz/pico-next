@@ -21,7 +21,7 @@ export default async function BlogIndex() {
               <Link
                 key={post.slug}
                 href={`/blog/${post.slug}`}
-                className="flex flex-col max-w-md"
+                className="flex flex-col max-w-md mb-8"
               >
                 <h2 className="font-bold text-2xl">{post.title}</h2>
                 <time className="text-muted-foreground">

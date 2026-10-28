@@ -9,7 +9,7 @@ export interface PostMeta {
   thumbnail?: StaticImageData;
 }
 
-export const slugs = ["building-for-fun"];
+export const slugs = ["building-for-fun", "virtual-bike-trip"];
 
 export async function getAllPosts() {
   const posts: PostMeta[] = await Promise.all(
