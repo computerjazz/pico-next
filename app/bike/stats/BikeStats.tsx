@@ -103,16 +103,16 @@ export default function BikeStats({
           {...longpress}
         >
           <BikeStat
+            label="Current Speed"
+            value={`${speedInMph.toFixed(1)} mph`}
+          />
+          <BikeStat
             label="Session Distance"
             value={`${(sessionDistanceM / 1609.344).toFixed(2)} mi`}
           />
           <BikeStat
             label="Total Distance"
             value={`${(totalDistanceM / 1609.344).toFixed(2)} mi`}
-          />
-          <BikeStat
-            label="Current Speed"
-            value={`${speedInMph.toFixed(1)} mph`}
           />
         </div>
         {ConfirmDialog}

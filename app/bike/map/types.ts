@@ -31,3 +31,11 @@ export const SearchResultSchema = z.object({
 });
 
 export type SearchResult = z.infer<typeof SearchResultSchema>;
+
+export type RouteProgress = {
+  traveled: LatLng[]; // route start up to the current position (inclusive)
+  position: LatLng | null; // where you are now
+  traveledM: number; // distance used, clamped to [0, totalM]
+  totalM: number; // route length, measured from the geometry
+  finished: boolean;
+};

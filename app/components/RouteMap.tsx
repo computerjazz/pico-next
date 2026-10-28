@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
-import { splitRouteAtDistance, useMapContext } from "./MapProvider";
+import { useMapContext } from "./MapProvider";
 import { CircleMarker, LeafletMouseEvent, Polyline } from "leaflet";
 import { useBikeSession } from "./BikeSessionProvider";
 import XCircle from "./icons/XCircle";
 import MapPin from "./icons/MapPin";
+import { getRouteDistanceM, splitRouteAtDistance } from "../bike/utils";
 
 const FOLLOW_ZOOM = 18; // OSM tiles go to 19; 17 is a bit wider
 
@@ -164,6 +165,18 @@ function SearchPanel({
   );
 }
 
+function RouteStats() {
+  const { totalDistanceM } = useBikeSession();
+  const { route } = useMapContext();
+  const routeDistanceM = getRouteDistanceM(route?.coordinates);
+  const pct = totalDistanceM / routeDistanceM;
+  return (
+    <div>
+      <span>{`${totalDistanceM.toFixed()}m / ${routeDistanceM.toFixed()}m ${(pct * 100).toFixed(2)}%`}</span>
+    </div>
+  );
+}
+
 export default function RouteMap({ children }: { children?: React.ReactNode }) {
   const progressLineRef = useRef<Polyline | null>(null);
   const riderRef = useRef<CircleMarker | null>(null);
@@ -262,6 +275,9 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
     <div className="relative flex-1">
       <div ref={containerRef} style={{ height: "100%", width: "100%" }} />
       <SearchPanel follow={follow} onFollow={() => setFollow(true)} />
+      <div className="absolute z-1000 left-2 bottom-2 bg-surface text-foreground p-4 rounded-md text-5xl">
+        <RouteStats />
+      </div>
       {children}
     </div>
   );
