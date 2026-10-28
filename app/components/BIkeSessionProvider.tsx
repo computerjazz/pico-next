@@ -24,7 +24,7 @@ function useBikeSessionData({
   const [pulseCount, setPulseCount] = useState<number>(pulseCountProp ?? 0);
   const [speed, setSpeed] = useState<number>(0); // meters per second
 
-  const [sessionSeconds, setSessionSeconds] = useState(10);
+  const [sessionSeconds, setSessionSeconds] = useState(1);
   const [sessionPulseInit, setSessionPulseInit] = useState(pulseCount);
 
   const sessionStartMs = useRef<number | null>(null);
