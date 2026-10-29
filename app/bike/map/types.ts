@@ -39,3 +39,12 @@ export type RouteProgress = {
   totalM: number; // route length, measured from the geometry
   finished: boolean;
 };
+
+
+export const ElevationDiffSchema = z.object({
+  fromM: z.number(),
+  toM: z.number(),
+  deltaM: z.number(),
+})
+
+export type ElevationDiff = z.infer<typeof ElevationDiffSchema>

@@ -1,7 +1,7 @@
 "use server";
 
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
-import { BuiltRoute, SearchResult, Waypoint } from "./types";
+import { BuiltRoute, ElevationDiff, LatLng, SearchResult, Waypoint } from "./types";
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -89,4 +89,44 @@ export async function buildBikeRoute({
   } catch {
     return { ok: false, error: "Routing service unreachable" };
   }
+}
+
+export async function getElevationDiff({
+  fromLatLng,
+  toLatLng,
+}: {
+  fromLatLng: LatLng,
+  toLatLng: LatLng,
+}): Promise<ElevationDiff> {
+  const points = [fromLatLng, toLatLng];
+
+  for (const [lat, lng] of points) {
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+      throw new Error(`Invalid latitude: ${lat}`);
+    }
+    if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+      throw new Error(`Invalid longitude: ${lng}`);
+    }
+  }
+
+  const url = new URL("https://api.open-meteo.com/v1/elevation");
+  url.searchParams.set("latitude", points.map(([lat]) => lat).join(","));
+  url.searchParams.set("longitude", points.map(([, lng]) => lng).join(","));
+
+  const res = await fetch(url, {
+    next: { revalidate: 60 * 60 * 24 }, // terrain doesn't change; cache a day
+  });
+
+  if (!res.ok) {
+    throw new Error(`Elevation API error: ${res.status}`);
+  }
+
+  const data: { elevation?: number[] } = await res.json();
+  const [fromM, toM] = data.elevation ?? [];
+
+  if (typeof fromM !== "number" || typeof toM !== "number") {
+    throw new Error("Elevation API returned unexpected data");
+  }
+
+  return { fromM, toM, deltaM: toM - fromM };
 }

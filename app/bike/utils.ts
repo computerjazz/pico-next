@@ -3,7 +3,7 @@ import { LatLng, RouteProgress } from "./map/types";
 const EARTH_RADIUS_M = 6371008.8;
 const toRad = (d: number) => (d * Math.PI) / 180;
 
-function haversineM(a: LatLng, b: LatLng): number {
+export function haversineM(a: LatLng, b: LatLng): number {
   const dLat = toRad(b[0] - a[0]);
   const dLon = toRad(b[1] - a[1]);
   const h =

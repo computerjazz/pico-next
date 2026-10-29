@@ -9,14 +9,16 @@ import XCircle from "./icons/XCircle";
 import MapPin from "./icons/MapPin";
 import {
   getRouteDistanceM,
+  haversineM,
   metersToKm,
   metersToMiles,
   splitRouteAtDistance,
 } from "../bike/utils";
 import { useLongpress } from "../hooks/useLongpress";
 import Flag from "./icons/Flag";
-import { useScreenWidth } from "../hooks/useScreenWidth";
 import { useStableCallback } from "../hooks/useStableCallback";
+import { LatLng, RouteProgress } from "../bike/map/types";
+import { getElevationDiff } from "../bike/map/actions";
 
 const FOLLOW_ZOOM = 18; // OSM tiles go to 19; 17 is a bit wider
 
@@ -197,6 +199,41 @@ function SearchPanel({
   );
 }
 
+function ElevationStats({
+  routeProgress,
+}: {
+  routeProgress?: RouteProgress | null;
+}) {
+  const [grade, setGrade] = useState(0);
+  const curPos = routeProgress?.position;
+  const lastPosRef = useRef(curPos);
+
+  useEffect(() => {
+    async function getGrade(fromLatLng: LatLng, toLatLng: LatLng) {
+      const run = haversineM(fromLatLng, toLatLng)
+      const { deltaM: rise } = await getElevationDiff({ fromLatLng, toLatLng });
+      const slope = rise / run
+      setGrade(slope)
+    }
+
+    const lastPos = lastPosRef.current;
+    if (curPos && lastPos && lastPos !== curPos) {
+      getGrade(curPos, lastPos);
+    }
+  }, [curPos]);
+
+  function getGrade() {
+    if (grade < 0.02) return {color: 'bg-green-600', label: 'easy' }
+    if (grade < 0.5) return { color: "bg-yellow-600", label: 'moderate'};
+    if (grade < 0.8) return { color: 'bg-orange-600', label: 'strenuous'}
+    return  { color: 'bg-red-600', label: 'brutal'}
+  }
+
+  const { color, label } = getGrade()
+
+  return <div className={`text-white p-4 rounded-md text-xl ${color}`}>{`${(grade * 100).toFixed(0)}% ${label}`}</div>;
+}
+
 function RouteStats() {
   const { totalDistanceM } = useBikeSession();
   const { route } = useMapContext();
@@ -338,6 +375,9 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
       <RiderButton onClick={onFollow} />
       <div className="absolute z-1000 left-2 bottom-2">
         <RouteStats />
+      </div>
+      <div className="absolute z-1000 right-2 bottom-2">
+        <ElevationStats routeProgress={routeProgress} />
       </div>
 
       {children}
