@@ -8,9 +8,9 @@ import frame from "./frame.jpg"
 
 export const metadata = {
     date: "2026-10-28",
-    title: "Virtual Bike Trip",
+    title: "A Worse Peloton",
     description:
-        "Hopping on the $50 photo frame hack bandwagon.",
+        "Hacking a cheap digital photo frame into a virtual bike trip.",
     keywords: ["maps", "esp32", "android"],
     openGraph: {
         images: ["/img/logo-shortwave.png"],
@@ -18,32 +18,32 @@ export const metadata = {
       thumbnail: frame,
 };
 
-## Virtual Bike Trip
+## A Worse Peloton
 
-I saw a video recently about [jailbreaking a $50 photo frame](https://www.youtube.com/watch?v=ZLycoUMltNI
-). It got pretty popular online and a [bunch of people built their own projects with it](https://github.com/wesbos/photo-frame-dashboard/blob/main/docs/community-builds.md). So what the heck, I'll hop on the bandwagon too!
+I saw a video recently about [jailbreaking a $50 digital photo frame](https://www.youtube.com/watch?v=ZLycoUMltNI
+). It got pretty popular online and a [bunch of people built their own projects with it](https://github.com/wesbos/photo-frame-dashboard/blob/main/docs/community-builds.md). So I figured what the heck, I'll hop on the bandwagon too!
 
-I ride a stationary bike every evening, and decided to build a small app to track my progress and to make the chore a little more fun. To "gamify my experience", if you will. It's a cheap bike, about $130 new (I think my wife paid $50 for it on OfferUp), it has no bluetooth, no app, just a little LCD screen with a timer and speed/distance in unspecified units. I'm currently at 492.5 distance units at an average speed of about 7.
+I ride a stationary bike every evening and decided to build a small app to track my progress and to make the chore a little more fun. To "gamify my experience", if you will. It's a cheap bike, about $130 new (I think my wife paid $50 for it on OfferUp), it has no bluetooth, no app, just a little LCD screen with a timer and speed/distance in unspecified units. I'm currently at 492.5 distance units at an average speed of about 7.
 
 <Image src={bike} width={400} height={400} className="max-h-[400px] w-auto rounded-md" alt="Stationary bike" />
 
-I wanted to ride along a virtual map route from my house in LA to, say, my mom's house up in Santa Cruz county. It's a bike trip I'll probably never do in real life, existing only as a question posed to kids in the back seat of the car to pass the time: "how long do you think it'd take if we rode our bikes all the way there?". Soon, we'll know.
+I wanted to ride along a virtual map route from my house in LA to, say, my mom's house up in Santa Cruz county. It's a bike trip I'll probably never take in real life, existing only as a question posed to kids in the back seat to pass the time on a long car ride: "how long do you think it'd take if we rode our bikes all the way there?". Soon, we'll know.
 
 The first step was to get the bike talking to my Raspberry Pi home server to track distance. The bike does its internal distance tracking via a little electromagnetic sensor and a pair of magnets. One magnet is stuck to the flywheel, the other is on the frame. When the wheel rotates and the magnet on the wheel passes the one on the frame, it sends a little electric pulse through the wire.
 
-The wire runs up the frame of the bike and plugs into the main circuitboard on the bike via an 1/8" audio-style jack. I used an audio splitter I had lying around and routed one side to the original bike interface, and the other side to an esp32, which is running a small sketch that sends a websocket event to my server every time it sees an electric pulse. With the bike side complete, I moved onto the app.
+The wire runs up the frame of the bike and plugs into a 1/8" audio-style jack on the main circuitboard. I used an audio splitter I had lying around and routed one side to the original bike interface, and the other side to an esp32, which is running a small sketch that sends a websocket event to my server every time it sees an electric pulse from the bike. With the bike side complete, I moved onto the app.
 
 <Image src={esp32} width={400} height={400} className="max-h-[400px] w-auto rounded-md" alt="Esp32 plugged into bike" />
 
-I already have a webapp running on the Pi (serving the blog you are currently reading, among other things), so it was mostly a matter of piping the socket events through to the frontend and updating a route on a map. I'm using bike directions from openstreetmap — no freeways allowed!
+I already have a webapp running on the Pi (serving the blog you are currently reading, among other things), so the app side was mostly a matter of piping the socket events through to the frontend and updating a route on a map. I'm using bike directions from openstreetmap — no freeways allowed!
 
 <Image src={route} width={400} height={400} className="max-h-[400px] w-auto rounded-md" alt="webapp" />
 
-While I was building the app, I had Claude work on jailbreaking the photo frame by pointing it at the github repo linked in the YouTube video and clicking "accept" on countless cryptic ```adb``` commands for about an hour and $10 in tokens, until the frame booted into an android home screen and a prebuilt android app template that would wrap my webapp.
+While I was building the app, I had Claude work on jailbreaking the photo frame by pointing it at the [github repo](https://github.com/wesbos/photo-frame-dashboard) linked in the YouTube video and clicking "accept" on countless cryptic ```adb``` commands for about an hour and $10 in tokens, until the frame booted into an android home screen and a prebuilt android app that would wrap my webapp.
 
-I've been refining the app over the last few days, and have a bunch of ideas for enhancements (my wife wants to bike through the original Oregon Trail game, which I love). 
+I have a bunch of ideas for enhancements (my wife wants to bike through the original Oregon Trail game, which I love), but I'm calling it done for now, and it's fun! 
 
-But most importantly, it's fun! As I'm sweating away on the bike, my little map marker inches along the road, and the wind from a battery powered fan blows through my hair. I'll let you know when I get to grandma's house.
+Tonight, as I'm sweating away on the bike, my little map marker inches along the road, and the wind from a battery powered fan blows through my hair. I'll let you know when I make it to grandma's house.
 
 
 <Image src={frame} width={400} height={400} className="max-h-[400px] w-auto rounded-md" alt="webapp" />
