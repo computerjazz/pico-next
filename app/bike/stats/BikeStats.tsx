@@ -5,13 +5,13 @@ import { useLongpress } from "../../hooks/useLongpress";
 import { resetBikePulseCount } from "../../actions/resetBikePulseCount";
 import { useConfirm } from "../../components/ConfirmDialog";
 import { useBikeSession } from "@/app/components/BikeSessionProvider";
-import { formatTime } from "../utils";
+import { formatTime, metersToMiles } from "../utils";
 import { useScreenWidth } from "@/app/hooks/useScreenWidth";
 
 function BikeStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col items-center justify-center bg-muted-surface p-6 rounded-lg shadow-md">
-      <div className="text-2xl text-muted-foreground">{label}</div>
+      <div className="text-xl text-muted-foreground">{label}</div>
       <div className="text-4xl font-bold text-foreground">{value}</div>
     </div>
   );
@@ -107,11 +107,11 @@ export default function BikeStats({ timerSize }: { timerSize?: string }) {
           />
           <BikeStat
             label="Session Distance"
-            value={`${(sessionDistanceM / 1609.344).toFixed(2)} mi`}
+            value={`${metersToMiles(sessionDistanceM)} mi`}
           />
           <BikeStat
             label="Total Distance"
-            value={`${(totalDistanceM / 1609.344).toFixed(2)} mi`}
+            value={`${metersToMiles(totalDistanceM)} mi`}
           />
         </div>
         {ConfirmDialog}

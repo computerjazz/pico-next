@@ -7,7 +7,12 @@ import { CircleMarker, LeafletMouseEvent, Polyline } from "leaflet";
 import { useBikeSession } from "./BikeSessionProvider";
 import XCircle from "./icons/XCircle";
 import MapPin from "./icons/MapPin";
-import { getRouteDistanceM, splitRouteAtDistance } from "../bike/utils";
+import {
+  getRouteDistanceM,
+  metersToKm,
+  metersToMiles,
+  splitRouteAtDistance,
+} from "../bike/utils";
 import { useLongpress } from "../hooks/useLongpress";
 import Flag from "./icons/Flag";
 import { useScreenWidth } from "../hooks/useScreenWidth";
@@ -180,8 +185,8 @@ function SearchPanel({
 
           {route && (
             <div style={{ marginTop: 8, fontWeight: 600 }}>
-              {(route.distanceM / 1000).toFixed(2)} km (
-              {(route.distanceM / 1609.344).toFixed(2)} mi)
+              {metersToKm(route.distanceM)} km ({metersToMiles(route.distanceM)}{" "}
+              mi)
             </div>
           )}
           {message && <div className="text-destructive">{message}</div>}
@@ -198,12 +203,9 @@ function RouteStats() {
   const routeDistanceM = getRouteDistanceM(route?.coordinates);
   const pct = totalDistanceM / routeDistanceM;
 
-  const { isMobile } = useScreenWidth();
-  const textSize = isMobile ? "text-xl" : "text-5xl";
-
   return (
-    <div className={`bg-surface text-foreground p-4 rounded-md ${textSize}`}>
-      <span>{`${totalDistanceM.toFixed()}m / ${routeDistanceM.toFixed()}m (${(pct * 100).toFixed(2)}%)`}</span>
+    <div className={`bg-surface text-foreground p-4 rounded-md text-xl`}>
+      <span>{`${metersToMiles(totalDistanceM)} / ${metersToMiles(routeDistanceM)} mi (${(pct * 100).toFixed(2)}%)`}</span>
     </div>
   );
 }

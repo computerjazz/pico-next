@@ -87,3 +87,6 @@ export function splitRouteAtDistance(
     finished: true,
   };
 }
+
+export const metersToKm = (m: number) => (m / 1000).toFixed(2);
+export const metersToMiles = (m: number) => (m / 1609.344).toFixed(2);
