@@ -37,13 +37,15 @@ The wire runs up the frame of the bike and plugs into a 1/8" audio-style jack on
 
 I already have a webapp running on the Pi (serving the blog you are currently reading, among other things), so the app side was mostly a matter of piping the socket events through to the frontend and updating a route on a map. I'm using bike directions from openstreetmap — no freeways allowed!
 
-<Image src={route} width={400} height={400} className="max-h-[400px] w-auto rounded-md" alt="webapp" />
 
 While I was building the app, I had Claude work on jailbreaking the photo frame by pointing it at the [github repo](https://github.com/wesbos/photo-frame-dashboard) linked in the YouTube video and clicking "accept" on countless cryptic ```adb``` commands for about an hour and $10 in tokens, until the frame booted into an android home screen and a prebuilt android app that would wrap my webapp.
 
-I have a bunch of ideas for enhancements (my wife wants to bike through the original Oregon Trail game, which I love), but I'm calling it done for now, and it's fun! 
+And it works! As you pedal the exercise bike, the timer in the app starts running. Your current speed is displayed alongside the distance you've traveled, and a marker on the map moves along your route. 
+<Image src={route} width={400} height={400} className="max-h-[400px] w-auto rounded-md" alt="webapp" />
 
-Tonight, as I'm sweating away on the bike, my little map marker inches along the road, and the wind from a battery powered fan blows through my hair. I'll let you know when I make it to grandma's house.
+I have a bunch of ideas for enhancements (my wife wants to bike through the original Oregon Trail game, which I love), but I'm calling it done for now. 
+
+As I'm sweating away on the bike tonight, my little map marker inches along Cahuenga Blvd and the wind from a battery powered fan blows through my hair. I'll let you know when I make it to grandma's house.
 
 
 <Image src={frame} width={400} height={400} className="max-h-[400px] w-auto rounded-md" alt="webapp" />
