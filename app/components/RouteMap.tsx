@@ -209,13 +209,19 @@ function ElevationStats({
   const lastPosRef = useRef(curPos);
 
   useEffect(() => {
+
+    if (!curPos) return
+
     async function getGrade(fromLatLng: LatLng, toLatLng: LatLng) {
       const run = haversineM(fromLatLng, toLatLng)
+      // only check for grade every n meters
+      if (run < 20) return;
       const { deltaM: rise } = await getElevationDiff({ fromLatLng, toLatLng });
       const slope = rise / run
+      lastPosRef.current = curPos
       setGrade(slope)
     }
-
+    
     const lastPos = lastPosRef.current;
     if (curPos && lastPos && lastPos !== curPos) {
       getGrade(curPos, lastPos);
@@ -231,7 +237,7 @@ function ElevationStats({
 
   const { color, label } = getGrade()
 
-  return <div className={`text-white p-4 rounded-md text-xl ${color}`}>{`${(grade * 100).toFixed(0)}% ${label}`}</div>;
+  return <div className={`text-white p-4 rounded-md text-xl ${color}`}>{`${label}`}</div>;
 }
 
 function RouteStats() {
