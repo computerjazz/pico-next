@@ -21,6 +21,7 @@ import { useStableCallback } from "../hooks/useStableCallback";
 import { LatLng, RouteProgress } from "../bike/map/types";
 import { getElevationDiff } from "../bike/map/actions";
 import Image from "next/image";
+import { useIsFocused } from "../hooks/useIsFocused";
 
 const FOLLOW_ZOOM = 18; // OSM tiles go to 19; 17 is a bit wider
 const STREETVIEW_SPEED_THRESHOLD_MPH = 15;
@@ -471,10 +472,14 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
     }
   }, [isStandingStill, fitMapToRoute, onFollow]);
 
-  const { isActive: isStreetViewVisible } = useIsStreetViewActive({
+  const { isActive: isStreetViewActive } = useIsStreetViewActive({
     speedMph: speedInMph,
     onMph: STREETVIEW_SPEED_THRESHOLD_MPH,
   });
+
+  const { isFocused: isTabFocused } = useIsFocused();
+
+  const isStreetViewVisible = isStreetViewActive && isTabFocused;
 
   return (
     <div className="relative flex-1">
