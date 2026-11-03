@@ -202,6 +202,23 @@ function SearchPanel({
   );
 }
 
+function FadeImage({ src }: { src: string }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <Image
+      src={src}
+      alt="streetview"
+      height={400}
+      width={400}
+      onLoad={() => setLoaded(true)}
+      className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+        loaded ? "opacity-100" : "opacity-0"
+      }`}
+    />
+  );
+}
+
 function StreetView({
   routeProgress,
 }: {
@@ -209,22 +226,20 @@ function StreetView({
 }) {
   const curPos = routeProgress?.position;
   const lastPosRef = useRef(curPos);
-  const [url, setUrl] = useState("");
+  const [urls, setUrls] = useState<{ prev: string; cur: string }>({
+    prev: "",
+    cur: "",
+  });
 
   useEffect(() => {
     if (!curPos) return;
 
     function getStreetViewImage(fromLatLng: LatLng, toLatLng: LatLng) {
       const run = haversineM(fromLatLng, toLatLng);
-      // only get street view images every n meters
       if (run < 20) return;
-      const heading = getHeading({
-        fromLatLng,
-        toLatLng,
-      });
-      setUrl(
-        `/api/bike/streetview?lat=${toLatLng[0]}&lng=${toLatLng[1]}&heading=${heading}`,
-      );
+      const heading = getHeading({ fromLatLng, toLatLng });
+      const next = `/api/bike/streetview?lat=${toLatLng[0]}&lng=${toLatLng[1]}&heading=${heading}`;
+      setUrls((u) => ({ prev: u.cur, cur: next }));
       lastPosRef.current = curPos;
     }
 
@@ -234,18 +249,16 @@ function StreetView({
     }
   }, [curPos]);
 
-  if (!url) return null;
+  if (!urls.cur) return null;
+
   return (
-    <Image
-      src={url}
-      alt="streetview"
-      className="rounded-lg"
-      height={400}
-      width={400}
-    />
+    <div className="relative flex flex-1 aspect-square">
+      {[urls.prev, urls.cur].filter(Boolean).map((src) => (
+        <FadeImage key={src} src={src} />
+      ))}
+    </div>
   );
 }
-
 function ElevationStats({
   routeProgress,
 }: {
@@ -424,23 +437,25 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
     }
   }, [isStandingStill, fitMapToRoute, onFollow]);
 
+  const isStreetViewVisible = speedInMph > STREETVIEW_SPEED_THRESHOLD_MPH;
+
   return (
     <div className="relative flex-1">
       <div ref={containerRef} style={{ height: "100%", width: "100%" }} />
       <SearchPanel follow={follow} onFollow={onFollow} />
       <RiderButton onClick={onFollow} />
-      <div className="absolute z-1000 left-2 bottom-2">
+      <div className="absolute z-1001 left-2 bottom-2">
         <RouteStats />
       </div>
-      <div className="absolute z-1000 right-2 bottom-2">
+      <div className="absolute z-1001 right-2 bottom-2">
         <ElevationStats routeProgress={routeProgress} />
       </div>
 
-      {speedInMph > STREETVIEW_SPEED_THRESHOLD_MPH && (
-        <div className="absolute z-1000 left-2 top-2">
-          <StreetView routeProgress={routeProgress} />
-        </div>
-      )}
+      <div
+        className={`absolute z-1000 left-0 top-0 w-full h-full flex ${speedInMph > STREETVIEW_SPEED_THRESHOLD_MPH ? "opacity-80" : "opacity-0"} transition-opacity duration-500`}
+      >
+        {isStreetViewVisible && <StreetView routeProgress={routeProgress} />}
+      </div>
 
       {children}
     </div>
