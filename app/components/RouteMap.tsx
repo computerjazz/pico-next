@@ -306,7 +306,13 @@ function ElevationStats({
   useEffect(() => {
     if (!curPos) return;
 
-    async function getGrade(fromLatLng: LatLng, toLatLng: LatLng) {
+    async function getGrade({
+      fromLatLng,
+      toLatLng,
+    }: {
+      fromLatLng: LatLng;
+      toLatLng: LatLng;
+    }) {
       const run = haversineM(fromLatLng, toLatLng);
       // only check for grade every n meters
       if (run < 20) return;
@@ -318,23 +324,23 @@ function ElevationStats({
 
     const lastPos = lastPosRef.current;
     if (curPos && lastPos && lastPos !== curPos) {
-      getGrade(curPos, lastPos);
+      getGrade({ fromLatLng: lastPos, toLatLng: curPos });
     }
   }, [curPos]);
 
-  function getGrade() {
+  function getGradeLabel() {
     if (grade < 0.02) return { color: "bg-green-600", label: "easy" };
     if (grade < 0.5) return { color: "bg-yellow-600", label: "moderate" };
     if (grade < 0.8) return { color: "bg-orange-600", label: "strenuous" };
     return { color: "bg-red-600", label: "brutal" };
   }
 
-  const { color, label } = getGrade();
+  const { color, label } = getGradeLabel();
 
   return (
     <div
       className={`text-white p-4 rounded-md text-xl ${color}`}
-    >{`${label}`}</div>
+    >{`${label} ${(grade * 100).toFixed(2)}%`}</div>
   );
 }
 

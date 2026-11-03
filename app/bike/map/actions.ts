@@ -1,7 +1,13 @@
 "use server";
 
 import { getRedis, REDIS_KEYS } from "@/lib/redis";
-import { BuiltRoute, ElevationDiff, LatLng, SearchResult, Waypoint } from "./types";
+import {
+  BuiltRoute,
+  ElevationDiff,
+  LatLng,
+  SearchResult,
+  Waypoint,
+} from "./types";
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -91,12 +97,12 @@ export async function buildBikeRoute({
   }
 }
 
-export async function getElevationDiff({
+async function _getElevationOpenMeteo({
   fromLatLng,
   toLatLng,
 }: {
-  fromLatLng: LatLng,
-  toLatLng: LatLng,
+  fromLatLng: LatLng;
+  toLatLng: LatLng;
 }): Promise<ElevationDiff> {
   const points = [fromLatLng, toLatLng];
 
@@ -129,4 +135,55 @@ export async function getElevationDiff({
   }
 
   return { fromM, toM, deltaM: toM - fromM };
+}
+
+async function getElevationUSGS({
+  latLng,
+}: {
+  latLng: LatLng;
+}): Promise<{ elevation: number }> {
+  // Implementation for USGS elevation API goes here
+  const url = new URL("https://epqs.nationalmap.gov/v1/json");
+  const [lat, lng] = latLng;
+  url.searchParams.set("x", String(lng)); // longitude
+  url.searchParams.set("y", String(lat)); // latitude
+  url.searchParams.set("wkid", "4326");
+  url.searchParams.set("units", "Meters");
+  url.searchParams.set("includeDate", "false");
+
+  const res = await fetch(url, {
+    next: { revalidate: 60 * 60 * 24 },
+  });
+
+  if (!res.ok) {
+    throw new Error(`USGS Elevation API error: ${res.status}`);
+  }
+
+  const data: { value?: number | string } = await res.json();
+  const elevation = Number(data.value);
+
+  if (!Number.isFinite(elevation) || elevation <= -100000) {
+    throw new Error("USGS returned invalid elevation data");
+  }
+
+  return { elevation };
+}
+
+export async function getElevationDiff({
+  fromLatLng,
+  toLatLng,
+}: {
+  fromLatLng: LatLng;
+  toLatLng: LatLng;
+}): Promise<ElevationDiff> {
+  const [from, to] = await Promise.all([
+    getElevationUSGS({ latLng: fromLatLng }),
+    getElevationUSGS({ latLng: toLatLng }),
+  ]);
+  console.log("from:", from, "to:", to);
+  return {
+    fromM: from.elevation,
+    toM: to.elevation,
+    deltaM: to.elevation - from.elevation,
+  };
 }
