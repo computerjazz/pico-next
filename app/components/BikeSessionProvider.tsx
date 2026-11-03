@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import z from "zod";
 import React from "react";
+import { IS_DEV } from "@/lib/constants";
 
 const BikeStatusSchema = z.object({
   type: z.literal("bike-status"),
@@ -15,9 +16,6 @@ const METERS_PER_PULSE = 6;
 const MIN_IDLE_MS = 4000; // no pulse for at least this long => speed is 0
 const SESSION_RESET_MS = 10 * 60 * 1000;
 const MPS_TO_MPH = 2.23694;
-
-const IS_TESTING =
-  typeof window !== "undefined" && window.location.origin.includes("localhost");
 
 function useBikeSessionData({
   pulseCount: pulseCountProp,
@@ -41,10 +39,10 @@ function useBikeSessionData({
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (IS_TESTING) {
+    if (IS_DEV) {
       interval = setInterval(() => {
         setPulseCount((pc) => pc + 1);
-      }, 1000);
+      }, 800);
     }
 
     return () => {

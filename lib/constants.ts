@@ -14,3 +14,5 @@ export const DEVICE_TYPE = {
   SHORTWAVE: "shortwave",
   TOGGLE: "toggle",
 };
+
+export const IS_DEV = process.env.NODE_ENV !== "production";
