@@ -18,8 +18,7 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24,
     localPatterns: [
       {
-        pathname: "/api/bike/streetview",
-        // omit `search` to allow any query string
+        pathname: "/**",
       },
     ],
     remotePatterns: [
