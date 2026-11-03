@@ -25,6 +25,38 @@ import Image from "next/image";
 const FOLLOW_ZOOM = 18; // OSM tiles go to 19; 17 is a bit wider
 const STREETVIEW_SPEED_THRESHOLD_MPH = 15;
 
+function useIsStreetViewActive({
+  onMph = 15,
+  offMph = 12,
+  holdMs = 3000,
+  speedMph,
+}: {
+  speedMph: number;
+  onMph?: number;
+  offMph?: number;
+  holdMs?: number;
+}) {
+  const [isActive, setIsActive] = useState(false);
+
+  useEffect(() => {
+    function handleSpeedChange() {
+      if (speedMph > onMph) {
+        setIsActive(true);
+        return;
+      }
+      if (speedMph < offMph) {
+        // only hide if we stay slow for a while
+        const id = setTimeout(() => setIsActive(false), holdMs);
+        return () => clearTimeout(id);
+      }
+    }
+
+    handleSpeedChange();
+  }, [speedMph, onMph, offMph, holdMs]);
+
+  return { isActive };
+}
+
 function RiderButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -221,8 +253,10 @@ function FadeImage({ src }: { src: string }) {
 
 function StreetView({
   routeProgress,
+  isActive,
 }: {
   routeProgress?: RouteProgress | null;
+  isActive?: boolean;
 }) {
   const curPos = routeProgress?.position;
   const lastPosRef = useRef(curPos);
@@ -232,7 +266,7 @@ function StreetView({
   });
 
   useEffect(() => {
-    if (!curPos) return;
+    if (!curPos || !isActive) return;
 
     function getStreetViewImage(fromLatLng: LatLng, toLatLng: LatLng) {
       const run = haversineM(fromLatLng, toLatLng);
@@ -247,7 +281,7 @@ function StreetView({
     if (curPos && lastPos && lastPos !== curPos) {
       getStreetViewImage(lastPos, curPos);
     }
-  }, [curPos]);
+  }, [curPos, isActive]);
 
   if (!urls.cur) return null;
 
@@ -437,7 +471,10 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
     }
   }, [isStandingStill, fitMapToRoute, onFollow]);
 
-  const isStreetViewVisible = speedInMph > STREETVIEW_SPEED_THRESHOLD_MPH;
+  const { isActive: isStreetViewVisible } = useIsStreetViewActive({
+    speedMph: speedInMph,
+    onMph: STREETVIEW_SPEED_THRESHOLD_MPH,
+  });
 
   return (
     <div className="relative flex-1">
@@ -452,9 +489,12 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
       </div>
 
       <div
-        className={`absolute z-1000 left-0 top-0 w-full h-full flex ${speedInMph > STREETVIEW_SPEED_THRESHOLD_MPH ? "opacity-80" : "opacity-0"} transition-opacity duration-500`}
+        className={`absolute z-1000 left-0 top-0 w-full h-full flex ${isStreetViewVisible ? "opacity-80" : "opacity-0"} transition-opacity duration-500`}
       >
-        {isStreetViewVisible && <StreetView routeProgress={routeProgress} />}
+        <StreetView
+          routeProgress={routeProgress}
+          isActive={isStreetViewVisible}
+        />
       </div>
 
       {children}
