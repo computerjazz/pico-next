@@ -90,3 +90,30 @@ export function splitRouteAtDistance(
 
 export const metersToKm = (m: number) => (m / 1000).toFixed(2);
 export const metersToMiles = (m: number) => (m / 1609.344).toFixed(2);
+
+export function getBearing({
+  fromLatLng,
+  toLatLng,
+}: {
+  fromLatLng: LatLng,
+  toLatLng: LatLng,
+}) {
+  const [lat1, lng1] = fromLatLng
+  const [lat2, lng2] = toLatLng
+  const r = Math.PI / 180;
+  const y = Math.sin((lng2 - lng1) * r) * Math.cos(lat2 * r);
+  const x =
+    Math.cos(lat1 * r) * Math.sin(lat2 * r) -
+    Math.sin(lat1 * r) * Math.cos(lat2 * r) * Math.cos((lng2 - lng1) * r);
+  return (Math.atan2(y, x) / r + 360) % 360;
+}
+
+export function getHeading({
+    fromLatLng,
+  toLatLng,
+}: {
+  fromLatLng: LatLng,
+  toLatLng: LatLng,
+}) {
+  return (Math.round(getBearing({ fromLatLng, toLatLng }) / 5) * 5) % 360
+}

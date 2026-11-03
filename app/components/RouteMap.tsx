@@ -8,6 +8,7 @@ import { useBikeSession } from "./BikeSessionProvider";
 import XCircle from "./icons/XCircle";
 import MapPin from "./icons/MapPin";
 import {
+  getHeading,
   getRouteDistanceM,
   haversineM,
   metersToKm,
@@ -19,8 +20,10 @@ import Flag from "./icons/Flag";
 import { useStableCallback } from "../hooks/useStableCallback";
 import { LatLng, RouteProgress } from "../bike/map/types";
 import { getElevationDiff } from "../bike/map/actions";
+import Image from "next/image";
 
 const FOLLOW_ZOOM = 18; // OSM tiles go to 19; 17 is a bit wider
+const STREETVIEW_SPEED_THRESHOLD_MPH = 15;
 
 function RiderButton({ onClick }: { onClick: () => void }) {
   return (
@@ -199,6 +202,50 @@ function SearchPanel({
   );
 }
 
+function StreetView({
+  routeProgress,
+}: {
+  routeProgress?: RouteProgress | null;
+}) {
+  const curPos = routeProgress?.position;
+  const lastPosRef = useRef(curPos);
+  const [url, setUrl] = useState("");
+
+  useEffect(() => {
+    if (!curPos) return;
+
+    function getStreetViewImage(fromLatLng: LatLng, toLatLng: LatLng) {
+      const run = haversineM(fromLatLng, toLatLng);
+      // only get street view images every n meters
+      if (run < 20) return;
+      const heading = getHeading({
+        fromLatLng,
+        toLatLng,
+      });
+      setUrl(
+        `/api/bike/streetview?lat=${toLatLng[0]}&lng=${toLatLng[1]}&heading=${heading}`,
+      );
+      lastPosRef.current = curPos;
+    }
+
+    const lastPos = lastPosRef.current;
+    if (curPos && lastPos && lastPos !== curPos) {
+      getStreetViewImage(lastPos, curPos);
+    }
+  }, [curPos]);
+
+  if (!url) return null;
+  return (
+    <Image
+      src={url}
+      alt="streetview"
+      className="rounded-lg"
+      height={400}
+      width={400}
+    />
+  );
+}
+
 function ElevationStats({
   routeProgress,
 }: {
@@ -209,19 +256,18 @@ function ElevationStats({
   const lastPosRef = useRef(curPos);
 
   useEffect(() => {
-
-    if (!curPos) return
+    if (!curPos) return;
 
     async function getGrade(fromLatLng: LatLng, toLatLng: LatLng) {
-      const run = haversineM(fromLatLng, toLatLng)
+      const run = haversineM(fromLatLng, toLatLng);
       // only check for grade every n meters
       if (run < 20) return;
       const { deltaM: rise } = await getElevationDiff({ fromLatLng, toLatLng });
-      const slope = rise / run
-      lastPosRef.current = curPos
-      setGrade(slope)
+      const slope = rise / run;
+      lastPosRef.current = curPos;
+      setGrade(slope);
     }
-    
+
     const lastPos = lastPosRef.current;
     if (curPos && lastPos && lastPos !== curPos) {
       getGrade(curPos, lastPos);
@@ -229,15 +275,19 @@ function ElevationStats({
   }, [curPos]);
 
   function getGrade() {
-    if (grade < 0.02) return {color: 'bg-green-600', label: 'easy' }
-    if (grade < 0.5) return { color: "bg-yellow-600", label: 'moderate'};
-    if (grade < 0.8) return { color: 'bg-orange-600', label: 'strenuous'}
-    return  { color: 'bg-red-600', label: 'brutal'}
+    if (grade < 0.02) return { color: "bg-green-600", label: "easy" };
+    if (grade < 0.5) return { color: "bg-yellow-600", label: "moderate" };
+    if (grade < 0.8) return { color: "bg-orange-600", label: "strenuous" };
+    return { color: "bg-red-600", label: "brutal" };
   }
 
-  const { color, label } = getGrade()
+  const { color, label } = getGrade();
 
-  return <div className={`text-white p-4 rounded-md text-xl ${color}`}>{`${label}`}</div>;
+  return (
+    <div
+      className={`text-white p-4 rounded-md text-xl ${color}`}
+    >{`${label}`}</div>
+  );
 }
 
 function RouteStats() {
@@ -258,7 +308,7 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
   const riderRef = useRef<CircleMarker | null>(null);
   const followingRef = useRef(false); // true once we've applied FOLLOW_ZOOM
   const [follow, setFollow] = useState(true);
-  const { totalDistanceM, speed } = useBikeSession();
+  const { totalDistanceM, speed, speedInMph } = useBikeSession();
 
   const traveledM = totalDistanceM;
 
@@ -385,6 +435,12 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
       <div className="absolute z-1000 right-2 bottom-2">
         <ElevationStats routeProgress={routeProgress} />
       </div>
+
+      {speedInMph > STREETVIEW_SPEED_THRESHOLD_MPH && (
+        <div className="absolute z-1000 left-2 top-2">
+          <StreetView routeProgress={routeProgress} />
+        </div>
+      )}
 
       {children}
     </div>
