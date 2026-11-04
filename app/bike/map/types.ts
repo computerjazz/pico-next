@@ -40,11 +40,11 @@ export type RouteProgress = {
   finished: boolean;
 };
 
-
 export const ElevationDiffSchema = z.object({
   fromM: z.number(),
   toM: z.number(),
   deltaM: z.number(),
-})
+  source: z.string(),
+});
 
-export type ElevationDiff = z.infer<typeof ElevationDiffSchema>
+export type ElevationDiff = z.infer<typeof ElevationDiffSchema>;

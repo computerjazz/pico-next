@@ -287,7 +287,7 @@ function StreetView({
   if (!urls.cur) return null;
 
   return (
-    <div className="relative flex flex-1 aspect-square">
+    <div className="relative flex flex-1 aspect-square pointer-events-none">
       {[urls.prev, urls.cur].filter(Boolean).map((src) => (
         <FadeImage key={src} src={src} />
       ))}
@@ -330,8 +330,8 @@ function ElevationStats({
 
   function getGradeLabel() {
     if (grade < 0.02) return { color: "bg-green-600", label: "easy" };
-    if (grade < 0.5) return { color: "bg-yellow-600", label: "moderate" };
-    if (grade < 0.8) return { color: "bg-orange-600", label: "strenuous" };
+    if (grade < 0.05) return { color: "bg-yellow-600", label: "moderate" };
+    if (grade < 0.08) return { color: "bg-orange-600", label: "strenuous" };
     return { color: "bg-red-600", label: "brutal" };
   }
 
@@ -500,7 +500,7 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
       </div>
 
       <div
-        className={`absolute z-1000 left-0 top-0 w-full h-full flex ${isStreetViewVisible ? "opacity-80" : "opacity-0"} transition-opacity duration-500`}
+        className={`absolute z-1000 left-0 top-0 w-full h-full flex pointer-events-none ${isStreetViewVisible ? "opacity-80" : "opacity-0"} transition-opacity duration-500`}
       >
         <StreetView
           routeProgress={routeProgress}

@@ -12,6 +12,8 @@ const BikeStatusSchema = z.object({
   timestamp: z.number(),
 });
 
+type BikeStatus = z.infer<typeof BikeStatusSchema>;
+
 const METERS_PER_PULSE = 6;
 const MIN_IDLE_MS = 4000; // no pulse for at least this long => speed is 0
 const SESSION_RESET_MS = 10 * 60 * 1000;
@@ -22,7 +24,13 @@ function useBikeSessionData({
 }: {
   pulseCount?: number;
 }) {
-  const [pulseCount, setPulseCount] = useState<number>(pulseCountProp ?? 0);
+  const [bikeStatus, setBikeStatus] = useState<BikeStatus>(() => ({
+    type: "bike-status",
+    pulseCount: pulseCountProp ?? 0,
+    timestamp: Date.now(),
+  }));
+
+  const pulseCount = bikeStatus.pulseCount;
   const [speed, setSpeed] = useState<number>(0); // meters per second
 
   const [sessionSeconds, setSessionSeconds] = useState(1);
@@ -33,16 +41,19 @@ function useBikeSessionData({
   const stoppedAtMs = useRef<number | null>(null);
 
   // Refs hold the previous message so the handler never reads stale state
-  const last = useRef<{ count: number; ts: number } | null>(null);
+  const prevBikeStatus = useRef<BikeStatus>(bikeStatus);
   const lastIntervalMs = useRef(0);
-  const pulseCountRef = useRef(pulseCount);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (IS_DEV) {
       interval = setInterval(() => {
-        setPulseCount((pc) => pc + 1);
-      }, 800);
+        setBikeStatus((bs) => ({
+          type: "bike-status",
+          pulseCount: bs.pulseCount + 1,
+          timestamp: Date.now(),
+        }));
+      }, 1800);
     }
 
     return () => {
@@ -51,21 +62,19 @@ function useBikeSessionData({
   }, []);
 
   useEffect(() => {
-    const prev = last.current;
-    const timestamp = Date.now();
-    last.current = { count: pulseCount, ts: timestamp };
-    pulseCountRef.current = pulseCount;
+    const prev = prevBikeStatus.current;
+    prevBikeStatus.current = bikeStatus;
 
     // First message has nothing to compare against
     if (!prev) return;
 
-    const seconds = (timestamp - prev.ts) / 1000; // new minus old, both from the message
-    const pulses = pulseCount - prev.count; // new minus old
+    const seconds = (bikeStatus.timestamp - prev.timestamp) / 1000; // new minus old, both from the message
+    const pulses = bikeStatus.pulseCount - prev.pulseCount; // new minus old
     if (seconds > 0 && pulses > 0) {
       lastIntervalMs.current = seconds * 1000;
       setSpeed((pulses * METERS_PER_PULSE) / seconds);
     }
-  }, [pulseCount]);
+  }, [bikeStatus]);
 
   useSocket({
     groupId: "bike-status",
@@ -78,16 +87,18 @@ function useBikeSessionData({
       }
       const parsed = BikeStatusSchema.safeParse(json);
       if (!parsed.success) return;
-      const { pulseCount: count } = parsed.data;
-      setPulseCount(count);
+      const bikeStatusData = parsed.data;
+      setBikeStatus(bikeStatusData);
     },
   });
+
+  const isMoving = speed > 0;
 
   useEffect(() => {
     const id = setInterval(() => {
       const now = Date.now();
 
-      if (speed > 0) {
+      if (isMoving) {
         // Resume a paused session, or start a new one.
         if (sessionStartMs.current === null) {
           sessionStartMs.current = now;
@@ -119,19 +130,19 @@ function useBikeSessionData({
           sessionStartMs.current = null;
           stoppedAtMs.current = null;
           setSessionSeconds(0);
-          setSessionPulseInit(pulseCountRef.current);
+          setSessionPulseInit(prevBikeStatus.current.pulseCount);
         }
       }
     }, 250);
 
     return () => clearInterval(id);
-  }, [speed]);
+  }, [isMoving]);
 
   // No messages arrive when you stop pedaling, so decay the speed to 0 on a timer
   useEffect(() => {
     const id = setInterval(() => {
-      if (!last.current) return;
-      const idleMs = Date.now() - last.current.ts;
+      if (!prevBikeStatus.current) return;
+      const idleMs = Date.now() - prevBikeStatus.current.timestamp;
       if (idleMs > Math.max(MIN_IDLE_MS, lastIntervalMs.current * 2)) {
         setSpeed(0);
       }

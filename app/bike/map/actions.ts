@@ -97,7 +97,7 @@ export async function buildBikeRoute({
   }
 }
 
-async function _getElevationOpenMeteo({
+async function getElevationDiffOpenMeteo({
   fromLatLng,
   toLatLng,
 }: {
@@ -134,7 +134,7 @@ async function _getElevationOpenMeteo({
     throw new Error("Elevation API returned unexpected data");
   }
 
-  return { fromM, toM, deltaM: toM - fromM };
+  return { fromM, toM, deltaM: toM - fromM, source: "open-meteo" };
 }
 
 async function getElevationUSGS({
@@ -169,7 +169,7 @@ async function getElevationUSGS({
   return { elevation };
 }
 
-export async function getElevationDiff({
+async function getElevationDiffUSGS({
   fromLatLng,
   toLatLng,
 }: {
@@ -185,5 +185,19 @@ export async function getElevationDiff({
     fromM: from.elevation,
     toM: to.elevation,
     deltaM: to.elevation - from.elevation,
+    source: "usgs",
   };
+}
+
+export async function getElevationDiff({
+  fromLatLng,
+  toLatLng,
+}: {
+  fromLatLng: LatLng;
+  toLatLng: LatLng;
+}): Promise<ElevationDiff> {
+  return Promise.race([
+    getElevationDiffUSGS({ fromLatLng, toLatLng }),
+    getElevationDiffOpenMeteo({ fromLatLng, toLatLng }),
+  ]);
 }
