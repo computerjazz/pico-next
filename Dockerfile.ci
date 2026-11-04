@@ -19,6 +19,8 @@ RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build && npm run build:serv
 # Stage 2: production image
 FROM node:20-alpine
 WORKDIR /app
+ARG GIT_SHA
+ENV GIT_SHA=$GIT_SHA
 RUN apk add --no-cache ffmpeg
 COPY --from=builder /app ./
 EXPOSE 3000
