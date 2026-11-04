@@ -1,0 +1,22 @@
+# Stage 1: build
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ARG NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY \
+    NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+
+RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build && npm run build:server
+
+# Stage 2: production image
+FROM node:20-alpine
+WORKDIR /app
+RUN apk add --no-cache ffmpeg
+COPY --from=builder /app ./
+EXPOSE 3000
+ENV NODE_ENV=production
+CMD ["node", "dist/server.js"]

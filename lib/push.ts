@@ -15,17 +15,24 @@ export const SubscriptionPayloadSchema = z.object({
 
 export type SubscriptionPayload = z.infer<typeof SubscriptionPayloadSchema>;
 
-webpush.setVapidDetails(
-  "mailto:hi@danielmerrill.com",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
+let isConfigured = false;
+function configureWebPush() {
+  if (!isConfigured) {
+    webpush.setVapidDetails(
+      "mailto:hi@danielmerrill.com",
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+      process.env.VAPID_PRIVATE_KEY!,
+    );
+    isConfigured = true;
+  }
+}
 
 export async function sendWebPush(payload: {
   title: string;
   body: string;
   deviceId: string;
 }) {
+  configureWebPush();
   const deviceChannels = await db.query.deviceChannels.findMany({
     where: (t, { and, eq }) =>
       and(eq(t.deviceId, payload.deviceId), eq(t.type, CHANNEL_TYPE.WEB_PUSH)),
