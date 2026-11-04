@@ -3,8 +3,13 @@ import { OAuth2Client } from "google-auth-library";
 import { isTruthy } from "./utils";
 const client = new OAuth2Client();
 
-const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON!);
-const token = JSON.parse(process.env.GOOGLE_TOKEN_JSON!);
+const credentials = JSON.parse(
+  process.env.GOOGLE_CREDENTIALS_JSON ??
+    JSON.stringify({
+      web: { client_id: "", client_secret: "", redirect_uris: [""] },
+    }),
+);
+const token = JSON.parse(process.env.GOOGLE_TOKEN_JSON ?? JSON.stringify({}));
 
 const { client_id, client_secret, redirect_uris } = credentials.web;
 
