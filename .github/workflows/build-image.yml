@@ -25,7 +25,7 @@ jobs:
           file: ./Dockerfile.ci
           platforms: linux/arm64
           push: true
-          tags: ghcr.io/<your-github-user>/<repo>:test-${{ github.sha }}
+          tags: ghcr.io/computerjazz/pico-next:test-${{ github.sha }}
           build-args: |
             NEXT_PUBLIC_BASE_URL=${{ vars.NEXT_PUBLIC_BASE_URL }}
             NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
