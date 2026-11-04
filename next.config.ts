@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 import withMDX from "@next/mdx";
+
 const nextConfig: NextConfig = {
+  deploymentId: process.env.GIT_SHA, // or any per-deploy string
+  env: { NEXT_PUBLIC_BUILD_ID: process.env.GIT_SHA },
   outputFileTracingIncludes: {
     "/api/**/*": ["./node_modules/tesseract.js/**"],
   },
