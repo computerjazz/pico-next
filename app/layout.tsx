@@ -5,7 +5,6 @@ import { cookies } from "next/headers";
 import { Toaster } from "sonner";
 import { auth } from "@/auth";
 import { SessionProvider } from "next-auth/react";
-import { RefreshDaemon } from "./components/RefreshDaemon";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +35,6 @@ export default async function RootLayout({
       >
         <SessionProvider session={session}>{children}</SessionProvider>
         <Toaster />
-        <RefreshDaemon />
       </body>
     </html>
   );

@@ -2,6 +2,7 @@ import { getRedis, REDIS_KEYS } from "@/lib/redis";
 import BikeTabs from "./BikeTabs";
 import { BikeSessionProvider } from "../components/BikeSessionProvider";
 import { MapProvider } from "../components/MapProvider";
+import { RefreshDaemon } from "../components/RefreshDaemon";
 
 export default async function Layout({
   children,
@@ -17,6 +18,7 @@ export default async function Layout({
     <BikeSessionProvider pulseCount={parseInt(pulseCount ?? "0")}>
       <MapProvider initialRoute={route ? JSON.parse(route) : null}>
         <BikeTabs>{children}</BikeTabs>
+        <RefreshDaemon />
       </MapProvider>
     </BikeSessionProvider>
   );
