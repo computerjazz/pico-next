@@ -19,6 +19,10 @@ const MIN_IDLE_MS = 4000; // no pulse for at least this long => speed is 0
 const SESSION_RESET_MS = 10 * 60 * 1000;
 const MPS_TO_MPH = 2.23694;
 
+function getCurrentMs() {
+  return Date.now();
+}
+
 function useBikeSessionData({
   pulseCount: pulseCountProp,
 }: {
@@ -38,7 +42,7 @@ function useBikeSessionData({
 
   const sessionStartMs = useRef<number | null>(null);
   const accumulatedMs = useRef(0);
-  const stoppedAtMs = useRef<number | null>(null);
+  const stoppedAtMs = useRef<number | null>(getCurrentMs());
 
   // Refs hold the previous message so the handler never reads stale state
   const prevBikeStatus = useRef<BikeStatus>(bikeStatus);
