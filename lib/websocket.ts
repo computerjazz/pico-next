@@ -27,6 +27,7 @@ export const BikeStatusSchema = z.object({
   groupId: z.string(),
   status: z.record(z.string(), z.any()).optional().nullable(),
   token: z.string(),
+  t: z.number().optional().nullable(),
 });
 
 type SocketGroup = Map<string, WebSocket>;

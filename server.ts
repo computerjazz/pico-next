@@ -127,7 +127,7 @@ async function main() {
             deviceId: msg.deviceId,
             status: msg.status,
             pulseCount: count,
-            timestamp: Date.now(),
+            timestamp: msg.t ?? Date.now(),
           }),
         });
         sendMessage({ message: command });
