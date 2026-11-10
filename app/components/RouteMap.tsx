@@ -499,18 +499,22 @@ export default function RouteMap({ children }: { children?: React.ReactNode }) {
       <div className="absolute z-1001 left-2 bottom-2">
         <RouteStats />
       </div>
-      <div className="absolute z-1001 right-2 bottom-2">
-        <ElevationStats routeProgress={routeProgress} />
-      </div>
+      {isTabFocused && (
+        <>
+          <div className="absolute z-1001 right-2 bottom-2">
+            <ElevationStats routeProgress={routeProgress} />
+          </div>
 
-      <div
-        className={`absolute z-1000 left-0 top-0 w-full h-full flex pointer-events-none ${isStreetViewVisible ? "opacity-80" : "opacity-0"} transition-opacity duration-500`}
-      >
-        <StreetView
-          routeProgress={routeProgress}
-          isActive={isStreetViewVisible}
-        />
-      </div>
+          <div
+            className={`absolute z-1000 left-0 top-0 w-full h-full flex pointer-events-none ${isStreetViewVisible ? "opacity-80" : "opacity-0"} transition-opacity duration-500`}
+          >
+            <StreetView
+              routeProgress={routeProgress}
+              isActive={isStreetViewVisible}
+            />
+          </div>
+        </>
+      )}
 
       {children}
     </div>
