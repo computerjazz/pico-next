@@ -316,7 +316,11 @@ function ElevationStats({
       const run = haversineM(fromLatLng, toLatLng);
       // only check for grade every n meters
       if (run < 20) return;
-      const { deltaM: rise } = await getElevationDiff({ fromLatLng, toLatLng });
+      const { deltaM: rise } = await getElevationDiff({
+        fromLatLng,
+        toLatLng,
+        provider: "google",
+      });
       const slope = rise / run;
       lastPosRef.current = curPos;
       setGrade(slope);

@@ -169,6 +169,50 @@ async function getElevationUSGS({
   return { elevation };
 }
 
+async function getElevationDiffGoogleMaps({
+  fromLatLng,
+  toLatLng,
+}: {
+  fromLatLng: LatLng;
+  toLatLng: LatLng;
+}): Promise<ElevationDiff> {
+  const url = new URL("https://maps.googleapis.com/maps/api/elevation/json");
+  url.searchParams.set(
+    "locations",
+    `${fromLatLng[0]},${fromLatLng[1]}|${toLatLng[0]},${toLatLng[1]}`,
+  );
+  url.searchParams.set("key", process.env.GOOGLE_MAPS_API_KEY ?? "");
+
+  const res = await fetch(url, {
+    next: { revalidate: 60 * 60 * 24 },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Google Maps Elevation API error: ${res.status}`);
+  }
+
+  const data: {
+    results?: { elevation?: number }[];
+  } = await res.json();
+  const [from, to] = data.results ?? [];
+
+  if (
+    typeof from?.elevation !== "number" ||
+    typeof to?.elevation !== "number" ||
+    !Number.isFinite(from.elevation) ||
+    !Number.isFinite(to.elevation)
+  ) {
+    throw new Error("Google Maps returned invalid elevation data");
+  }
+
+  return {
+    fromM: from.elevation,
+    toM: to.elevation,
+    deltaM: to.elevation - from.elevation,
+    source: "google-maps",
+  };
+}
+
 async function getElevationDiffUSGS({
   fromLatLng,
   toLatLng,
@@ -180,7 +224,6 @@ async function getElevationDiffUSGS({
     getElevationUSGS({ latLng: fromLatLng }),
     getElevationUSGS({ latLng: toLatLng }),
   ]);
-  console.log("from:", from, "to:", to);
   return {
     fromM: from.elevation,
     toM: to.elevation,
@@ -192,12 +235,19 @@ async function getElevationDiffUSGS({
 export async function getElevationDiff({
   fromLatLng,
   toLatLng,
+  provider = "google",
 }: {
   fromLatLng: LatLng;
   toLatLng: LatLng;
+  provider?: "google" | "usgs" | "openmateo";
 }): Promise<ElevationDiff> {
-  return Promise.race([
-    getElevationDiffUSGS({ fromLatLng, toLatLng }),
-    getElevationDiffOpenMeteo({ fromLatLng, toLatLng }),
-  ]);
+  if (provider === "usgs") {
+    return getElevationDiffUSGS({ fromLatLng, toLatLng });
+  } else if (provider === "google") {
+    return getElevationDiffGoogleMaps({ fromLatLng, toLatLng });
+  } else if (provider === "openmateo") {
+    return getElevationDiffOpenMeteo({ fromLatLng, toLatLng });
+  }
+
+  throw new Error(`Unsupported elevation provider: ${provider}`);
 }
