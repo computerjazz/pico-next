@@ -32,25 +32,32 @@ const MEAL_SLUG: Record<string, string> = {
 };
 
 export interface FetchParams {
-  sid: string; // school id
-  sg: string; // school slug
-  mg: string; // meal group code ("BF" = breakfast)
-  date: string; // YYYY-MM-DD
+  sid?: string; // school id
+  sg?: string; // school slug
+  mg?: string; // meal group code ("BF" = breakfast)
+  date?: string; // YYYY-MM-DD
   calendar?: "weekly" | "daily" | "monthly";
 }
 
-export async function fetchMenuHtml(p: FetchParams): Promise<string> {
-  const { week, year } = isoWeek(p.date);
+export async function fetchMenuHtml({
+  date = todayInLA(),
+  sid = "",
+  sg = "",
+  mg = "BF",
+  calendar = "weekly",
+}: FetchParams): Promise<string> {
+  const { week, year } = isoWeek(date);
+
   const body = new URLSearchParams({
     week: String(week),
     year: String(year),
-    sid: p.sid,
-    sg: p.sg,
-    mg: p.mg,
-    calendar: p.calendar ?? "weekly",
+    sid,
+    sg,
+    mg,
+    calendar,
   });
 
-  const referer = `${BASE}/webapp/${p.sg}/weekly/${MEAL_SLUG[p.mg] ?? "breakfast"}`;
+  const referer = `${BASE}/webapp/${sg}/weekly/${MEAL_SLUG[mg] ?? "breakfast"}`;
   const headers: Record<string, string> = {
     accept: "text/html, */*; q=0.01",
     "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -111,16 +118,6 @@ export interface Menu {
   id: number;
   name: string; // e.g. "PREP Grades K-5 BREAKFAST (Subject To Change)"
   days: Day[];
-}
-
-// ---------- fetch ----------
-
-export interface FetchParams {
-  sid: string; // school id
-  sg: string; // school slug
-  mg: string; // meal group code ("BF" = breakfast)
-  date: string; // YYYY-MM-DD
-  calendar?: "weekly" | "daily" | "monthly";
 }
 
 // ---------- parse ----------
@@ -240,4 +237,11 @@ export function parseMenus(html: string): Menu[] {
         days: $(el).find("table.calendar td.day").toArray().map(buildDay),
       };
     });
+}
+
+export async function getMealData(fetchParams: FetchParams = {}) {
+  const html = await fetchMenuHtml(fetchParams);
+  return {
+    menus: parseMenus(html),
+  };
 }
