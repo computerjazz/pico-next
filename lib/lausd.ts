@@ -108,7 +108,7 @@ export interface DishGroup {
   dishes: Dish[];
 }
 
-export interface Day {
+export interface MealDay {
   date: string; // YYYY-MM-DD
   dishes: Dish[]; // top-level items
   groups: DishGroup[]; // collapsible option groups
@@ -117,7 +117,7 @@ export interface Day {
 export interface Menu {
   id: number;
   name: string; // e.g. "PREP Grades K-5 BREAKFAST (Subject To Change)"
-  days: Day[];
+  days: MealDay[];
 }
 
 // ---------- parse ----------
@@ -241,7 +241,9 @@ export function parseMenus(html: string): Menu[] {
 
 export async function getMealData(fetchParams: FetchParams = {}) {
   const html = await fetchMenuHtml(fetchParams);
+  const menus = parseMenus(html);
+  console.log("menus", menus);
   return {
-    menus: parseMenus(html),
+    menus,
   };
 }

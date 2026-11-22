@@ -10,6 +10,7 @@ import {
   integer,
   boolean,
   primaryKey,
+  serial,
 } from "drizzle-orm/pg-core";
 import { AdapterAccountType } from "next-auth/adapters";
 
@@ -219,6 +220,33 @@ export const pushSubscriptions = pico.table("push_subscriptions", {
   auth: text("auth").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+});
+
+export const deckContacts = pico.table("deck_contacts", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(), // "mom", "dad"
+  displayName: text("display_name").notNull(),
+  email: text("email").notNull().unique(), // store lowercased
+  canSendTo: boolean("can_send_to").notNull().default(false),
+  canReceiveFrom: boolean("can_receive_from").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const deckDevices = pico.table("deck_devices", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  tokenHash: text("token_hash").notNull().unique(), // sha256 of the device token
+  revokedAt: timestamp("revoked_at"),
+});
+
+export const deckMessages = pico.table("deck_messages", {
+  id: serial("id").primaryKey(),
+  direction: text("direction").notNull(), // "in" | "out"
+  contactId: integer("contact_id").references(() => deckContacts.id),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("ok"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  readAt: timestamp("read_at"),
 });
 
 // Relations
