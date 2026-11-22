@@ -193,7 +193,7 @@ export function parseMenus(html: string): Menu[] {
     };
   };
 
-  const buildDay = (td: Element): Day => {
+  const buildDay = (td: Element): MealDay => {
     const $td = $(td);
     const date =
       $td
