@@ -246,6 +246,13 @@
       "when": 1795331913565,
       "tag": "0034_right_rhodey",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795333857943,
+      "tag": "0035_numerous_hannibal_king",
+      "breakpoints": true
     }
   ]
 }

@@ -243,6 +243,7 @@ export const deckMessages = pico.table("deck_messages", {
   id: serial("id").primaryKey(),
   direction: text("direction").notNull(), // "in" | "out"
   contactId: integer("contact_id").references(() => deckContacts.id),
+  subject: text("subject").notNull().default(""),
   body: text("body").notNull(),
   status: text("status").notNull().default("ok"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -59,12 +59,19 @@ export async function POST(req: NextRequest) {
   }
 
   const body = stripQuoted(String(p.text ?? "")).slice(0, 1000);
-  if (!body) return NextResponse.json({ ok: true });
+
+  const subject = String(p.subject ?? "")
+    .replace(/[\r\n]+/g, " ")
+    .trim()
+    .slice(0, 120);
+
+  if (!body && !subject) return NextResponse.json({ ok: true });
 
   await db.insert(deckMessages).values({
     direction: "in",
     contactId: contact.id,
     body,
+    subject,
   });
 
   return NextResponse.json({ ok: true });
