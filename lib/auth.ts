@@ -42,3 +42,15 @@ export async function verifyAuth(
     return new Response("Invalid token", { status: 403 });
   }
 }
+
+export const validateDeckToken = async (token: string) => {
+  const decoded = jwt.decode(token, { complete: true });
+  (await jwt.verify(token, process.env.JWT_SECRET ?? "")) as Promise<boolean>;
+  const hasScope =
+    decoded?.payload &&
+    typeof decoded !== "string" &&
+    decoded.payload &&
+    typeof decoded.payload !== "string" &&
+    decoded.payload["scope"] === "cyberdeck";
+  return !!hasScope;
+};

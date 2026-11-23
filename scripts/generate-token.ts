@@ -9,8 +9,10 @@ const toggleToken = jwt.sign(
 const wsToken = jwt.sign({ scope: "websocket" }, process.env.JWT_SECRET!);
 const serverToken = jwt.sign({ scope: "server" }, process.env.JWT_SECRET!);
 const deviceToken = jwt.sign({ scope: "device" }, process.env.JWT_SECRET!);
+const deckToken = jwt.sign({ scope: "cyberdeck" }, process.env.JWT_SECRET!);
 console.log("mail", mailToken);
 console.log("toggle", toggleToken);
 console.log("ws", wsToken);
 console.log("server", serverToken);
 console.log("device", deviceToken);
+console.log("deck", deckToken);
