@@ -78,8 +78,12 @@ class SendTab:
         tap = self.scroll.handle(e, total - (H - TAB_H))
         row_h = self.ROW + self.GAP
 
-        scroll_up_amt = max(0, self.scroll.y - row_h)
-        scroll_down_amt = min(total - (H - TAB_H), self.scroll.y + row_h)
+        if self.selected_row_idx is not None and n > 0 and e.type == pygame.KEYDOWN and e.key == pygame.K_RETURN:
+            c = self.host.store.contacts[self.selected_row_idx]
+            self.host.push(Compose(self.host, c))
+
+        # scroll_up_amt = max(0, self.scroll.y - row_h)
+        # scroll_down_amt = min(total - (H - TAB_H), self.scroll.y + row_h)
 
         if self.scroll_up.handle(e) or self.scroll_down.handle(e):
             return
