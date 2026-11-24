@@ -13,7 +13,7 @@ class MessagesExperience(Experience):
 
     def __init__(self,ctx, backend):
         self.store = MailStore(backend)
-        self.tabs = [SendTab(self, ctx), MailboxTab(self)]
+        self.tabs = [SendTab(self, ctx), MailboxTab(self, ctx)]
         self.tab = 0
         self.stack = []   # pushed screens (compose, message view) above the tabs
 

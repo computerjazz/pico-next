@@ -15,24 +15,11 @@ class SendTab:
         self.scroll = Scroll()
         self.selected_row_idx = None
 
-        def scroll_to(dir: str):
-            # n = len(self.host.store.contacts)
-            # total = n * (self.ROW + self.GAP) + self.GAP
-            # row_h = self.ROW + self.GAP
-
-            # scroll_up_amt = max(0, self.scroll.y - row_h)
-            # scroll_down_amt = min(total - (H - TAB_H), self.scroll.y + row_h)
-            # self.scroll.y = scroll_up_amt if dir == "up" else scroll_down_amt
-            if dir == "up":
-                self.select_prev()
-            else:
-                self.select_next()
-
         padding = 5
         button_h = (H - TAB_H) / 2 - (padding * 2)
 
-        self.scroll_up = Button((W - SCROLLBAR_W - padding, H - button_h * 2 - padding * 2, SCROLLBAR_W, button_h), "^", lambda: scroll_to("up"), ctx.theme.panel)
-        self.scroll_down = Button((W - SCROLLBAR_W - padding, H - button_h - padding, SCROLLBAR_W, button_h), "v", lambda: scroll_to("down"), ctx.theme.panel)
+        self.scroll_up = Button((W - SCROLLBAR_W - padding, H - button_h * 2 - padding * 2, SCROLLBAR_W, button_h), "^", lambda: self.move_cursor("up"), ctx.theme.panel)
+        self.scroll_down = Button((W - SCROLLBAR_W - padding, H - button_h - padding, SCROLLBAR_W, button_h), "v", lambda: self.move_cursor("down"), ctx.theme.panel)
 
     def _rows(self):
         row_margin = 20
@@ -41,7 +28,7 @@ class SendTab:
             yield pygame.Rect(row_margin, y, W - SCROLLBAR_W - row_margin * 2, self.ROW), c
 
 
-    def select_next(self):
+    def move_cursor(self, direction: str):
         rows = list(self._rows())
         n = len(rows)
         if n == 0:
@@ -49,23 +36,11 @@ class SendTab:
         elif self.selected_row_idx is None:
             self.selected_row_idx = 0
         else:
-            self.selected_row_idx = (self.selected_row_idx + 1) % n
+            if direction == "up":
+                self.selected_row_idx = (self.selected_row_idx - 1) % n
+            else:
+                self.selected_row_idx = (self.selected_row_idx + 1) % n
 
-        row_pos = rows[self.selected_row_idx][0].y
-        if row_pos < TAB_H:
-            self.scroll.y = max(0, self.scroll.y - (TAB_H - row_pos))
-        elif row_pos + self.ROW > H:
-            self.scroll.y = min(self.scroll.y + (row_pos + self.ROW - H), len(rows) * (self.ROW + self.GAP) + self.GAP - (H - TAB_H))
-
-    def select_prev(self):
-        rows = list(self._rows())
-        n = len(rows)
-        if n == 0:
-            self.selected_row_idx = None
-        elif self.selected_row_idx is None:
-            self.selected_row_idx = 0
-        else:
-            self.selected_row_idx = (self.selected_row_idx - 1) % n
         row_pos = rows[self.selected_row_idx][0].y
         if row_pos < TAB_H:
             self.scroll.y = max(0, self.scroll.y - (TAB_H - row_pos))
@@ -82,19 +57,14 @@ class SendTab:
             c = self.host.store.contacts[self.selected_row_idx]
             self.host.push(Compose(self.host, c))
 
-        # scroll_up_amt = max(0, self.scroll.y - row_h)
-        # scroll_down_amt = min(total - (H - TAB_H), self.scroll.y + row_h)
-
         if self.scroll_up.handle(e) or self.scroll_down.handle(e):
             return
 
         if e.type == pygame.KEYDOWN:
             if e.key == pygame.K_UP:
-                # self.scroll.y = scroll_up_amt
-                self.select_prev()
+                self.move_cursor("up")
             elif e.key == pygame.K_DOWN:
-                # self.scroll.y = scroll_down_amt
-                self.select_next()
+                self.move_cursor("down")
 
         if tap and tap[1] >= TAB_H:
             for r, c in self._rows():
@@ -126,11 +96,41 @@ class SendTab:
 class MailboxTab:
     ROW = 64
 
-    def __init__(self, host):
+    def __init__(self, host, ctx):
         self.host = host
         self.scroll = Scroll()
+        self.selected_row_idx = None
+
+        padding = 5
+        button_h = (H - TAB_H) / 2 - (padding * 2)
+
+        self.scroll_up = Button((W - SCROLLBAR_W - padding, H - button_h * 2 - padding * 2, SCROLLBAR_W, button_h), "^", lambda: self.move_cursor("up"), ctx.theme.panel)
+        self.scroll_down = Button((W - SCROLLBAR_W - padding, H - button_h - padding, SCROLLBAR_W, button_h), "v", lambda: self.move_cursor("down"), ctx.theme.panel)
+        self.initialize_messages()
+
+    def move_cursor(self, direction: str):
+        rows = [self._row_rect(i) for i, m in enumerate(self.host.store.messages())]
+        n = len(rows)
+        if n == 0:
+            self.selected_row_idx = None
+        elif self.selected_row_idx is None:
+            self.selected_row_idx = 0
+        else:
+            if direction == "up":   
+                self.selected_row_idx = (self.selected_row_idx - 1) % n
+            else:
+                self.selected_row_idx = (self.selected_row_idx + 1) % n
+
+        row_pos = rows[self.selected_row_idx].y
+        if row_pos < TAB_H:
+            self.scroll.y = max(0, self.scroll.y - (TAB_H - row_pos))
+        elif row_pos + self.ROW > H:
+            self.scroll.y = min(self.scroll.y + (row_pos + self.ROW - H), len(rows) * (self.ROW + self.GAP) + self.GAP - (H - TAB_H))
+
 
     def handle(self, e):
+        if self.scroll_up.handle(e) or self.scroll_down.handle(e):
+            return
         msgs = self.host.store.messages()
         tap = self.scroll.handle(e, len(msgs) * self.ROW + 10 - (H - TAB_H))
         if tap and tap[1] >= TAB_H:
@@ -138,19 +138,32 @@ class MailboxTab:
             if 0 <= i < len(msgs):
                 self.host.push(MessageView(self.host, msgs[i]))
 
-    def draw(self, s):
-        t, store = self.host.ctx.theme, self.host.store
-        msgs = store.messages()
-        s.set_clip(pygame.Rect(0, TAB_H, W, H - TAB_H))
-        if not msgs:
-            msg = "No mail yet" if store.online else "Offline - retrying..."
-            s.blit(t.small.render(msg, True, t.dim), (20, TAB_H + 30))
-        for i, m in enumerate(msgs):
+        if e.type == pygame.KEYDOWN:
+            if e.key == pygame.K_UP:
+                self.move_cursor("up")
+            elif e.key == pygame.K_DOWN:
+                self.move_cursor("down")
+
+    def initialize_messages(self):
+        self.message_rects = [self._row(self.host.ctx.screen, m, i)[0] for i, m in enumerate(self.host.store.messages())]
+
+    def _row_rect(self, i):
             y = TAB_H + 5 + i * self.ROW - self.scroll.y
             if y > H or y + self.ROW < TAB_H:
-                continue
-            r = pygame.Rect(10, y, W - 20, self.ROW - 6)
+                return
+            r = pygame.Rect(10, y, W - SCROLLBAR_W - 20, self.ROW - 6)
+            return r
+
+    def _row(self, s, m, i):
+            t, store = self.host.ctx.theme, self.host.store
+
+            is_selected = (self.selected_row_idx == i)
+            r = self._row_rect(i)
+            if not r:
+                return None, m
             pygame.draw.rect(s, t.panel, r, border_radius=10)
+            if is_selected:
+                pygame.draw.rect(s, t.accent, r, 4, border_radius=10)
             if store.is_unread(m):
                 pygame.draw.circle(s, t.accent, (r.x + 16, r.centery), 6)
             tx = r.x + 34
@@ -160,7 +173,26 @@ class MailboxTab:
             s.blit(t.small.render(name, True, t.fg), (tx, r.y + 6))
             preview = m.get("subject") or m.get("body", "")
             s.blit(t.tiny.render(fit(preview, t.tiny, r.right - 12 - tx), True, t.dim), (tx, r.y + 34))
+            return r
+
+    def _rows(self, s):
+        return [(self._row(s, m, i), m) for i, m in enumerate(self.host.store.messages())]
+
+    def draw(self, s):
+        t, store = self.host.ctx.theme, self.host.store
+        msgs = store.messages()
+        if len(msgs) != len(getattr(self, "message_rects", [])):
+            self.initialize_messages()
+        s.set_clip(pygame.Rect(0, TAB_H, W, H - TAB_H))
+        if not msgs:
+            msg = "No mail yet" if store.online else "Offline - retrying..."
+            s.blit(t.small.render(msg, True, t.dim), (20, TAB_H + 30))
+        if not self.selected_row_idx and msgs:
+            self.selected_row_idx = 0
+        self._rows(s)        
         s.set_clip(None)
+        self.scroll_up.draw(s, t)
+        self.scroll_down.draw(s, t)
 
 
 class Compose:
@@ -207,9 +239,8 @@ class Compose:
         for i, line in enumerate(lines):
             s.blit(t.small.render(line, True, t.fg), (20, 60 + i * 26))
         s.blit(t.tiny.render(f"{len(self.text)}/{self.MAX}", True, t.dim), (20, 285))
-        pygame.draw.rect(s, t.green, self.send_rect, border_radius=12)
+        pygame.draw.rect(s, t.green if self.text.strip() else t.dim, self.send_rect, border_radius=12)
         s.blit(t.font.render("Send", True, t.fg), (self.send_rect.x + 20, self.send_rect.y + 11))
-
 
 class MessageView:
     def __init__(self, host, msg):
