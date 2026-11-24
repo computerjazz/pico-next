@@ -94,6 +94,7 @@ class SendTab:
 
 class MailboxTab:
     ROW = 64
+    GAP = 10
 
     def __init__(self, host, ctx):
         self.host = host
@@ -109,27 +110,31 @@ class MailboxTab:
 
     def move_cursor(self, direction: str):
         rows = [self._row_rect(i) for i, m in enumerate(self.host.store.messages())]
-        n = len(rows)
-        if n == 0:
+        max_idx = len(rows) - 1
+        total = len(rows) * (self.ROW + self.GAP) + self.GAP
+        if max_idx == -1:
             self.selected_row_idx = None
         elif self.selected_row_idx is None:
             self.selected_row_idx = 0
         else:
             if direction == "up":   
-                self.selected_row_idx = (self.selected_row_idx - 1) % n
+                self.selected_row_idx = (self.selected_row_idx - 1) % max_idx
             else:
-                self.selected_row_idx = (self.selected_row_idx + 1) % n
+                self.selected_row_idx = (self.selected_row_idx + 1) % max_idx
 
         row_pos = rows[self.selected_row_idx].y
         if row_pos < TAB_H:
             self.scroll.y = max(0, self.scroll.y - (TAB_H - row_pos))
         elif row_pos + self.ROW > H:
-            self.scroll.y = min(self.scroll.y + (row_pos + self.ROW - H), len(rows) * (self.ROW + self.GAP) + self.GAP - (H - TAB_H))
+            self.scroll.y = min(self.scroll.y + (row_pos + self.ROW - H), total - (H - TAB_H))
 
 
     def handle(self, e):
         msgs = self.host.store.messages()
         n = len(msgs)
+        total = n * (self.ROW + self.GAP) + self.GAP
+        tap = self.scroll.handle(e, total - (H - TAB_H))
+
 
         if self.selected_row_idx is not None and n > 0 and e.type == pygame.KEYDOWN and e.key == pygame.K_RETURN:
             if 0 <= self.selected_row_idx < len(msgs):
@@ -139,11 +144,12 @@ class MailboxTab:
 
         if self.scroll_up.handle(e) or self.scroll_down.handle(e):
             return
-        tap = self.scroll.handle(e, len(msgs) * self.ROW + 10 - (H - TAB_H))
+        
         if tap and tap[1] >= TAB_H:
-            i = (tap[1] - TAB_H - 5 + self.scroll.y) // self.ROW
-            if 0 <= i < len(msgs):
-                self.host.push(MessageView(self.host, msgs[i]))
+            for r, m in self._rows(self.host.ctx.screen):
+                if r.collidepoint(tap):
+                    self.host.push(MessageView(self.host, m))
+                    break
 
         if e.type == pygame.KEYDOWN:
             if e.key == pygame.K_UP:
@@ -156,8 +162,6 @@ class MailboxTab:
 
     def _row_rect(self, i):
             y = TAB_H + 5 + i * self.ROW - self.scroll.y
-            if y > H or y + self.ROW < TAB_H:
-                return
             r = pygame.Rect(10, y, W - SCROLLBAR_W - 20, self.ROW - 6)
             return r
 
