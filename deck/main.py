@@ -25,11 +25,11 @@ def main():
 
     # Names must match config.slider_map. Placeholders stand in until each is built.
     experiences = {
-        "launcher": Placeholder("launcher", (40, 60, 90), ctx),
-        "messages": MessagesExperience(make_backend(config), ctx),
-        "games": Placeholder("games", (90, 50, 50), ctx),
-        "wikipedia": Placeholder("wikipedia", (50, 80, 60), ctx),
-        "music": Placeholder("music", (80, 60, 100), ctx),
+        "launcher": Placeholder(ctx, "launcher", (40, 60, 90)),
+        "messages": MessagesExperience(ctx, make_backend(config)),
+        "games": Placeholder(ctx, "games", (90, 50, 50)),
+        "wikipedia": Placeholder(ctx, "wikipedia", (50, 80, 60)),
+        "music": Placeholder(ctx, "music", (80, 60, 100)),
     }
     hw = KeyboardSource() if config.hw == "keyboard" else None
     touch = TouchTranslator((W, H), config.touch_cal) if config.touch == "finger" else None

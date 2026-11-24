@@ -3,6 +3,7 @@ import pygame
 
 W, H = 480, 320   # logical screen size (the 3.5" panel, landscape)
 TAB_H = 48        # height of the top bar / tab strip
+SCROLLBAR_W = 60    # width of the scroll bar/buttons on the right side of a scrollable area
 
 
 class Theme:

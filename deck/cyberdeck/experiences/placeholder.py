@@ -6,7 +6,7 @@ from cyberdeck.ui.widgets import Button
 
 
 class Placeholder(Experience):
-    def __init__(self, name, color, ctx):
+    def __init__(self, ctx, name, color):
         self.name = name
         self.color = color
         self.ctx = ctx

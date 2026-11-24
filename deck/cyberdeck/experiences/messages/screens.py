@@ -2,7 +2,7 @@
 (host.ctx for theme/toast, host.store for data, host.push/pop to navigate)."""
 import pygame
 
-from cyberdeck.ui.theme import H, TAB_H, W
+from cyberdeck.ui.theme import H, TAB_H, W, SCROLLBAR_W
 from cyberdeck.ui.widgets import Scroll, fit, fmt_time, wrap, Button
 
 
@@ -23,17 +23,17 @@ class SendTab:
             scroll_down_amt = min(total - (H - TAB_H), self.scroll.y + row_h)
             self.scroll.y = scroll_up_amt if dir == "up" else scroll_down_amt
 
-        button_h = 60
-        button_w = 100
         padding = 5
+        button_h = (H - TAB_H) / 2 - (padding * 2)
 
-        self.scroll_up = Button((W - button_w - padding, H - button_h * 2 - padding * 2, button_w, button_h), "^", lambda: scroll_to("up"), ctx.theme.panel)
-        self.scroll_down = Button((W - button_w - padding, H - button_h - padding, button_w, button_h), "v", lambda: scroll_to("down"), ctx.theme.panel)
+        self.scroll_up = Button((W - SCROLLBAR_W - padding, H - button_h * 2 - padding * 2, SCROLLBAR_W, button_h), "^", lambda: scroll_to("up"), ctx.theme.panel)
+        self.scroll_down = Button((W - SCROLLBAR_W - padding, H - button_h - padding, SCROLLBAR_W, button_h), "v", lambda: scroll_to("down"), ctx.theme.panel)
 
     def _rows(self):
+        row_margin = 20
         for i, c in enumerate(self.host.store.contacts):
             y = TAB_H + self.GAP + i * (self.ROW + self.GAP) - self.scroll.y
-            yield pygame.Rect(20, y, W - 40, self.ROW), c
+            yield pygame.Rect(row_margin, y, W - SCROLLBAR_W - row_margin * 2, self.ROW), c
 
 
     def handle(self, e):
