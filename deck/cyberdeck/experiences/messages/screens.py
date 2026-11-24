@@ -13,15 +13,20 @@ class SendTab:
         self.host = host
         self.ctx = ctx
         self.scroll = Scroll()
+        self.selected_row_idx = None
 
         def scroll_to(dir: str):
-            n = len(self.host.store.contacts)
-            total = n * (self.ROW + self.GAP) + self.GAP
-            row_h = self.ROW + self.GAP
+            # n = len(self.host.store.contacts)
+            # total = n * (self.ROW + self.GAP) + self.GAP
+            # row_h = self.ROW + self.GAP
 
-            scroll_up_amt = max(0, self.scroll.y - row_h)
-            scroll_down_amt = min(total - (H - TAB_H), self.scroll.y + row_h)
-            self.scroll.y = scroll_up_amt if dir == "up" else scroll_down_amt
+            # scroll_up_amt = max(0, self.scroll.y - row_h)
+            # scroll_down_amt = min(total - (H - TAB_H), self.scroll.y + row_h)
+            # self.scroll.y = scroll_up_amt if dir == "up" else scroll_down_amt
+            if dir == "up":
+                self.select_prev()
+            else:
+                self.select_next()
 
         padding = 5
         button_h = (H - TAB_H) / 2 - (padding * 2)
@@ -35,6 +40,37 @@ class SendTab:
             y = TAB_H + self.GAP + i * (self.ROW + self.GAP) - self.scroll.y
             yield pygame.Rect(row_margin, y, W - SCROLLBAR_W - row_margin * 2, self.ROW), c
 
+
+    def select_next(self):
+        rows = list(self._rows())
+        n = len(rows)
+        if n == 0:
+            self.selected_row_idx = None
+        elif self.selected_row_idx is None:
+            self.selected_row_idx = 0
+        else:
+            self.selected_row_idx = (self.selected_row_idx + 1) % n
+
+        row_pos = rows[self.selected_row_idx][0].y
+        if row_pos < TAB_H:
+            self.scroll.y = max(0, self.scroll.y - (TAB_H - row_pos))
+        elif row_pos + self.ROW > H:
+            self.scroll.y = min(self.scroll.y + (row_pos + self.ROW - H), len(rows) * (self.ROW + self.GAP) + self.GAP - (H - TAB_H))
+
+    def select_prev(self):
+        rows = list(self._rows())
+        n = len(rows)
+        if n == 0:
+            self.selected_row_idx = None
+        elif self.selected_row_idx is None:
+            self.selected_row_idx = 0
+        else:
+            self.selected_row_idx = (self.selected_row_idx - 1) % n
+        row_pos = rows[self.selected_row_idx][0].y
+        if row_pos < TAB_H:
+            self.scroll.y = max(0, self.scroll.y - (TAB_H - row_pos))
+        elif row_pos + self.ROW > H:
+            self.scroll.y = min(self.scroll.y + (row_pos + self.ROW - H), len(rows) * (self.ROW + self.GAP) + self.GAP - (H - TAB_H))
 
     def handle(self, e):
         n = len(self.host.store.contacts)
@@ -50,9 +86,11 @@ class SendTab:
 
         if e.type == pygame.KEYDOWN:
             if e.key == pygame.K_UP:
-                self.scroll.y = scroll_up_amt
+                # self.scroll.y = scroll_up_amt
+                self.select_prev()
             elif e.key == pygame.K_DOWN:
-                self.scroll.y = scroll_down_amt
+                # self.scroll.y = scroll_down_amt
+                self.select_next()
 
         if tap and tap[1] >= TAB_H:
             for r, c in self._rows():
@@ -66,8 +104,13 @@ class SendTab:
         if not store.contacts:
             msg = "Loading contacts..." if store.online else "Offline - retrying..."
             s.blit(t.small.render(msg, True, t.dim), (20, TAB_H + 30))
-        for r, c in self._rows():
+        for i, (r, c) in enumerate(self._rows()):
+            if self.selected_row_idx is None:
+                self.selected_row_idx = 0
             pygame.draw.rect(s, t.blue, r, border_radius=12)
+            if (i == self.selected_row_idx):
+                pygame.draw.rect(s, t.accent, r, 4, border_radius=12)
+
             s.blit(t.font.render(c["name"], True, t.fg), (r.x + 20, r.y + 24))
         s.set_clip(None)
         self.scroll_up.draw(s, t)
