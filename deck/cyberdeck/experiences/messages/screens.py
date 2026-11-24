@@ -23,7 +23,7 @@ class SendTab:
 
     def _rows(self):
         row_margin = 20
-        for i, c in enumerate(self.host.store.contacts):
+        for i, c in enumerate(sorted(self.host.store.contacts, key=lambda x: x["name"])):
             y = TAB_H + self.GAP + i * (self.ROW + self.GAP) - self.scroll.y
             yield pygame.Rect(row_margin, y, W - SCROLLBAR_W - row_margin * 2, self.ROW), c
 
