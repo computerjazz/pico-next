@@ -8,12 +8,13 @@ from cyberdeck.ui.theme import H, W
 
 
 class Shell:
-    def __init__(self, ctx, experiences, slider_map, start, hw=None):
+    def __init__(self, ctx, experiences, slider_map, start, hw=None, touch=None):
         self.ctx = ctx
         self.experiences = experiences   # name -> Experience
         self.slider_map = slider_map     # slider index -> name
         self.start = start
         self.hw = hw                     # anything with drain() -> list of events
+        self.touch = touch               # TouchTranslator for finger-event touchscreens
         self.active = None
 
     def switch(self, name):
@@ -60,6 +61,11 @@ class Shell:
                 for e in pygame.event.get():
                     if e.type == pygame.QUIT:
                         return
+                    if self.touch and self.touch.owns(e):
+                        translated = self.touch.translate(e)
+                        if translated:
+                            self.active.handle(translated)
+                        continue
                     if self.hw and self.hw.consume(e):
                         continue   # an emulated slider/lid key, not for the experience
                     self.active.handle(e)

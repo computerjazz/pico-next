@@ -3,25 +3,57 @@
 import pygame
 
 from cyberdeck.ui.theme import H, TAB_H, W
-from cyberdeck.ui.widgets import Scroll, fit, fmt_time, wrap
+from cyberdeck.ui.widgets import Scroll, fit, fmt_time, wrap, Button
 
 
 class SendTab:
     ROW, GAP = 80, 10
 
-    def __init__(self, host):
+    def __init__(self, host, ctx):
         self.host = host
+        self.ctx = ctx
         self.scroll = Scroll()
+
+        def scroll_to(dir: str):
+            n = len(self.host.store.contacts)
+            total = n * (self.ROW + self.GAP) + self.GAP
+            row_h = self.ROW + self.GAP
+
+            scroll_up_amt = max(0, self.scroll.y - row_h)
+            scroll_down_amt = min(total - (H - TAB_H), self.scroll.y + row_h)
+            self.scroll.y = scroll_up_amt if dir == "up" else scroll_down_amt
+
+        button_h = 60
+        button_w = 100
+        padding = 5
+
+        self.scroll_up = Button((W - button_w - padding, H - button_h * 2 - padding * 2, button_w, button_h), "^", lambda: scroll_to("up"), ctx.theme.panel)
+        self.scroll_down = Button((W - button_w - padding, H - button_h - padding, button_w, button_h), "v", lambda: scroll_to("down"), ctx.theme.panel)
 
     def _rows(self):
         for i, c in enumerate(self.host.store.contacts):
             y = TAB_H + self.GAP + i * (self.ROW + self.GAP) - self.scroll.y
             yield pygame.Rect(20, y, W - 40, self.ROW), c
 
+
     def handle(self, e):
         n = len(self.host.store.contacts)
         total = n * (self.ROW + self.GAP) + self.GAP
         tap = self.scroll.handle(e, total - (H - TAB_H))
+        row_h = self.ROW + self.GAP
+
+        scroll_up_amt = max(0, self.scroll.y - row_h)
+        scroll_down_amt = min(total - (H - TAB_H), self.scroll.y + row_h)
+
+        if self.scroll_up.handle(e) or self.scroll_down.handle(e):
+            return
+
+        if e.type == pygame.KEYDOWN:
+            if e.key == pygame.K_UP:
+                self.scroll.y = scroll_up_amt
+            elif e.key == pygame.K_DOWN:
+                self.scroll.y = scroll_down_amt
+
         if tap and tap[1] >= TAB_H:
             for r, c in self._rows():
                 if r.collidepoint(tap):
@@ -38,6 +70,10 @@ class SendTab:
             pygame.draw.rect(s, t.blue, r, border_radius=12)
             s.blit(t.font.render(c["name"], True, t.fg), (r.x + 20, r.y + 24))
         s.set_clip(None)
+        self.scroll_up.draw(s, t)
+        self.scroll_down.draw(s, t)
+
+        
 
 
 class MailboxTab:

@@ -11,9 +11,9 @@ from cyberdeck.ui.widgets import draw_tab_bar, tab_at
 class MessagesExperience(Experience):
     name = "messages"
 
-    def __init__(self, backend):
+    def __init__(self, backend, ctx=None):
         self.store = MailStore(backend)
-        self.tabs = [SendTab(self), MailboxTab(self)]
+        self.tabs = [SendTab(self, ctx), MailboxTab(self)]
         self.tab = 0
         self.stack = []   # pushed screens (compose, message view) above the tabs
 

@@ -147,7 +147,9 @@ class WifiTile:
 
     # ---- input
     def handle(self, e):
-        if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+        is_mousedown = e.type == pygame.MOUSEBUTTONDOWN and e.button == 1
+        is_fingerdown = e.type == pygame.FINGERDOWN
+        if is_mousedown or is_fingerdown:
             for rect, cb in reversed(self.buttons):
                 if rect.collidepoint(e.pos):
                     cb()
@@ -256,21 +258,3 @@ class WifiTile:
         if not self.ok and self.was_known:
             self.button((W // 2 + 10, 200, 100, 50), "Forget", self.do_forget, BAD)
 
-
-def run(screen):
-    tile = WifiTile(screen)
-    clock = pygame.time.Clock()
-    while not tile.quit:
-        for e in pygame.event.get():
-            if e.type == pygame.QUIT:
-                return
-            tile.handle(e)
-        tile.update()
-        tile.draw()
-        pygame.display.flip()
-        clock.tick(30)
-
-
-if __name__ == "__main__":
-    pygame.init()
-    run(pygame.display.set_mode((W, H)))
