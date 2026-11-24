@@ -50,7 +50,6 @@ class SendTab:
     def handle(self, e):
         n = len(self.host.store.contacts)
         total = n * (self.ROW + self.GAP) + self.GAP
-        tap = self.scroll.handle(e, total - (H - TAB_H))
 
         if self.selected_row_idx is not None and n > 0 and e.type == pygame.KEYDOWN and e.key == pygame.K_RETURN:
             contact = self.host.store.contacts[self.selected_row_idx]
@@ -65,6 +64,7 @@ class SendTab:
             elif e.key == pygame.K_DOWN:
                 self.move_cursor("down")
 
+        tap = self.scroll.handle(e, total - (H - TAB_H))
         if tap and tap[1] >= TAB_H:
             for r, c in self._rows():
                 if r.collidepoint(tap):
@@ -133,7 +133,6 @@ class MailboxTab:
         msgs = self.host.store.messages()
         n = len(msgs)
         total = n * (self.ROW + self.GAP) + self.GAP
-        tap = self.scroll.handle(e, total - (H - TAB_H))
 
 
         if self.selected_row_idx is not None and n > 0 and e.type == pygame.KEYDOWN and e.key == pygame.K_RETURN:
@@ -145,6 +144,7 @@ class MailboxTab:
         if self.scroll_up.handle(e) or self.scroll_down.handle(e):
             return
         
+        tap = self.scroll.handle(e, total - (H - TAB_H))
         if tap and tap[1] >= TAB_H:
             for r, m in self._rows(self.host.ctx.screen):
                 if r.collidepoint(tap):
