@@ -11,7 +11,7 @@ from cyberdeck.ui.widgets import draw_tab_bar, tab_at
 class MessagesExperience(Experience):
     name = "messages"
 
-    def __init__(self,ctx, backend):
+    def __init__(self, ctx, backend):
         self.store = MailStore(backend)
         self.tabs = [SendTab(self, ctx), MailboxTab(self, ctx)]
         self.tab = 0

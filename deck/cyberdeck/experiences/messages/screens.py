@@ -53,8 +53,8 @@ class SendTab:
         tap = self.scroll.handle(e, total - (H - TAB_H))
 
         if self.selected_row_idx is not None and n > 0 and e.type == pygame.KEYDOWN and e.key == pygame.K_RETURN:
-            c = self.host.store.contacts[self.selected_row_idx]
-            self.host.push(Compose(self.host, c))
+            contact = self.host.store.contacts[self.selected_row_idx]
+            self.host.push(Compose(self.host, self.ctx, contact))
 
         if self.scroll_up.handle(e) or self.scroll_down.handle(e):
             return
@@ -68,7 +68,7 @@ class SendTab:
         if tap and tap[1] >= TAB_H:
             for r, c in self._rows():
                 if r.collidepoint(tap):
-                    self.host.push(Compose(self.host, c))
+                    self.host.push(Compose(self.host, self.ctx, c))
                     break
 
     def draw(self, s):
@@ -138,7 +138,7 @@ class MailboxTab:
 
         if self.selected_row_idx is not None and n > 0 and e.type == pygame.KEYDOWN and e.key == pygame.K_RETURN:
             if 0 <= self.selected_row_idx < len(msgs):
-                self.host.push(MessageView(self.host, msgs[self.selected_row_idx]))
+                self.host.push(MessageView(self.host, msgs[self.selected_row_idx], self.host.ctx))
             return
 
 
@@ -148,7 +148,7 @@ class MailboxTab:
         if tap and tap[1] >= TAB_H:
             for r, m in self._rows(self.host.ctx.screen):
                 if r.collidepoint(tap):
-                    self.host.push(MessageView(self.host, m))
+                    self.host.push(MessageView(self.host, m, self.host.ctx))
                     break
 
         if e.type == pygame.KEYDOWN:
@@ -209,14 +209,24 @@ class MailboxTab:
 class Compose:
     MAX = 500
 
-    def __init__(self, host, contact):
+    def __init__(self, host, ctx, contact):
         self.host = host
+        self.ctx = ctx
         self.contact = contact
         self.text = ""
-        self.back_rect = pygame.Rect(0, 0, 70, TAB_H)
-        self.send_rect = pygame.Rect(340, 258, 120, 50)
+
+        send_btn_width = 120
+        send_btn_h = 50
+        back_rect = pygame.Rect(5, 5, 70, TAB_H)
+        send_rect = pygame.Rect(W - send_btn_width - 5, H - send_btn_h - 5, send_btn_width, send_btn_h)
+        self.back_btn = Button(back_rect, "<", lambda: self.host.pop(), ctx.theme.panel)
+        self.send_btn = Button(send_rect, "Send", self._send, ctx.theme.panel)
 
     def handle(self, e):
+
+        if self.back_btn.handle(e) or self.send_btn.handle(e):
+            return
+
         if e.type == pygame.KEYDOWN:
             if e.key == pygame.K_ESCAPE:
                 self.host.pop()
@@ -227,9 +237,9 @@ class Compose:
             elif e.unicode and e.unicode.isprintable() and len(self.text) < self.MAX:
                 self.text += e.unicode
         elif e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
-            if self.back_rect.collidepoint(e.pos):
+            if self.back_btn.rect.collidepoint(e.pos):
                 self.host.pop()
-            elif self.send_rect.collidepoint(e.pos):
+            elif self.send_btn.rect.collidepoint(e.pos):
                 self._send()
 
     def _send(self):
@@ -244,22 +254,27 @@ class Compose:
 
     def draw(self, s):
         t = self.host.ctx.theme
-        s.blit(t.font.render("<", True, t.accent), (22, 12))
-        s.blit(t.font.render(f"To: {self.contact['name']}", True, t.accent), (60, 12))
+        s.blit(t.font.render(f"To: {self.contact['name']}", True, t.accent), (85, 18))
         lines = wrap(self.text + "_", t.small, W - 40)[-7:]  # last lines that fit
         for i, line in enumerate(lines):
             s.blit(t.small.render(line, True, t.fg), (20, 60 + i * 26))
         s.blit(t.tiny.render(f"{len(self.text)}/{self.MAX}", True, t.dim), (20, 285))
-        pygame.draw.rect(s, t.green if self.text.strip() else t.dim, self.send_rect, border_radius=12)
-        s.blit(t.font.render("Send", True, t.fg), (self.send_rect.x + 20, self.send_rect.y + 11))
+        self.back_btn.draw(s, t)
+        self.send_btn.draw(s, t)
+        self.send_btn.color = t.green if self.text.strip() else t.panel
 
 class MessageView:
-    def __init__(self, host, msg):
+    def __init__(self, host, msg, ctx):
         self.host = host
         self.msg = msg
+        self.ctx = ctx
         self.scroll = Scroll()
-        self.back_rect = pygame.Rect(0, 0, 90, TAB_H)
-        self.reply_rect = pygame.Rect(W - 130, 6, 120, TAB_H - 12)
+        back_rect = pygame.Rect(5, 5, 70, TAB_H)
+        reply_rect = pygame.Rect(W - 125, 5, 120, TAB_H)
+
+        self.back_btn = Button(back_rect, "<", lambda: self.host.pop(), ctx.theme.panel)
+        self.reply_btn = Button(reply_rect, "Reply", lambda: self.host.push(Compose(self.host, self.ctx, {"key": msg["key"], "name": msg["from"]})), ctx.theme.blue)
+
         self.can_reply = bool(msg.get("key"))
         t = host.ctx.theme
         items = [(msg["from"], t.font, t.accent)]
@@ -275,13 +290,8 @@ class MessageView:
         if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
             self.host.pop()
             return
-        if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
-            if self.back_rect.collidepoint(e.pos):
-                self.host.pop()
-                return
-            if self.can_reply and self.reply_rect.collidepoint(e.pos):
-                self.host.push(Compose(self.host, {"key": self.msg["key"], "name": self.msg["from"]}))
-                return
+        if self.back_btn.handle(e) or self.reply_btn.handle(e):
+            return
         self.scroll.handle(e, self.total - (H - TAB_H))
 
     def draw(self, s):
@@ -294,7 +304,6 @@ class MessageView:
             y += font.get_linesize()
         s.set_clip(None)
         pygame.draw.rect(s, t.bg, pygame.Rect(0, 0, W, TAB_H))  # top bar over scrolled text
-        s.blit(t.font.render("< Back", True, t.accent), (14, 12))
+        self.back_btn.draw(s, t)
         if self.can_reply:
-            pygame.draw.rect(s, t.blue, self.reply_rect, border_radius=10)
-            s.blit(t.small.render("Reply", True, t.fg), (self.reply_rect.x + 30, self.reply_rect.y + 8))
+            self.reply_btn.draw(s, t)
