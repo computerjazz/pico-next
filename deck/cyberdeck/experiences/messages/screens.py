@@ -1,5 +1,6 @@
 """The four Messages screens. Each gets the MessagesExperience as `host`
 (host.ctx for theme/toast, host.store for data, host.push/pop to navigate)."""
+from cyberdeck.hw.gesture import Gesture
 import pygame
 
 from cyberdeck.ui.theme import H, TAB_H, W, SCROLLBAR_W
@@ -13,6 +14,7 @@ class SendTab:
         self.host = host
         self.ctx = ctx
         self.scroll = Scroll()
+        self.gesture = Gesture()
         self.selected_row_idx = None
 
         padding = 5
@@ -49,14 +51,10 @@ class SendTab:
 
     def handle(self, e):
         n = len(self.host.store.contacts)
-        total = n * (self.ROW + self.GAP) + self.GAP
 
         if self.selected_row_idx is not None and n > 0 and e.type == pygame.KEYDOWN and e.key == pygame.K_RETURN:
             contact = self.host.store.contacts[self.selected_row_idx]
             self.host.push(Compose(self.host, self.ctx, contact))
-
-        if self.scroll_up.handle(e) or self.scroll_down.handle(e):
-            return
 
         if e.type == pygame.KEYDOWN:
             if e.key == pygame.K_UP:
@@ -64,12 +62,26 @@ class SendTab:
             elif e.key == pygame.K_DOWN:
                 self.move_cursor("down")
 
-        tap = self.scroll.handle(e, total - (H - TAB_H))
-        if tap and tap[1] >= TAB_H:
+        total = n * (self.ROW + self.GAP) + self.GAP
+        max_scroll = total - (H - TAB_H)
+
+        def on_scroll(dy):
+            self.scroll.handle(e, max_scroll)
+
+        def on_down(pos):
+            self.scroll_up.handle(e)
+            self.scroll_down.handle(e)
+            self.scroll.handle(e, max_scroll)
+
+        def on_up(pos):
+            if self.scroll_up.handle(e) or self.scroll_down.handle(e):
+                return
             for r, c in self._rows():
-                if r.collidepoint(tap):
+                if r.collidepoint(e.pos):
                     self.host.push(Compose(self.host, self.ctx, c))
                     break
+
+        self.gesture.on_event(e, on_down=on_down, on_move=on_scroll, on_up=on_up)
 
     def draw(self, s):
         t, store = self.host.ctx.theme, self.host.store
