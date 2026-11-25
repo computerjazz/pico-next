@@ -140,6 +140,8 @@ class MailboxTab:
     def __init__(self, host, ctx):
         self.host = host
         self.scroll = Scroll()
+        self.gesture = Gesture()
+
         self.selected_row_idx = None
 
         padding = 5
@@ -171,10 +173,11 @@ class MailboxTab:
 
 
     def handle(self, e):
+        
         msgs = self.host.store.messages()
         n = len(msgs)
         total = n * (self.ROW + self.GAP) + self.GAP
-
+        max_scroll = total - (H - TAB_H)
 
         if self.selected_row_idx is not None and n > 0 and e.type == pygame.KEYDOWN and e.key == pygame.K_RETURN:
             if 0 <= self.selected_row_idx < len(msgs):
@@ -182,16 +185,30 @@ class MailboxTab:
             return
 
 
-        if self.scroll_up.handle(e) or self.scroll_down.handle(e):
-            return
+        def on_down(pos):
+            self.scroll.handle(e, max_scroll)
+            self.scroll_up.handle(e)
+            self.scroll_down.handle(e)
         
-        tap = self.scroll.handle(e, total - (H - TAB_H))
-        if tap and tap[1] >= TAB_H:
-            for r, m in self._rows(self.host.ctx.screen):
-                if r.collidepoint(tap):
-                    self.host.push(MessageView(self.host, m, self.host.ctx))
-                    break
 
+        def on_up(pos):
+            self.scroll.handle(e, max_scroll)
+            self.scroll_up.handle(e)
+            self.scroll_down.handle(e)
+            for r, m in self._rows(self.host.ctx.screen):
+                if r.collidepoint(e.pos):
+                    self.host.push(MessageView(self.host, m, self.host.ctx))
+
+        def on_move(dy):
+            self.scroll.handle(e, max_scroll)
+
+        def on_cancel():
+            self.scroll.handle(e, max_scroll)
+            self.scroll_up.armed = False
+            self.scroll_down.armed = False
+
+        self.gesture.on_event(e, on_down=on_down, on_move=on_move, on_up=on_up, on_cancel=on_cancel)
+        
         if e.type == pygame.KEYDOWN:
             if e.key == pygame.K_UP:
                 self.move_cursor("up")
@@ -215,10 +232,11 @@ class MailboxTab:
                 t, store = self.host.ctx.theme, self.host.store
 
                 is_selected = (self.selected_row_idx == i)
+                border_radius=10
 
-                pygame.draw.rect(s, t.panel, r, border_radius=10)
+                pygame.draw.rect(s, t.panel, r, border_radius=border_radius)
                 if is_selected:
-                    pygame.draw.rect(s, t.accent, r, 4, border_radius=10)
+                    pygame.draw.rect(s, t.accent, r, 2, border_radius=border_radius)
                 if store.is_unread(m):
                     pygame.draw.circle(s, t.accent, (r.x + 16, r.centery), 6)
                 tx = r.x + 34
@@ -332,9 +350,12 @@ class MessageView:
         host.store.mark_read(msg)
 
     def handle(self, e):
-        if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE:
-            self.host.pop()
-            return
+        if e.type == pygame.KEYDOWN:
+            if e.key == pygame.K_ESCAPE:
+                self.host.pop()
+                return
+            if e.key == pygame.K_RETURN:
+                self.reply_btn.on_tap()
         if self.back_btn.handle(e) or self.reply_btn.handle(e):
             return
         self.scroll.handle(e, self.total - (H - TAB_H))
