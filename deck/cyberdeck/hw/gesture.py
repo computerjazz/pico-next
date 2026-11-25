@@ -61,7 +61,7 @@ class Gesture:
         # use the *start* position for hit-testing, not the (noisy) release position
         return self.start
 
-    def on_event(self, e, on_down=None, on_move=None, on_up=None):
+    def on_event(self, e, on_down=None, on_move=None, on_up=None, on_cancel=None):
         if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
             self.on_down(e.pos)
             if on_down:
@@ -72,5 +72,9 @@ class Gesture:
                 on_move(dy)
         elif e.type == pygame.MOUSEBUTTONUP and e.button == 1:
             tap = self.on_up(e.pos)
-            if tap and on_up:
-                on_up(tap)
+            if tap:
+                if on_up:
+                    on_up(tap)
+            else:
+                if on_cancel:
+                    on_cancel()

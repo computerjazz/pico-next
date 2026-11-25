@@ -89,13 +89,16 @@ class Button:
     """A rect, a label, and a tap handler. Fires only if the press AND the release
     both land inside the rect, so dragging a finger off the button cancels the tap."""
 
-    def __init__(self, rect, label, on_tap, color=None):
+    def __init__(self, rect, label, on_tap, color=None, stroke_width=0, stroke_color=None, border_radius=12):
         self.rect = pygame.Rect(rect)
         self.label = label
         self.on_tap = on_tap
         self.color = color      # None = theme.blue
         self.armed = False      # press started inside
         self.inside = False     # pointer currently inside
+        self.stroke_width = stroke_width;
+        self.stroke_color = stroke_color;
+        self.border_radius = border_radius;
 
     def handle(self, e):
         """Feed every pygame event; returns True if the button used it."""
@@ -116,6 +119,8 @@ class Button:
     def draw(self, surface, theme):
         base = self.color or theme.blue
         shown = tuple(max(0, c - 35) for c in base) if (self.armed and self.inside) else base
-        pygame.draw.rect(surface, shown, self.rect, border_radius=12)
+        pygame.draw.rect(surface, shown, self.rect, border_radius=self.border_radius)
         text = theme.font.render(self.label, True, theme.fg)
         surface.blit(text, text.get_rect(center=self.rect.center))
+        if self.stroke_width and self.stroke_color:
+            pygame.draw.rect(surface, self.stroke_color, self.rect, self.stroke_width, border_radius=self.border_radius)

@@ -16,6 +16,7 @@ class SendTab:
         self.scroll = Scroll()
         self.gesture = Gesture()
         self.selected_row_idx = None
+        self.contact_buttons = []
 
         padding = 5
         button_h = (H - TAB_H) / 2 - (padding * 2)
@@ -23,15 +24,33 @@ class SendTab:
         self.scroll_up = Button((W - SCROLLBAR_W - padding, H - button_h * 2 - padding * 2, SCROLLBAR_W, button_h), "^", lambda: self.move_cursor("up"), ctx.theme.panel)
         self.scroll_down = Button((W - SCROLLBAR_W - padding, H - button_h - padding, SCROLLBAR_W, button_h), "v", lambda: self.move_cursor("down"), ctx.theme.panel)
 
-    def _rows(self):
-        row_margin = 20
-        for i, c in enumerate(sorted(self.host.store.contacts, key=lambda x: x["name"])):
-            y = TAB_H + self.GAP + i * (self.ROW + self.GAP) - self.scroll.y
-            yield pygame.Rect(row_margin, y, W - SCROLLBAR_W - row_margin * 2, self.ROW), c
+    def get_sorted_contacts(self):
+        return enumerate(sorted(self.host.store.contacts, key=lambda x: x["name"]))
 
+    def get_btn_rect(self, i):
+        row_margin = 20
+        y = TAB_H + self.GAP + i * (self.ROW + self.GAP) - self.scroll.y
+        w = W - SCROLLBAR_W - row_margin * 2
+        return pygame.Rect(row_margin, y, w, self.ROW)
+    
+    def initialize_contacts(self):
+        for i, b in enumerate(self.contact_buttons):
+            b.rect = self.get_btn_rect(i)
+
+        if (len(self.contact_buttons) == len(self.host.store.contacts)):
+            return
+        self.selected_row_idx = 0 if self.get_sorted_contacts() else None
+        self.contact_buttons = [
+            Button(
+                self.get_btn_rect(i),
+                contact["name"],
+                lambda c=contact: self.host.push(Compose(self.host, self.ctx, c)),
+            )
+    for i, contact in self.get_sorted_contacts()
+]
 
     def move_cursor(self, direction: str):
-        rows = list(self._rows())
+        rows = list(self.contact_buttons)
         n = len(rows)
         if n == 0:
             self.selected_row_idx = None
@@ -43,7 +62,7 @@ class SendTab:
             else:
                 self.selected_row_idx = (self.selected_row_idx + 1) % n
 
-        row_pos = rows[self.selected_row_idx][0].y
+        row_pos = rows[self.selected_row_idx].rect.y
         if row_pos < TAB_H:
             self.scroll.y = max(0, self.scroll.y - (TAB_H - row_pos))
         elif row_pos + self.ROW > H:
@@ -53,7 +72,7 @@ class SendTab:
         n = len(self.host.store.contacts)
 
         if self.selected_row_idx is not None and n > 0 and e.type == pygame.KEYDOWN and e.key == pygame.K_RETURN:
-            contact = self.host.store.contacts[self.selected_row_idx]
+            [i, contact] = list(self.get_sorted_contacts())[self.selected_row_idx]
             self.host.push(Compose(self.host, self.ctx, contact))
 
         if e.type == pygame.KEYDOWN:
@@ -69,19 +88,27 @@ class SendTab:
             self.scroll.handle(e, max_scroll)
 
         def on_down(pos):
+            self.scroll.handle(e, max_scroll)
             self.scroll_up.handle(e)
             self.scroll_down.handle(e)
-            self.scroll.handle(e, max_scroll)
+            for b in self.contact_buttons:
+                b.handle(e)
 
         def on_up(pos):
-            if self.scroll_up.handle(e) or self.scroll_down.handle(e):
-                return
-            for r, c in self._rows():
-                if r.collidepoint(e.pos):
-                    self.host.push(Compose(self.host, self.ctx, c))
-                    break
+            self.scroll.handle(e, max_scroll)
+            self.scroll_up.handle(e)
+            self.scroll_down.handle(e)
+            for b in self.contact_buttons:
+                b.handle(e)
 
-        self.gesture.on_event(e, on_down=on_down, on_move=on_scroll, on_up=on_up)
+        def on_cancel():
+            self.scroll.handle(e, max_scroll)
+            self.scroll_up.armed = False
+            self.scroll_down.armed = False
+            for b in self.contact_buttons:
+                b.armed = False
+
+        self.gesture.on_event(e, on_down=on_down, on_move=on_scroll, on_up=on_up, on_cancel=on_cancel)
 
     def draw(self, s):
         t, store = self.host.ctx.theme, self.host.store
@@ -89,14 +116,16 @@ class SendTab:
         if not store.contacts:
             msg = "Loading contacts..." if store.online else "Offline - retrying..."
             s.blit(t.small.render(msg, True, t.dim), (20, TAB_H + 30))
-        for i, (r, c) in enumerate(self._rows()):
+        for i, b in enumerate(self.contact_buttons):
             if self.selected_row_idx is None:
                 self.selected_row_idx = 0
-            pygame.draw.rect(s, t.blue, r, border_radius=12)
-            if (i == self.selected_row_idx):
-                pygame.draw.rect(s, t.accent, r, 4, border_radius=12)
+            b.draw(s, t)
+            is_selected = i == self.selected_row_idx
+            b.stroke_width = 4 if is_selected else 0
+            b.stroke_color = t.accent
 
-            s.blit(t.font.render(c["name"], True, t.fg), (r.x + 20, r.y + 24))
+        self.initialize_contacts()
+
         s.set_clip(None)
         self.scroll_up.draw(s, t)
         self.scroll_down.draw(s, t)
@@ -178,24 +207,28 @@ class MailboxTab:
             return r
 
     def _row(self, s, m, i):
-            t, store = self.host.ctx.theme, self.host.store
-
-            is_selected = (self.selected_row_idx == i)
             r = self._row_rect(i)
             if not r:
                 return None, m
-            pygame.draw.rect(s, t.panel, r, border_radius=10)
-            if is_selected:
-                pygame.draw.rect(s, t.accent, r, 4, border_radius=10)
-            if store.is_unread(m):
-                pygame.draw.circle(s, t.accent, (r.x + 16, r.centery), 6)
-            tx = r.x + 34
-            when = t.tiny.render(fmt_time(m.get("createdAt", "")), True, t.dim)
-            s.blit(when, (r.right - when.get_width() - 12, r.y + 8))
-            name = fit(m["from"], t.small, r.right - when.get_width() - 24 - tx)
-            s.blit(t.small.render(name, True, t.fg), (tx, r.y + 6))
-            preview = m.get("subject") or m.get("body", "")
-            s.blit(t.tiny.render(fit(preview, t.tiny, r.right - 12 - tx), True, t.dim), (tx, r.y + 34))
+
+            def draw_button():
+                t, store = self.host.ctx.theme, self.host.store
+
+                is_selected = (self.selected_row_idx == i)
+
+                pygame.draw.rect(s, t.panel, r, border_radius=10)
+                if is_selected:
+                    pygame.draw.rect(s, t.accent, r, 4, border_radius=10)
+                if store.is_unread(m):
+                    pygame.draw.circle(s, t.accent, (r.x + 16, r.centery), 6)
+                tx = r.x + 34
+                when = t.tiny.render(fmt_time(m.get("createdAt", "")), True, t.dim)
+                s.blit(when, (r.right - when.get_width() - 12, r.y + 8))
+                name = fit(m["from"], t.small, r.right - when.get_width() - 24 - tx)
+                s.blit(t.small.render(name, True, t.fg), (tx, r.y + 6))
+                preview = m.get("subject") or m.get("body", "")
+                s.blit(t.tiny.render(fit(preview, t.tiny, r.right - 12 - tx), True, t.dim), (tx, r.y + 34))
+            draw_button()
             return r
 
     def _rows(self, s):
