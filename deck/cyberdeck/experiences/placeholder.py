@@ -3,6 +3,7 @@ from cyberdeck.experience import Experience
 from cyberdeck.ui.theme import W
 from cyberdeck.wifi_tile import WifiTile
 from cyberdeck.ui.widgets import Button
+import pygame
 
 
 class Placeholder(Experience):
@@ -10,28 +11,34 @@ class Placeholder(Experience):
         self.name = name
         self.color = color
         self.ctx = ctx
-        self.button = Button(((W - 200) // 2, 200, 200, 60), "WiFi", self._tapped)
-        self.tile = WifiTile(self.ctx.screen)
-        self.tile_active = False
+        quit_btn_w = 100
+        quit_btn_margin = 5
+        self.wifi_button = Button(((W - 200) // 2, 200, 200, 60), "WiFi", self._tapped)
+        self.quit_button = Button((W - quit_btn_w - quit_btn_margin, quit_btn_margin, quit_btn_w, 60), "Quit", self._on_quit)
+        self.wifi_tile = WifiTile(self.ctx.screen)
+        self.wifi_tile_active = False
 
 
     def _tapped(self):
-        self.tile.quit = False
-        self.tile_active = True
+        self.wifi_tile.quit = False
+        self.wifi_tile_active = True
 
+    def _on_quit(self):
+        pygame.event.post(pygame.event.Event(pygame.QUIT))
 
     def handle(self, e):
-        if self.tile_active:
-            self.tile.handle(e)
-            if self.tile.quit:
-                self.tile_active = False
+        if self.wifi_tile_active:
+            self.wifi_tile.handle(e)
+            if self.wifi_tile.quit:
+                self.wifi_tile_active = False
             return
-        self.button.handle(e)
+        self.wifi_button.handle(e)
+        self.quit_button.handle(e)
 
     def draw(self, screen):
-        if self.tile_active:
-            self.tile.update()
-            self.tile.draw()
+        if self.wifi_tile_active:
+            self.wifi_tile.update()
+            self.wifi_tile.draw()
             return
         t = self.ctx.theme
         screen.fill(self.color)
@@ -40,4 +47,5 @@ class Placeholder(Experience):
         lid = "Lid open" if self.ctx.lid_open else "Lid closed (tablet mode)"
         sub = t.small.render(lid, True, t.fg)
         screen.blit(sub, ((W - sub.get_width()) // 2, 160))
-        self.button.draw(screen, t)
+        self.wifi_button.draw(screen, t)
+        self.quit_button.draw(screen, t)
