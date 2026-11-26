@@ -26,6 +26,7 @@ class WikipediaSearch():
         self.query, self.results = "", []
         self.title, self.lines = None, []
         self.scroll = Scroll()
+        self.article_font_h = self.ctx.theme.tiny.size("x")[1]
 
         padding = 5
         button_h = (H - TAB_H) / 2 - (padding * 2)
@@ -42,18 +43,15 @@ class WikipediaSearch():
         return self.ctx.theme.font.size("x")[1] + (self.PADDING * 2)
 
     def scroll_down(self):
-        article_font_h = self.ctx.theme.tiny.size("x")[1]
-        self.scroll.y += article_font_h / 2
+        self.scroll.y += self.article_font_h / 2
 
     def scroll_up(self):
-        article_font_h = self.ctx.theme.tiny.size("x")[1]
-        self.scroll.y -= article_font_h / 2
+        self.scroll.y -= self.article_font_h / 2
 
 
     def handle(self, e):
         article_start_y = self.article_start_y()
-        article_font_h = self.ctx.theme.tiny.size("x")[1]
-        article_h_px = len(self.lines) * article_font_h
+        article_h_px = len(self.lines) * self.article_font_h
 
         max_scroll = max(0, article_h_px - (H - article_start_y) + self.PADDING)
         self.scroll.handle(e, max_scroll)
@@ -82,8 +80,7 @@ class WikipediaSearch():
 
         s.blit(t.font.render(query_text, True, t.green), (self.PADDING, self.PADDING))
         for i, line in enumerate(self.lines):
-            article_text_h = self.ctx.theme.tiny.size("x")[1]
-            line_y = article_start_y + i * article_text_h - self.scroll.y
+            line_y = article_start_y + i * self.article_font_h - self.scroll.y
             if (line_y < article_start_y):
                 continue
             s.blit(t.tiny.render(line, True, t.accent), (self.PADDING, line_y))
