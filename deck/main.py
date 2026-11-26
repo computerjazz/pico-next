@@ -5,6 +5,7 @@ import pygame
 from cyberdeck.config import load_config
 from cyberdeck.context import Context
 from cyberdeck.experiences.messages import MessagesExperience
+from cyberdeck.experiences.wikipedia import WikipediaExperience
 from cyberdeck.experiences.messages.api import make_backend
 from cyberdeck.experiences.placeholder import Placeholder
 from cyberdeck.hw.keyboard_source import KeyboardSource
@@ -28,7 +29,7 @@ def main():
         "launcher": Placeholder(ctx, "launcher", (40, 60, 90)),
         "messages": MessagesExperience(ctx, make_backend(config)),
         "games": Placeholder(ctx, "games", (90, 50, 50)),
-        "wikipedia": Placeholder(ctx, "wikipedia", (50, 80, 60)),
+        "wikipedia": WikipediaExperience(ctx),
         "music": Placeholder(ctx, "music", (80, 60, 100)),
     }
     hw = KeyboardSource() if config.hw == "keyboard" else None
