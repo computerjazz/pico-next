@@ -89,7 +89,7 @@ class Button:
     """A rect, a label, and a tap handler. Fires only if the press AND the release
     both land inside the rect, so dragging a finger off the button cancels the tap."""
 
-    def __init__(self, rect, label, on_tap, color=None, stroke_width=0, stroke_color=None, border_radius=12):
+    def __init__(self, rect, label, on_tap, color=None, stroke_width=0, stroke_color=None, border_radius=12, key_binding=None):
         self.rect = pygame.Rect(rect)
         self.label = label
         self.on_tap = on_tap
@@ -99,17 +99,21 @@ class Button:
         self.stroke_width = stroke_width;
         self.stroke_color = stroke_color;
         self.border_radius = border_radius;
+        self.key_binding = key_binding
 
     def handle(self, e):
         """Feed every pygame event; returns True if the button used it."""
-        if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1 and self.rect.collidepoint(e.pos):
+        is_key_down = e.type == pygame.KEYDOWN
+        is_key_up = e.type == pygame.KEYUP
+        is_bound_key = hasattr(e, "key") and e.key == self.key_binding
+        if (is_key_down and is_bound_key) or (e.type == pygame.MOUSEBUTTONDOWN and e.button == 1 and self.rect.collidepoint(e.pos)):
             self.armed = self.inside = True
             return True
         if e.type == pygame.MOUSEMOTION and self.armed:
             self.inside = self.rect.collidepoint(e.pos)
             return True
-        if e.type == pygame.MOUSEBUTTONUP and e.button == 1 and self.armed:
-            fire = self.rect.collidepoint(e.pos)
+        if (is_key_up and is_bound_key) or (e.type == pygame.MOUSEBUTTONUP and e.button == 1) and self.armed:
+            fire = is_bound_key or self.rect.collidepoint(e.pos)
             self.armed = self.inside = False
             if fire:
                 self.on_tap()
