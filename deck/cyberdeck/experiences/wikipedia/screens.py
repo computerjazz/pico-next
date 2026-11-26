@@ -36,7 +36,6 @@ class WikipediaSearch():
 
     def on_tap_result(self, i):
         self.title, text = self.wiki.article(self.results[i][1])
-        print(text)
         self.lines = wrap(text, self.ctx.theme.tiny, W - self.PADDING * 2 - SCROLLBAR_W - 5)
 
     def article_start_y(self):
@@ -57,7 +56,6 @@ class WikipediaSearch():
         article_h_px = len(self.lines) * article_font_h
 
         max_scroll = max(0, article_h_px - (H - article_start_y) + self.PADDING)
-        print(H, len(self.lines), article_h_px, max_scroll, self.ctx.theme.tiny.size("x"))
         self.scroll.handle(e, max_scroll)
         self.scroll_up_btn.handle(e)
         self.scroll_down_btn.handle(e)

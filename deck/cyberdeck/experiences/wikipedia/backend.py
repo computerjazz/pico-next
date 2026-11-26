@@ -70,7 +70,6 @@ class WikiBackend:
         if e.is_redirect: e = e.get_redirect_entry()
         html = bytes(e.get_item().content).decode("utf-8", "replace")
         p = _Text()
-        print(html)
         p.feed(html)
         p.close()
         return e.title, p.text()

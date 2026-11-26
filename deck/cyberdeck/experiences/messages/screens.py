@@ -54,6 +54,7 @@ class SendTab:
         n = len(rows)
         if n == 0:
             self.selected_row_idx = None
+            return
         elif self.selected_row_idx is None:
             self.selected_row_idx = 0
         else:
