@@ -27,6 +27,7 @@ class WikipediaSearch():
         self.title, self.lines = None, []
         self.scroll = Scroll()
         self.article_font_h = self.ctx.theme.tiny.size("x")[1]
+        self.max_y = 0
 
         padding = 5
         button_h = (H - TAB_H) / 2 - (padding * 2)
@@ -35,8 +36,8 @@ class WikipediaSearch():
         self.scroll_down_btn = Button((W - SCROLLBAR_W - padding, H - button_h - padding, SCROLLBAR_W, button_h), "v", lambda: self.scroll_down(), ctx.theme.panel, key_binding=pygame.K_DOWN)
 
 
-    def on_tap_result(self, i):
-        article = self.results[i][1]
+    def on_select_result(self, article):
+        self.scroll.y = 0
         self.title, text = self.wiki.article(article)
         self.lines = wrap(text, self.ctx.theme.tiny, W - self.PADDING * 2 - SCROLLBAR_W - 5)
 
@@ -44,25 +45,31 @@ class WikipediaSearch():
         return self.ctx.theme.font.size("x")[1] + (self.PADDING * 2)
 
     def scroll_down(self):
-        self.scroll.y += self.article_font_h / 2
+        self.scroll.y += self.article_font_h
 
     def scroll_up(self):
-        self.scroll.y -= self.article_font_h / 2
+        self.scroll.y -= self.article_font_h
+
+    result_btns = []
 
 
     def handle(self, e):
         article_start_y = self.article_start_y()
-        article_h_px = len(self.lines) * self.article_font_h
-
-        max_scroll = max(0, article_h_px - (H - article_start_y) + self.PADDING)
+        max_scroll = max(0, self.max_y - (H - article_start_y) + self.PADDING)
         self.scroll.handle(e, max_scroll)
         self.scroll_up_btn.handle(e)
         self.scroll_down_btn.handle(e)
 
+        for b in self.result_btns:
+            b.handle(e)
+
         def show_article():
             self.results = self.wiki.suggest(self.query)
+            self.result_btns = [Button(rect=(0, 0, 0, 0), label=result[0], on_tap=lambda r=result: self.on_select_result(r[1])) for result in self.results]
             if self.results and len(self.results):
-                self.on_tap_result(0)
+                article = self.results[0][1]
+                print(self.results[0])
+                self.on_select_result(article)
 
         if e.type == pygame.KEYDOWN:
             if e.unicode and e.unicode.isprintable():
@@ -72,23 +79,38 @@ class WikipediaSearch():
                 self.query = self.query[:-1]
                 show_article()
 
-
-
     def draw(self, s):
         t = self.ctx.theme
         query_text = f"{self.query}_"
         article_start_y = self.article_start_y()
 
         s.blit(t.font.render(query_text, True, t.green), (self.PADDING, self.PADDING))
-       
-        for i, line in enumerate(self.lines):
-            line_y = article_start_y + i * self.article_font_h - self.scroll.y
-            if (line_y < article_start_y):
-                continue
+        scroll_offset = self.scroll.y * -1
+        line_y = article_start_y + scroll_offset
+        for line in self.lines:
             if line:
-                s.blit(t.tiny.render(line, True, t.accent), (self.PADDING, line_y))
+                w, h = t.tiny.size(line)
+                if (line_y >= article_start_y):
+                    s.blit(t.tiny.render(line, True, t.accent), (self.PADDING, line_y))
+                line_y += h
         self.scroll_up_btn.draw(s, t)
         self.scroll_down_btn.draw(s, t)
+
+        results = self.results
+        btn_padding = 10
+        line_y += 30
+        btn_h = 60
+        for i, result in enumerate(results):
+            label = result[0]
+            w, h = t.font.size(label)
+            btn = self.result_btns[i]
+            if btn:
+             btn.rect = pygame.Rect(self.PADDING, line_y, w + (btn_padding * 2), btn_h)
+             btn.draw(s, t)
+            if i < len(results) - 1:
+                line_y += btn_h + 10
+        self.max_y = line_y - scroll_offset
+
 
 
 
