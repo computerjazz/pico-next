@@ -36,7 +36,8 @@ class WikipediaSearch():
 
 
     def on_tap_result(self, i):
-        self.title, text = self.wiki.article(self.results[i][1])
+        article = self.results[i][1]
+        self.title, text = self.wiki.article(article)
         self.lines = wrap(text, self.ctx.theme.tiny, W - self.PADDING * 2 - SCROLLBAR_W - 5)
 
     def article_start_y(self):
@@ -79,11 +80,13 @@ class WikipediaSearch():
         article_start_y = self.article_start_y()
 
         s.blit(t.font.render(query_text, True, t.green), (self.PADDING, self.PADDING))
+       
         for i, line in enumerate(self.lines):
             line_y = article_start_y + i * self.article_font_h - self.scroll.y
             if (line_y < article_start_y):
                 continue
-            s.blit(t.tiny.render(line, True, t.accent), (self.PADDING, line_y))
+            if line:
+                s.blit(t.tiny.render(line, True, t.accent), (self.PADDING, line_y))
         self.scroll_up_btn.draw(s, t)
         self.scroll_down_btn.draw(s, t)
 
