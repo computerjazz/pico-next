@@ -68,7 +68,6 @@ class WikipediaSearch():
             self.result_btns = [Button(rect=(0, 0, 0, 0), label=result[0], on_tap=lambda r=result: self.on_select_result(r[1])) for result in self.results]
             if self.results and len(self.results):
                 article = self.results[0][1]
-                print(self.results[0])
                 self.on_select_result(article)
 
         if e.type == pygame.KEYDOWN:
